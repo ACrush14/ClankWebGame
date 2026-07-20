@@ -1,0 +1,118 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Client } from "colyseus.js";
+import type { Room } from "colyseus.js";
+
+export interface PlayerSnapshot {
+  id: string;
+  name: string;
+  connected: boolean;
+  ready: boolean;
+}
+
+export interface RoomSnapshot {
+  players: PlayerSnapshot[];
+  phase: "lobby" | "playing";
+  log: string[];
+}
+
+const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
+
+export function useClankRoom() {
+  const clientRef = useRef<Client | null>(null);
+  const roomRef = useRef<Room | null>(null);
+  const [room, setRoom] = useState<Room | null>(null);
+  const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  if (!clientRef.current) {
+    clientRef.current = new Client(SERVER_URL);
+  }
+
+  const applySnapshot = useCallback((r: Room) => {
+    const state = r.state as unknown as {
+      players?: Map<string, { name: string; connected: boolean; ready: boolean }>;
+      phase: "lobby" | "playing";
+      log: string[];
+    };
+    if (!state || !state.players) return;
+    const players: PlayerSnapshot[] = [];
+    state.players.forEach((p, id: string) => {
+      players.push({ id, name: p.name, connected: p.connected, ready: p.ready });
+    });
+    setSnapshot({
+      players,
+      phase: state.phase,
+      log: Array.from(state.log),
+    });
+  }, []);
+
+  const bindRoom = useCallback(
+    (r: Room) => {
+      roomRef.current = r;
+      setRoom(r);
+      applySnapshot(r);
+      r.onStateChange(() => applySnapshot(r));
+      r.onLeave(() => {
+        roomRef.current = null;
+        setRoom(null);
+        setSnapshot(null);
+      });
+    },
+    [applySnapshot],
+  );
+
+  const createRoom = useCallback(
+    async (name: string) => {
+      setConnecting(true);
+      setError(null);
+      try {
+        const r = await clientRef.current!.create("clank", {});
+        bindRoom(r);
+        r.send("set_name", name);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Falha ao criar sala.");
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [bindRoom],
+  );
+
+  const joinRoom = useCallback(
+    async (roomId: string, name: string) => {
+      setConnecting(true);
+      setError(null);
+      try {
+        const r = await clientRef.current!.joinById(roomId.trim(), {});
+        bindRoom(r);
+        r.send("set_name", name);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Sala não encontrada.");
+      } finally {
+        setConnecting(false);
+      }
+    },
+    [bindRoom],
+  );
+
+  const toggleReady = useCallback(() => {
+    roomRef.current?.send("toggle_ready");
+  }, []);
+
+  const startGame = useCallback(() => {
+    roomRef.current?.send("start_game");
+  }, []);
+
+  const leaveRoom = useCallback(() => {
+    roomRef.current?.leave();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      roomRef.current?.leave();
+    };
+  }, []);
+
+  return { room, snapshot, error, connecting, createRoom, joinRoom, toggleReady, startGame, leaveRoom };
+}
