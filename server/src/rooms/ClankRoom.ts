@@ -1,16 +1,36 @@
 import { Room, Client } from "colyseus";
 import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
+import { GameEngine } from "@clank/engine";
 
 export class Player extends Schema {
   @type("string") name = "Jogador";
   @type("boolean") connected = true;
+  /** Só usado na fase de lobby. */
   @type("boolean") ready = false;
+
+  // Estado de jogo (populado quando phase vira "playing")
+  @type("boolean") knockedOut = false;
+  @type("number") handCount = 0;
+  @type("number") drawPileCount = 0;
+  @type("number") discardPileCount = 0;
+  @type("number") skill = 0;
+  @type("number") swords = 0;
+  @type("number") boots = 0;
+  @type("number") gold = 0;
+  @type("number") clank = 0;
 }
 
 export class ClankRoomState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type("string") phase: "lobby" | "playing" = "lobby";
   @type(["string"]) log = new ArraySchema<string>();
+
+  // Estado de jogo público (visível a todos — mãos são privadas, ver mensagem "hand")
+  @type("string") currentPlayerId = "";
+  @type("number") turnNumber = 0;
+  /** 5 posições; "" representa slot vazio (ArraySchema não aceita null). */
+  @type(["string"]) dungeonRowSlots = new ArraySchema<string>();
+  @type({ map: "number" }) reserveRemaining = new MapSchema<number>();
 }
 
 const MAX_PLAYERS = 4;
@@ -18,6 +38,7 @@ const MAX_LOG_LINES = 30;
 
 export class ClankRoom extends Room<ClankRoomState> {
   maxClients = MAX_PLAYERS;
+  private engine: GameEngine | null = null;
 
   onCreate() {
     this.setState(new ClankRoomState());
@@ -38,11 +59,20 @@ export class ClankRoom extends Room<ClankRoomState> {
       this.pushLog(`${player.name} está ${player.ready ? "pronto" : "não pronto"}.`);
     });
 
-    this.onMessage("start_game", () => {
-      if (this.state.phase !== "lobby") return;
-      this.state.phase = "playing";
-      this.pushLog("A partida começou.");
-    });
+    this.onMessage("start_game", (client) => this.handleStartGame(client));
+    this.onMessage("play_card", (client, cardId: string) =>
+      this.handleAction(client, () => this.engine!.playCard(client.sessionId, cardId)),
+    );
+    this.onMessage("acquire_card", (client, slotIndex: number) =>
+      this.handleAction(client, () => this.engine!.acquireCard(client.sessionId, slotIndex)),
+    );
+    this.onMessage("fight_monster", (client, slotIndex: number) =>
+      this.handleAction(client, () => this.engine!.fightMonster(client.sessionId, slotIndex)),
+    );
+    this.onMessage("acquire_from_reserve", (client, cardId: string) =>
+      this.handleAction(client, () => this.engine!.acquireFromReserve(client.sessionId, cardId)),
+    );
+    this.onMessage("end_turn", (client) => this.handleAction(client, () => this.engine!.endTurn(client.sessionId)));
 
     console.log(`ClankRoom criada: ${this.roomId}`);
   }
@@ -66,6 +96,80 @@ export class ClankRoom extends Room<ClankRoomState> {
 
   onDispose() {
     console.log(`ClankRoom encerrada: ${this.roomId}`);
+  }
+
+  private handleStartGame(client: Client) {
+    if (this.state.phase !== "lobby") return;
+
+    const connected = [...this.state.players.entries()].filter(([, p]) => p.connected);
+    if (connected.length < 1) return;
+    if (!connected.every(([, p]) => p.ready)) {
+      client.send("error", "Nem todo mundo está pronto ainda.");
+      return;
+    }
+
+    try {
+      this.engine = new GameEngine(connected.map(([id, p]) => ({ id, name: p.name })));
+      this.state.phase = "playing";
+      this.pushLog("A partida começou.");
+      this.syncFromEngine();
+      for (const [sessionId] of connected) this.sendHand(sessionId);
+    } catch (err) {
+      this.engine = null;
+      this.state.phase = "lobby";
+      client.send("error", err instanceof Error ? err.message : "Não foi possível começar a partida.");
+    }
+  }
+
+  /** Roda uma ação do motor de regras; converte erros de regra em mensagem pro cliente, sem derrubar a sala. */
+  private handleAction(client: Client, action: () => void) {
+    if (!this.engine) {
+      client.send("error", "A partida ainda não começou.");
+      return;
+    }
+    try {
+      action();
+      this.syncFromEngine();
+      this.sendHand(client.sessionId);
+    } catch (err) {
+      client.send("error", err instanceof Error ? err.message : "Ação inválida.");
+    }
+  }
+
+  private sendHand(sessionId: string) {
+    const player = this.engine?.state.players.find((p) => p.id === sessionId);
+    if (!player) return;
+    const client = this.clients.find((c) => c.sessionId === sessionId);
+    client?.send("hand", player.hand);
+  }
+
+  private syncFromEngine() {
+    if (!this.engine) return;
+    const state = this.engine.state;
+
+    this.state.turnNumber = state.turnNumber;
+    this.state.currentPlayerId = state.players[state.currentPlayerIndex]?.id ?? "";
+
+    this.state.dungeonRowSlots.clear();
+    for (const id of state.dungeonRow.slots) this.state.dungeonRowSlots.push(id ?? "");
+
+    for (const [id, count] of Object.entries(state.reserve.remaining)) {
+      this.state.reserveRemaining.set(id, count);
+    }
+
+    for (const enginePlayer of state.players) {
+      const schemaPlayer = this.state.players.get(enginePlayer.id);
+      if (!schemaPlayer) continue;
+      schemaPlayer.knockedOut = enginePlayer.knockedOut;
+      schemaPlayer.handCount = enginePlayer.hand.length;
+      schemaPlayer.drawPileCount = enginePlayer.drawPile.length;
+      schemaPlayer.discardPileCount = enginePlayer.discardPile.length;
+      schemaPlayer.skill = enginePlayer.resources.skill;
+      schemaPlayer.swords = enginePlayer.resources.swords;
+      schemaPlayer.boots = enginePlayer.resources.boots;
+      schemaPlayer.gold = enginePlayer.resources.gold;
+      schemaPlayer.clank = enginePlayer.clank;
+    }
   }
 
   private pushLog(line: string) {

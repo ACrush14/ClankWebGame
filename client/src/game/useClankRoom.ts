@@ -7,12 +7,26 @@ export interface PlayerSnapshot {
   name: string;
   connected: boolean;
   ready: boolean;
+  knockedOut: boolean;
+  handCount: number;
+  drawPileCount: number;
+  discardPileCount: number;
+  skill: number;
+  swords: number;
+  boots: number;
+  gold: number;
+  clank: number;
 }
 
 export interface RoomSnapshot {
   players: PlayerSnapshot[];
   phase: "lobby" | "playing";
   log: string[];
+  currentPlayerId: string;
+  turnNumber: number;
+  /** 5 posições; string vazia representa slot vazio. */
+  dungeonRowSlots: string[];
+  reserveRemaining: Record<string, number>;
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
@@ -22,7 +36,9 @@ export function useClankRoom() {
   const roomRef = useRef<Room | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
+  const [hand, setHand] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
 
   if (!clientRef.current) {
@@ -31,19 +47,45 @@ export function useClankRoom() {
 
   const applySnapshot = useCallback((r: Room) => {
     const state = r.state as unknown as {
-      players?: Map<string, { name: string; connected: boolean; ready: boolean }>;
+      players?: Map<string, PlayerSnapshot>;
       phase: "lobby" | "playing";
       log: string[];
+      currentPlayerId: string;
+      turnNumber: number;
+      dungeonRowSlots: string[];
+      reserveRemaining: Map<string, number>;
     };
     if (!state || !state.players) return;
     const players: PlayerSnapshot[] = [];
     state.players.forEach((p, id: string) => {
-      players.push({ id, name: p.name, connected: p.connected, ready: p.ready });
+      players.push({
+        id,
+        name: p.name,
+        connected: p.connected,
+        ready: p.ready,
+        knockedOut: p.knockedOut,
+        handCount: p.handCount,
+        drawPileCount: p.drawPileCount,
+        discardPileCount: p.discardPileCount,
+        skill: p.skill,
+        swords: p.swords,
+        boots: p.boots,
+        gold: p.gold,
+        clank: p.clank,
+      });
+    });
+    const reserveRemaining: Record<string, number> = {};
+    state.reserveRemaining?.forEach((count, id: string) => {
+      reserveRemaining[id] = count;
     });
     setSnapshot({
       players,
       phase: state.phase,
       log: Array.from(state.log),
+      currentPlayerId: state.currentPlayerId,
+      turnNumber: state.turnNumber,
+      dungeonRowSlots: Array.from(state.dungeonRowSlots ?? []),
+      reserveRemaining,
     });
   }, []);
 
@@ -53,10 +95,16 @@ export function useClankRoom() {
       setRoom(r);
       applySnapshot(r);
       r.onStateChange(() => applySnapshot(r));
+      r.onMessage("hand", (cards: string[]) => setHand(cards));
+      r.onMessage("error", (message: string) => {
+        setActionError(message);
+        setTimeout(() => setActionError(null), 4000);
+      });
       r.onLeave(() => {
         roomRef.current = null;
         setRoom(null);
         setSnapshot(null);
+        setHand([]);
       });
     },
     [applySnapshot],
@@ -104,6 +152,31 @@ export function useClankRoom() {
     roomRef.current?.send("start_game");
   }, []);
 
+  const playCard = useCallback((cardId: string) => {
+    setActionError(null);
+    roomRef.current?.send("play_card", cardId);
+  }, []);
+
+  const acquireCard = useCallback((slotIndex: number) => {
+    setActionError(null);
+    roomRef.current?.send("acquire_card", slotIndex);
+  }, []);
+
+  const fightMonster = useCallback((slotIndex: number) => {
+    setActionError(null);
+    roomRef.current?.send("fight_monster", slotIndex);
+  }, []);
+
+  const acquireFromReserve = useCallback((cardId: string) => {
+    setActionError(null);
+    roomRef.current?.send("acquire_from_reserve", cardId);
+  }, []);
+
+  const endTurn = useCallback(() => {
+    setActionError(null);
+    roomRef.current?.send("end_turn");
+  }, []);
+
   const leaveRoom = useCallback(() => {
     roomRef.current?.leave();
   }, []);
@@ -114,5 +187,22 @@ export function useClankRoom() {
     };
   }, []);
 
-  return { room, snapshot, error, connecting, createRoom, joinRoom, toggleReady, startGame, leaveRoom };
+  return {
+    room,
+    snapshot,
+    hand,
+    error,
+    actionError,
+    connecting,
+    createRoom,
+    joinRoom,
+    toggleReady,
+    startGame,
+    playCard,
+    acquireCard,
+    fightMonster,
+    acquireFromReserve,
+    endTurn,
+    leaveRoom,
+  };
 }
