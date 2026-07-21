@@ -19,8 +19,21 @@ import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
  * Regras que continuam confirmadas contra fontes reais (jogo básico, mecânica
  * compartilhada com o Catacombs): ícone de pegada = 2 Boots; caveira num túnel = 1 Sword
  * ou 1 dano ao passar; cadeado = precisa da Chave-mestra do Mercado; Mercado custa 7 Gold
- * por item. Valores de artefato (7/15/25) ainda vêm do manual do jogo **básico** — não
- * confirmei se o Catacombs usa a mesma escala.
+ * por item.
+ *
+ * Valores de artefato: CONFIRMADOS contra uma foto real dos tokens físicos de artefato do
+ * Clank! Catacombs (2026-07-21) — a escala completa do jogo tem 7 valores: 5, 7, 10, 15,
+ * 20, 25 e 30. Os três usados aqui (`depths-west`=7, `depths-east`=15, `sealed-vault`=25)
+ * já batiam com essa escala real (eram herdados do manual do jogo básico, que por
+ * coincidência usa os mesmos números nessas três posições).
+ *
+ * ⚠️ Mecânicas do Catacombs ainda por confirmar/implementar: você jogou uma versão sem
+ * prisioneiros/fantasmas (as cartas que citam isso — Diversion, Riot, The Warden, White/
+ * Black Tourmaline — ficam sem esse efeito condicional aplicado), mas com "cabines da
+ * masmorra" (ainda não sei a que se refere exatamente — não modelado), Cavernas de
+ * Cristal (já existe, ver `isCrystalCave` abaixo) e Ídolos de Macaco (citados em "Boots
+ * of the Ape Lord"/"Thirst for Adventure", mas eu não sei ainda ONDE/COMO se consegue um
+ * — sem isso não dá pra implementar a aquisição, só a checagem "se você tiver".
  */
 
 interface RoomSpec {
@@ -29,6 +42,7 @@ interface RoomSpec {
   isEntrance?: boolean;
   isMarket?: boolean;
   isDepths?: boolean;
+  isCrystalCave?: boolean;
   artifactValue?: number;
 }
 
@@ -48,7 +62,7 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "market-room", name: "Mercado", isMarket: true },
   { id: "crossroads", name: "Encruzilhada das Criptas" },
   { id: "deep-tunnel", name: "Túnel dos Prisioneiros" },
-  { id: "crystal-cave", name: "Caverna de Cristal" },
+  { id: "crystal-cave", name: "Caverna de Cristal", isCrystalCave: true },
   { id: "depths-east", name: "Profundezas — Cripta Leste", isDepths: true, artifactValue: 15 },
   { id: "depths-west", name: "Profundezas — Cripta Oeste", isDepths: true, artifactValue: 7 },
   { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25 },
@@ -82,6 +96,7 @@ function buildBoard(): BoardDefinition {
       isEntrance: spec.isEntrance,
       isMarket: spec.isMarket,
       isDepths: spec.isDepths,
+      isCrystalCave: spec.isCrystalCave,
       artifactValue: spec.artifactValue,
     };
   }

@@ -87,6 +87,32 @@ describe("playCard", () => {
     const other = game.state.players[1];
     expect(() => game.playCard(other.id, "burgle")).toThrow(/não é a vez/i);
   });
+
+  it("Lie in Wait dá -2 Clank extra só quando jogada na Caverna de Cristal", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.clank = 3;
+    player.hand = ["lie-in-wait"];
+
+    game.playCard(player.id, "lie-in-wait");
+
+    // fora da Caverna de Cristal: só o efeito base (skill 2 + swords 1), sem o -2 Clank condicional
+    expect(player.clank).toBe(3);
+    expect(player.resources.skill).toBe(2);
+    expect(player.resources.swords).toBe(1);
+  });
+
+  it("Lie in Wait aplica o -2 Clank condicional na Caverna de Cristal", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "crystal-cave";
+    player.clank = 3;
+    player.hand = ["lie-in-wait"];
+
+    game.playCard(player.id, "lie-in-wait");
+
+    expect(player.clank).toBe(1);
+  });
 });
 
 describe("acquireCard", () => {

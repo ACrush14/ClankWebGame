@@ -79,6 +79,8 @@ export interface RoomDefinition {
   isEntrance?: boolean;
   isMarket?: boolean;
   isDepths?: boolean;
+  /** Caverna de Cristal — algumas cartas do Catacombs têm efeito condicional aqui (ex: Lie in Wait). */
+  isCrystalCave?: boolean;
   /** Valor em pontos do artefato nesta sala, se ainda não foi pego. */
   artifactValue?: number;
 }
