@@ -1,9 +1,9 @@
 import type { CardDefinition } from "./types.js";
 
 /**
- * Baralho inicial — CONFIRMADO contra fontes sobre o jogo oficial (10 cartas):
- * 6x Burgle (1 skill), 1x Sidestep (1 boot), 1x Scramble (1 skill + 1 boot),
- * 2x Stumble (0 recursos, +1 Clank!).
+ * Baralho inicial — CONFIRMADO duas vezes: contra fontes sobre o jogo oficial, e agora
+ * contra o "Clank! Card List" oficial do BoardGameGeek (Scramble 4, Sidestep 4,
+ * Stumble 8, Burgle 24 — divididos por 4 jogadores dá exatamente 1/1/2/6 por jogador).
  */
 export const STARTING_DECK: CardDefinition[] = [
   { id: "burgle", name: "Burgle", kind: "starting", playEffects: { skill: 1 }, verified: true },
@@ -34,24 +34,66 @@ export function buildStartingDeck(): string[] {
 }
 
 /**
- * Cartas com `verified: true` — nome E números conferidos contra uma fonte real sobre
- * o jogo (ex: exemplo de jogo do UltraBoardGames citando "Orc Grunt custa 2 Swords,
- * dá 3 Gold"). As demais (`verified: false`) têm nome e mecânica geral reais, mas os
- * NÚMEROS de custo/efeito são estimativas minhas — ver aviso grande abaixo.
- *
- * ⚠️ PLACEHOLDER PARCIAL — a maioria destas cartas ainda não está verificada.
- *
- * Tentei confirmar os valores exatos de ~30 tipos de carta do Dungeon Deck/Reserva
- * contra o manual oficial (o PDF não carregou em nenhum dos 2 hosts que tentei) e
- * contra várias fontes sobre o jogo (BoardGameGeek, UltraBoardGames, Steam, wikis) —
- * consegui confirmar bem menos do que o esperado, porque a maior parte dos valores
- * nesses sites está em ícones de imagem, não em texto. `orc-grunt` é o único monstro
- * 100% verificado até agora; `explore`, `mercenary`, `secret-tome` e `teleporter` são
- * nomes e mecânicas reais com números estimados por mim — troque quando tiver uma
- * fonte confiável (o PDF `Clank! Card List` do BoardGameGeek parece ser exatamente
- * isso, mas exige login pra baixar).
+ * ⚠️ PLACEHOLDER — nome e mecânica geral reais, números de custo/efeito estimados por mim.
+ * `orc-grunt` é o único 100% verificado (2 Swords → 3 Gold, de um exemplo de jogo escrito
+ * por extenso). Os outros ficam assim até eu conseguir o texto/custo real de cada carta.
  */
 export const DUNGEON_DECK: CardDefinition[] = [
+  {
+    id: "teleporter",
+    name: "Teleporter",
+    kind: "device",
+    skillCost: 6,
+    playEffects: { boots: 3 },
+    verified: false,
+  },
+  {
+    id: "orc-grunt",
+    name: "Orc Grunt",
+    kind: "monster",
+    swordCost: 2,
+    acquireEffects: { gold: 3 },
+    verified: true,
+  },
+];
+
+/**
+ * Contagens REAIS (confirmadas no "Clank! Card List" oficial do BGG) do baralho
+ * embaralhado de 100 cartas — usadas mesmo pras cartas que ainda não têm efeito
+ * implementado (ver DUNGEON_DECK_CATALOG_REFERENCE), pra manter a proporção real
+ * do baralho assim que cada carta for implementada.
+ */
+export const DUNGEON_DECK_COUNTS: Record<string, number> = {
+  teleporter: 2,
+  "orc-grunt": 3,
+};
+
+export function buildDungeonDeck(): string[] {
+  const deck: string[] = [];
+  for (const [id, count] of Object.entries(DUNGEON_DECK_COUNTS)) {
+    for (let i = 0; i < count; i++) deck.push(id);
+  }
+  return deck;
+}
+
+/**
+ * A Reserva é DIFERENTE do Dungeon Deck: são pilhas fixas ao lado da Dungeon Row,
+ * não embaralhadas — o jogador compra a carta do topo de uma pilha específica, e a
+ * pilha vai encolhendo (exceto Goblin, que não se esgota: pode ser lutado várias
+ * vezes por turno, tem só 1 cópia física que fica ali disponível pra sempre).
+ *
+ * ⚠️ PLACEHOLDER — nomes e quantidades REAIS (do Clank! Card List oficial), mas
+ * custo/efeito ainda são estimativas minhas.
+ */
+export const RESERVE_CARDS: CardDefinition[] = [
+  {
+    id: "goblin",
+    name: "Goblin",
+    kind: "monster",
+    swordCost: 1,
+    acquireEffects: { gold: 1 },
+    verified: false,
+  },
   {
     id: "explore",
     name: "Explore",
@@ -77,42 +119,21 @@ export const DUNGEON_DECK: CardDefinition[] = [
     points: 7,
     verified: false,
   },
-  {
-    id: "teleporter",
-    name: "Teleporter",
-    kind: "device",
-    skillCost: 6,
-    playEffects: { boots: 3 },
-    verified: false,
-  },
-  {
-    id: "orc-grunt",
-    name: "Orc Grunt",
-    kind: "monster",
-    swordCost: 2,
-    acquireEffects: { gold: 3 },
-    verified: true,
-  },
 ];
 
-export const DUNGEON_DECK_COUNTS: Record<string, number> = {
-  explore: 6,
-  mercenary: 5,
-  "secret-tome": 3,
-  teleporter: 2,
-  "orc-grunt": 4,
+/** Quantidade inicial de cada pilha da Reserva — REAL, do Clank! Card List oficial. */
+export const RESERVE_STARTING_COUNTS: Record<string, number> = {
+  goblin: 1,
+  explore: 15,
+  mercenary: 15,
+  "secret-tome": 12,
 };
 
-export function buildDungeonDeck(): string[] {
-  const deck: string[] = [];
-  for (const [id, count] of Object.entries(DUNGEON_DECK_COUNTS)) {
-    for (let i = 0; i < count; i++) deck.push(id);
-  }
-  return deck;
-}
+/** Goblin nunca se esgota (é lutado repetidamente, não consumido). */
+export const RESERVE_INFINITE = new Set(["goblin"]);
 
 export const ALL_CARDS: Record<string, CardDefinition> = Object.fromEntries(
-  [...STARTING_DECK, ...DUNGEON_DECK].map((c) => [c.id, c]),
+  [...STARTING_DECK, ...DUNGEON_DECK, ...RESERVE_CARDS].map((c) => [c.id, c]),
 );
 
 export function getCard(id: string): CardDefinition {
@@ -120,3 +141,79 @@ export function getCard(id: string): CardDefinition {
   if (!card) throw new Error(`Carta desconhecida: ${id}`);
   return card;
 }
+
+/**
+ * Catálogo de referência — TODOS os 68 tipos de carta únicos do baralho de 100 do
+ * jogo base (nome + quantidade impressa), direto do "Clank! Card List" oficial do
+ * BoardGameGeek. NÃO estão em `ALL_CARDS`/jogáveis ainda porque não tenho o custo/
+ * efeito de cada uma — é só a lista-mestra pra ir preenchendo aos poucos.
+ * Devices e Monsters já contam pro total de 100; o resto são itens/companheiros.
+ */
+export const DUNGEON_DECK_CATALOG_REFERENCE: { name: string; count: number; category: string }[] = [
+  // Device Cards (10)
+  { name: "Dragon Shrine", count: 2, category: "device" },
+  { name: "Ladder", count: 2, category: "device" },
+  { name: "Shrine", count: 3, category: "device" },
+  { name: "Teleporter", count: 2, category: "device" },
+  { name: "Vault, The", count: 1, category: "device" },
+  // Monsters (20)
+  { name: "Animated Door", count: 2, category: "monster" },
+  { name: "Belcher", count: 2, category: "monster" },
+  { name: "Cave Troll", count: 1, category: "monster" },
+  { name: "Crystal Golem", count: 2, category: "monster" },
+  { name: "Kobold", count: 3, category: "monster" },
+  { name: "Ogre", count: 2, category: "monster" },
+  { name: "Orc Grunt", count: 3, category: "monster" },
+  { name: "Overlord", count: 2, category: "monster" },
+  { name: "Watcher", count: 3, category: "monster" },
+  // Itens / companheiros / eventos (70)
+  { name: "Amulet of Vigor", count: 1, category: "item" },
+  { name: "Apothecary", count: 1, category: "item" },
+  { name: "Archaeologist", count: 2, category: "item" },
+  { name: "Boots of Swiftness", count: 1, category: "item" },
+  { name: "Bracers of Agility", count: 2, category: "item" },
+  { name: "Brilliance", count: 1, category: "item" },
+  { name: "Cleric of the Sun", count: 2, category: "item" },
+  { name: "Dead Run", count: 2, category: "item" },
+  { name: "Diamond", count: 1, category: "item" },
+  { name: "Dragon's Eye", count: 1, category: "item" },
+  { name: "The Duke", count: 1, category: "item" },
+  { name: "Dwarven Peddler", count: 1, category: "item" },
+  { name: "Elven Boots", count: 1, category: "item" },
+  { name: "Elven Cloak", count: 1, category: "item" },
+  { name: "Elven Dagger", count: 1, category: "item" },
+  { name: "Emerald", count: 2, category: "item" },
+  { name: "Flying Carpet", count: 1, category: "item" },
+  { name: "Gem Collector", count: 1, category: "item" },
+  { name: "Invoker of the Ancients", count: 1, category: "item" },
+  { name: "Kobold Merchant", count: 1, category: "item" },
+  { name: "Lucky Coin", count: 2, category: "item" },
+  { name: "Master Burglar", count: 2, category: "item" },
+  { name: "Mister Whiskers", count: 1, category: "item" },
+  { name: "Move Silently", count: 2, category: "item" },
+  { name: "Monkey Bot 3000", count: 1, category: "item" },
+  { name: "Mountain King, The", count: 1, category: "item" },
+  { name: "Pickaxe", count: 2, category: "item" },
+  { name: "Queen of Hearts, The", count: 1, category: "item" },
+  { name: "Rebel Captain", count: 1, category: "item" },
+  { name: "Rebel Miner", count: 1, category: "item" },
+  { name: "Rebel Scout", count: 1, category: "item" },
+  { name: "Rebel Soldier", count: 1, category: "item" },
+  { name: "Ruby", count: 2, category: "item" },
+  { name: "Sapphire", count: 3, category: "item" },
+  { name: "Scepter of the Ape Lord", count: 1, category: "item" },
+  { name: "Search", count: 2, category: "item" },
+  { name: "Silver Spear", count: 2, category: "item" },
+  { name: "Singing Sword", count: 1, category: "item" },
+  { name: "Sleight of Hand", count: 2, category: "item" },
+  { name: "Sneak", count: 2, category: "item" },
+  { name: "Swagger", count: 2, category: "item" },
+  { name: "Tattle", count: 2, category: "item" },
+  { name: "Treasure Hunter", count: 2, category: "item" },
+  { name: "Treasure Map", count: 1, category: "item" },
+  { name: "Tunnel Guide", count: 2, category: "item" },
+  { name: "Underworld Dealing", count: 1, category: "item" },
+  { name: "Wand of Recall", count: 2, category: "item" },
+  { name: "Wand of Wind", count: 1, category: "item" },
+  { name: "Wizard", count: 1, category: "item" },
+];

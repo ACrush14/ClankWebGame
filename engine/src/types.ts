@@ -48,6 +48,15 @@ export interface CardDefinition {
   verified?: boolean;
 }
 
+/**
+ * Reserva — pilhas fixas ao lado da Dungeon Row (Goblin/Explore/Mercenary/Secret Tome
+ * no jogo base). Diferente da Dungeon Row: não é embaralhada, cada pilha tem sua
+ * própria contagem que só diminui (exceto Goblin, que nunca se esgota).
+ */
+export interface ReserveState {
+  remaining: Record<string, number>;
+}
+
 export interface PlayerState {
   id: string;
   name: string;

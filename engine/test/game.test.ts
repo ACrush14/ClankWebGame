@@ -25,6 +25,16 @@ describe("setup", () => {
     expect(game.state.dungeonRow.slots.every((s) => s !== null)).toBe(true);
   });
 
+  it("inicia a Reserva com as contagens reais do jogo base (Goblin 1, Explore 15, Mercenary 15, Secret Tome 12)", () => {
+    const game = twoPlayerGame();
+    expect(game.state.reserve.remaining).toEqual({
+      goblin: 1,
+      explore: 15,
+      mercenary: 15,
+      "secret-tome": 12,
+    });
+  });
+
   it("o primeiro jogador da lista começa jogando", () => {
     const game = twoPlayerGame();
     expect(game.currentPlayer.id).toBe("p1");
@@ -84,18 +94,17 @@ describe("acquireCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
 
-    // acha uma posição que não seja monstro (não compra com skill) pra testar acquireCard
-    const slotIndex = game.state.dungeonRow.slots.findIndex(
-      (id) => id !== null && getCard(id).kind !== "monster",
-    );
-    const cardId = game.state.dungeonRow.slots[slotIndex]!;
-    player.resources.skill = getCard(cardId).skillCost ?? 0;
+    // garante cartas de sobra no monte de compra pra testar o reabastecimento do slot
+    // (o baralho placeholder tem só 5 cartas únicas — do tamanho exato da própria Row)
+    game.state.dungeonRow.drawPile.push("teleporter");
+    game.state.dungeonRow.slots[0] = "teleporter";
+    player.resources.skill = getCard("teleporter").skillCost ?? 0;
 
-    game.acquireCard(player.id, slotIndex);
+    game.acquireCard(player.id, 0);
 
-    expect(player.discardPile).toContain(cardId);
+    expect(player.discardPile).toContain("teleporter");
     expect(player.resources.skill).toBe(0);
-    expect(game.state.dungeonRow.slots[slotIndex]).not.toBeNull();
+    expect(game.state.dungeonRow.slots[0]).not.toBeNull();
   });
 
   it("lança erro se skill insuficiente", () => {
@@ -122,6 +131,7 @@ describe("fightMonster", () => {
   it("vence o monstro pagando swords, ganha a recompensa, e a carta NÃO vai pro baralho do jogador", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
+    game.state.dungeonRow.drawPile.push("orc-grunt");
     game.state.dungeonRow.slots[0] = "orc-grunt";
     player.resources.swords = 2;
 
@@ -140,6 +150,52 @@ describe("fightMonster", () => {
     player.resources.swords = 0;
 
     expect(() => game.fightMonster(player.id, 0)).toThrow(/swords insuficientes/i);
+  });
+});
+
+describe("acquireFromReserve", () => {
+  it("compra Explore da Reserva pagando skill e consome uma cópia da pilha (15 -> 14)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.skill = 3;
+
+    game.acquireFromReserve(player.id, "explore");
+
+    expect(player.discardPile).toContain("explore");
+    expect(player.resources.skill).toBe(0);
+    expect(game.state.reserve.remaining.explore).toBe(14);
+  });
+
+  it("Goblin nunca esgota a Reserva, mesmo lutado várias vezes", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.swords = 10;
+
+    game.acquireFromReserve(player.id, "goblin");
+    game.acquireFromReserve(player.id, "goblin");
+    game.acquireFromReserve(player.id, "goblin");
+
+    expect(game.state.reserve.remaining.goblin).toBe(1);
+    expect(player.resources.gold).toBe(3);
+  });
+
+  it("lança erro quando a pilha da Reserva esgota", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.reserve.remaining["secret-tome"] = 0;
+    player.resources.skill = 99;
+
+    expect(() => game.acquireFromReserve(player.id, "secret-tome")).toThrow(/esgotou/i);
+  });
+
+  it("lança erro se skill/swords insuficientes na Reserva", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.skill = 0;
+    player.resources.swords = 0;
+
+    expect(() => game.acquireFromReserve(player.id, "mercenary")).toThrow(/skill insuficiente/i);
+    expect(() => game.acquireFromReserve(player.id, "goblin")).toThrow(/swords insuficientes/i);
   });
 });
 

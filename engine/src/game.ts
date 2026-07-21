@@ -1,7 +1,7 @@
-import { buildDungeonDeck, getCard } from "./cards.js";
+import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } from "./cards.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
-import type { CardEffects, PlayerState } from "./types.js";
+import type { CardEffects, PlayerState, ReserveState } from "./types.js";
 import { emptyResources } from "./types.js";
 
 export const DUNGEON_ROW_SIZE = 5;
@@ -17,6 +17,7 @@ export interface GameState {
   players: PlayerState[];
   currentPlayerIndex: number;
   dungeonRow: DungeonRowState;
+  reserve: ReserveState;
   turnNumber: number;
   phase: "playing" | "ended";
 }
@@ -39,6 +40,7 @@ export class GameEngine {
       players: players.map((p) => drawHand(p, rng)),
       currentPlayerIndex: 0,
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
+      reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
       turnNumber: 1,
       phase: "playing",
     };
@@ -129,6 +131,41 @@ export class GameEngine {
     this.state.dungeonRow.discardPile.push(cardId);
     this.applyEffects(player, card.acquireEffects);
     this.refillDungeonSlot(slotIndex);
+  }
+
+  /**
+   * Adquire uma carta da Reserva (pilha fixa ao lado da Dungeon Row, não embaralhada).
+   * Monstros (ex: Goblin) pagam Swords e NUNCA esgotam a pilha — podem ser lutados
+   * várias vezes por turno. As demais pagam Skill e consomem uma cópia da pilha; ao
+   * zerar, aquela carta some da Reserva pro resto do jogo.
+   */
+  acquireFromReserve(playerId: string, cardId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    const card = getCard(cardId);
+    const remaining = this.state.reserve.remaining[cardId] ?? 0;
+    if (remaining <= 0) throw new Error(`${card.name} esgotou na Reserva.`);
+
+    if (card.kind === "monster") {
+      const cost = card.swordCost ?? 0;
+      if (player.resources.swords < cost) {
+        throw new Error(`Swords insuficientes pra vencer ${card.name} (precisa ${cost}, tem ${player.resources.swords}).`);
+      }
+      player.resources.swords -= cost;
+      this.applyEffects(player, card.acquireEffects);
+      if (!RESERVE_INFINITE.has(cardId)) {
+        this.state.reserve.remaining[cardId] = remaining - 1;
+      }
+      return;
+    }
+
+    const cost = card.skillCost ?? 0;
+    if (player.resources.skill < cost) {
+      throw new Error(`Skill insuficiente pra comprar ${card.name} (precisa ${cost}, tem ${player.resources.skill}).`);
+    }
+    player.resources.skill -= cost;
+    player.discardPile.push(cardId);
+    this.applyEffects(player, card.acquireEffects);
+    this.state.reserve.remaining[cardId] = remaining - 1;
   }
 
   private refillDungeonSlot(slotIndex: number) {
