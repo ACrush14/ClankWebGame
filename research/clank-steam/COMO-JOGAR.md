@@ -74,10 +74,32 @@ o texto completo. Pra fechar o popup, clique em qualquer área vazia do tabuleir
 
 ## Jogar uma carta da mão
 
-Arrastar a carta da mão pra cima, em direção ao tabuleiro (ex: de `(40, 610)` até
-`(400, 300)`). Um `left_click_drag` simples (início→fim instantâneo) FUNCIONA pra isso.
-Confirma no "Registro de ações" (ícone de lista, canto superior direito) que a carta foi
-jogada, ou vendo os recursos (Skill/Swords/Boots, barra inferior direita) mudarem.
+**Forma rápida (recomendada):** clicar no botão **"▶"** (triângulo azul, perto da mão,
+ex: `(450, 705)`) joga TODAS as cartas da mão de uma vez, com animação. Confirma no
+"Registro de ações" e nos recursos (Skill/Swords/Boots, barra inferior direita).
+
+Forma manual (carta por carta, mais lenta): arrastar a carta da mão pra cima, em direção
+ao tabuleiro (ex: de `(40, 610)` até `(400, 300)`). Um `left_click_drag` simples
+(início→fim instantâneo) FUNCIONA pra isso — diferente de comprar da fileira, que
+precisa do arrasto devagar (ver seção abaixo).
+
+## Mover o personagem pelo tabuleiro
+
+As salas adjacentes à posição atual do personagem aparecem com um **brilho/contorno
+dourado**. Basta CLICAR nelas (clique simples, sem precisar arrastar) pra mover — gasta
+Boots automaticamente (1, ou 2 se a sala tiver ícone de pegada). Confirmado testando.
+
+## Jogar mais rápido: `computer_batch`
+
+Sempre que possível, agrupe vários passos previsíveis numa única chamada de
+`computer_batch` (ex: clicar em várias salas/cartas em sequência + só um screenshot no
+final) em vez de uma chamada por ação — elimina round-trips desnecessários.
+
+⚠️ Às vezes um processo do Windows (visto: "Textinputhost", provavelmente um teclado
+virtual invisível) fica na frente e bloqueia cliques, mesmo a tela renderizando normal
+nos prints. Se isso acontecer: tentar um clique simples em qualquer área vazia da tela
+pra "destravar"; se persistir, avisar o usuário (ele consegue resolver manualmente mais
+rápido do que ficar tentando `request_access`/`open_application` repetidamente).
 
 ## Comprar uma carta da Dungeon Row / Reserva — TÉCNICA CONFIRMADA
 
