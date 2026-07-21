@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
 import type { RoomSnapshot } from "./game/useClankRoom";
+import { BoardMap } from "./game/BoardMap";
 
 function cardName(id: string): string {
   if (!id) return "";
@@ -391,6 +392,21 @@ function GameScreen({
           <h2 className="mb-2 text-sm font-semibold text-slate-300">
             Tabuleiro — {myRoom?.name ?? "?"}
           </h2>
+          <div className="mb-3 rounded-xl bg-slate-950/60 p-2">
+            <BoardMap
+              players={snapshot.players.map((p) => ({
+                id: p.id,
+                name: p.name,
+                roomId: p.roomId,
+                knockedOut: p.knockedOut,
+                hasLeftDungeon: p.hasLeftDungeon,
+              }))}
+              claimedArtifacts={snapshot.claimedArtifacts}
+              currentRoomId={myRoom?.id}
+              reachableRoomIds={new Set(myRoom?.tunnels.map((t) => t.to) ?? [])}
+              onRoomClick={isMyTurn ? onMovePlayer : undefined}
+            />
+          </div>
           {hasUnclaimedArtifact && (
             <button
               onClick={onTakeArtifact}
