@@ -46,6 +46,7 @@ export const DUNGEON_DECK: CardDefinition[] = [
     skillCost: 6,
     playEffects: { boots: 3 },
     verified: false,
+    triggersDragonAttack: true,
   },
   {
     id: "orc-grunt",
@@ -54,6 +55,7 @@ export const DUNGEON_DECK: CardDefinition[] = [
     swordCost: 2,
     acquireEffects: { gold: 3 },
     verified: true,
+    triggersDragonAttack: true,
   },
 ];
 

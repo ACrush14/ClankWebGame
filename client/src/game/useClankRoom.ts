@@ -16,6 +16,9 @@ export interface PlayerSnapshot {
   boots: number;
   gold: number;
   clank: number;
+  damage: number;
+  roomId: string;
+  points: number;
 }
 
 export interface RoomSnapshot {
@@ -27,6 +30,9 @@ export interface RoomSnapshot {
   /** 5 posições; string vazia representa slot vazio. */
   dungeonRowSlots: string[];
   reserveRemaining: Record<string, number>;
+  dragonRageTrack: number;
+  /** Ids de sala cujo artefato já foi pego. */
+  claimedArtifacts: Record<string, boolean>;
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
@@ -54,6 +60,8 @@ export function useClankRoom() {
       turnNumber: number;
       dungeonRowSlots: string[];
       reserveRemaining: Map<string, number>;
+      dragonRageTrack: number;
+      claimedArtifacts: Map<string, boolean>;
     };
     if (!state || !state.players) return;
     const players: PlayerSnapshot[] = [];
@@ -72,11 +80,18 @@ export function useClankRoom() {
         boots: p.boots,
         gold: p.gold,
         clank: p.clank,
+        damage: p.damage,
+        roomId: p.roomId,
+        points: p.points,
       });
     });
     const reserveRemaining: Record<string, number> = {};
     state.reserveRemaining?.forEach((count, id: string) => {
       reserveRemaining[id] = count;
+    });
+    const claimedArtifacts: Record<string, boolean> = {};
+    state.claimedArtifacts?.forEach((claimed, id: string) => {
+      claimedArtifacts[id] = claimed;
     });
     setSnapshot({
       players,
@@ -86,6 +101,8 @@ export function useClankRoom() {
       turnNumber: state.turnNumber,
       dungeonRowSlots: Array.from(state.dungeonRowSlots ?? []),
       reserveRemaining,
+      dragonRageTrack: state.dragonRageTrack,
+      claimedArtifacts,
     });
   }, []);
 
@@ -172,6 +189,16 @@ export function useClankRoom() {
     roomRef.current?.send("acquire_from_reserve", cardId);
   }, []);
 
+  const movePlayer = useCallback((toRoomId: string) => {
+    setActionError(null);
+    roomRef.current?.send("move_player", toRoomId);
+  }, []);
+
+  const takeArtifact = useCallback(() => {
+    setActionError(null);
+    roomRef.current?.send("take_artifact");
+  }, []);
+
   const endTurn = useCallback(() => {
     setActionError(null);
     roomRef.current?.send("end_turn");
@@ -202,6 +229,8 @@ export function useClankRoom() {
     acquireCard,
     fightMonster,
     acquireFromReserve,
+    movePlayer,
+    takeArtifact,
     endTurn,
     leaveRoom,
   };

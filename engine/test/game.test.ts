@@ -241,3 +241,125 @@ describe("endTurn", () => {
     expect(game.currentPlayer.id).toBe("p3");
   });
 });
+
+describe("movePlayer", () => {
+  it("lança erro se boots insuficientes", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.boots = 0;
+    expect(() => game.movePlayer(player.id, "mine-entry")).toThrow(/boots insuficientes/i);
+  });
+
+  it("move pra sala vizinha gastando 1 boot", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "mine-entry");
+    expect(player.roomId).toBe("mine-entry");
+    expect(player.resources.boots).toBe(0);
+  });
+
+  it("túnel de pegada custa 2 boots", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "mine-entry";
+    player.resources.boots = 2;
+    game.movePlayer(player.id, "narrow-passage");
+    expect(player.roomId).toBe("narrow-passage");
+    expect(player.resources.boots).toBe(0);
+  });
+
+  it("túnel com monstro: paga swords automaticamente quando tem o suficiente", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "mine-entry"; // guard-post só liga em mine-entry, não na entrada
+    player.resources.boots = 1;
+    player.resources.swords = 1;
+    game.movePlayer(player.id, "guard-post");
+    expect(player.resources.swords).toBe(0);
+    expect(player.damage).toBe(0);
+  });
+
+  it("túnel com monstro sem swords suficientes causa 1 de dano em vez de bloquear", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "mine-entry";
+    player.resources.boots = 1;
+    player.resources.swords = 0;
+    game.movePlayer(player.id, "guard-post");
+    expect(player.roomId).toBe("guard-post");
+    expect(player.damage).toBe(1);
+  });
+
+  it("lança erro se não há túnel direto pra sala destino", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.boots = 99;
+    expect(() => game.movePlayer(player.id, "depths-east")).toThrow(/não há túnel/i);
+  });
+});
+
+describe("takeArtifact", () => {
+  it("pega o artefato, ganha os pontos e avança a Trilha de Fúria", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "depths-east";
+    const rageBefore = game.state.dragon.rageTrackPosition;
+
+    game.takeArtifact(player.id);
+
+    expect(player.points).toBe(10);
+    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 1);
+    expect(game.state.claimedArtifacts["depths-east"]).toBe(true);
+  });
+
+  it("lança erro se a sala atual não tem artefato", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    expect(() => game.takeArtifact(player.id)).toThrow(/não tem artefato/i);
+  });
+
+  it("lança erro se o artefato já foi pego", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "depths-east";
+    game.takeArtifact(player.id);
+    expect(() => game.takeArtifact(player.id)).toThrow(/já foi pego/i);
+  });
+});
+
+describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
+  it("dano o jogador cujo cubo é sorteado do saco", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0, // rng determinístico: sempre escolhe o primeiro ticket do saco
+    );
+    const player = game.currentPlayer;
+    player.clank = 1;
+    player.resources.swords = 2;
+    game.state.dragon.rageTrackPosition = 2; // sorteia 1 cubo (posição - 1)
+    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dungeonRow.drawPile.push("orc-grunt"); // garante reposição pra disparar o ataque
+
+    game.fightMonster(player.id, 0);
+
+    expect(player.damage).toBe(1);
+    expect(player.clank).toBe(0);
+  });
+
+  it("na posição 1 da trilha não sorteia nenhum cubo (sem ataque)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.clank = 1;
+    player.resources.swords = 2;
+    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dungeonRow.drawPile.push("orc-grunt");
+
+    game.fightMonster(player.id, 0);
+
+    expect(player.damage).toBe(0);
+  });
+});

@@ -18,6 +18,9 @@ export class Player extends Schema {
   @type("number") boots = 0;
   @type("number") gold = 0;
   @type("number") clank = 0;
+  @type("number") damage = 0;
+  @type("string") roomId = "";
+  @type("number") points = 0;
 }
 
 export class ClankRoomState extends Schema {
@@ -31,6 +34,9 @@ export class ClankRoomState extends Schema {
   /** 5 posições; "" representa slot vazio (ArraySchema não aceita null). */
   @type(["string"]) dungeonRowSlots = new ArraySchema<string>();
   @type({ map: "number" }) reserveRemaining = new MapSchema<number>();
+  @type("number") dragonRageTrack = 1;
+  /** Ids de sala cujo artefato já foi pego (o tabuleiro em si é estático — vem de @clank/engine no cliente). */
+  @type({ map: "boolean" }) claimedArtifacts = new MapSchema<boolean>();
 }
 
 const MAX_PLAYERS = 4;
@@ -39,6 +45,7 @@ const MAX_LOG_LINES = 30;
 export class ClankRoom extends Room<ClankRoomState> {
   maxClients = MAX_PLAYERS;
   private engine: GameEngine | null = null;
+  private lastEngineLogIndex = 0;
 
   onCreate() {
     this.setState(new ClankRoomState());
@@ -71,6 +78,12 @@ export class ClankRoom extends Room<ClankRoomState> {
     );
     this.onMessage("acquire_from_reserve", (client, cardId: string) =>
       this.handleAction(client, () => this.engine!.acquireFromReserve(client.sessionId, cardId)),
+    );
+    this.onMessage("move_player", (client, toRoomId: string) =>
+      this.handleAction(client, () => this.engine!.movePlayer(client.sessionId, toRoomId)),
+    );
+    this.onMessage("take_artifact", (client) =>
+      this.handleAction(client, () => this.engine!.takeArtifact(client.sessionId)),
     );
     this.onMessage("end_turn", (client) => this.handleAction(client, () => this.engine!.endTurn(client.sessionId)));
 
@@ -110,6 +123,7 @@ export class ClankRoom extends Room<ClankRoomState> {
 
     try {
       this.engine = new GameEngine(connected.map(([id, p]) => ({ id, name: p.name })));
+      this.lastEngineLogIndex = 0;
       this.state.phase = "playing";
       this.pushLog("A partida começou.");
       this.syncFromEngine();
@@ -149,12 +163,17 @@ export class ClankRoom extends Room<ClankRoomState> {
 
     this.state.turnNumber = state.turnNumber;
     this.state.currentPlayerId = state.players[state.currentPlayerIndex]?.id ?? "";
+    this.state.dragonRageTrack = state.dragon.rageTrackPosition;
 
     this.state.dungeonRowSlots.clear();
     for (const id of state.dungeonRow.slots) this.state.dungeonRowSlots.push(id ?? "");
 
     for (const [id, count] of Object.entries(state.reserve.remaining)) {
       this.state.reserveRemaining.set(id, count);
+    }
+
+    for (const [roomId, claimed] of Object.entries(state.claimedArtifacts)) {
+      this.state.claimedArtifacts.set(roomId, claimed);
     }
 
     for (const enginePlayer of state.players) {
@@ -169,6 +188,16 @@ export class ClankRoom extends Room<ClankRoomState> {
       schemaPlayer.boots = enginePlayer.resources.boots;
       schemaPlayer.gold = enginePlayer.resources.gold;
       schemaPlayer.clank = enginePlayer.clank;
+      schemaPlayer.damage = enginePlayer.damage;
+      schemaPlayer.roomId = enginePlayer.roomId;
+      schemaPlayer.points = enginePlayer.points;
+    }
+
+    // Repassa pro log da sala só as linhas novas geradas pelo motor desde a última sync
+    // (ex: "X foi nocauteado!", "O dragão atacou!", "Y pegou um artefato!").
+    while (this.lastEngineLogIndex < state.log.length) {
+      this.pushLog(state.log[this.lastEngineLogIndex]);
+      this.lastEngineLogIndex++;
     }
   }
 

@@ -46,6 +46,46 @@ export interface CardDefinition {
    * `false`/ausente = valores estimados por mim, ainda não confirmados — ver aviso em cards.ts.
    */
   verified?: boolean;
+  /**
+   * Se essa carta tem o símbolo de ataque do dragão (aparece quando ela é revelada pra
+   * repor a Dungeon Row). ⚠️ Não sei quais das 68 cartas reais têm esse símbolo — uso
+   * uma estimativa (monstros e devices) só pra deixar o mecanismo testável. Ver cards.ts.
+   */
+  triggersDragonAttack?: boolean;
+}
+
+/** Ícones possíveis num túnel — controlam o custo/risco de passar por ele. */
+export interface TunnelIcon {
+  /** Custo em Swords pra passar sem se ferir; se não pagar, leva 1 dano. */
+  monsterSwordCost?: number;
+  /** Túnel de pegada — custa 2 Boots em vez de 1. */
+  footprint?: boolean;
+}
+
+export interface Tunnel {
+  to: string;
+  icon?: TunnelIcon;
+}
+
+export interface RoomDefinition {
+  id: string;
+  name: string;
+  tunnels: Tunnel[];
+  isEntrance?: boolean;
+  isMarket?: boolean;
+  isDepths?: boolean;
+  /** Valor em pontos do artefato nesta sala, se ainda não foi pego. */
+  artifactValue?: number;
+}
+
+export interface BoardDefinition {
+  rooms: Record<string, RoomDefinition>;
+  entranceRoomId: string;
+}
+
+/** Trilha de Fúria do dragão — a posição controla quantos cubos são sorteados num ataque. */
+export interface DragonState {
+  rageTrackPosition: number;
 }
 
 /**
@@ -56,6 +96,9 @@ export interface CardDefinition {
 export interface ReserveState {
   remaining: Record<string, number>;
 }
+
+/** Tamanho da trilha de vida — CONFIRMADO (10 espaços; enche = nocauteado). */
+export const HEALTH_TRACK_SIZE = 10;
 
 export interface PlayerState {
   id: string;
@@ -72,5 +115,10 @@ export interface PlayerState {
   resources: Resources;
   /** Clank! (barulho) acumulado na Área de Clank do jogador, ainda não sorteado do saco. */
   clank: number;
+  /** Dano sofrido (cubos na trilha de vida) — 0 a HEALTH_TRACK_SIZE. */
+  damage: number;
   knockedOut: boolean;
+  roomId: string;
+  /** Pontos de artefatos pegos (somados no fim de jogo). */
+  points: number;
 }

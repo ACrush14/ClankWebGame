@@ -1,4 +1,5 @@
 import { buildStartingDeck } from "./cards.js";
+import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { emptyResources, type PlayerState } from "./types.js";
 
@@ -15,7 +16,10 @@ export function createPlayer(id: string, name: string, rng: Rng = Math.random): 
     playedThisTurn: [],
     resources: emptyResources(),
     clank: 0,
+    damage: 0,
     knockedOut: false,
+    roomId: BOARD.entranceRoomId,
+    points: 0,
   };
 }
 

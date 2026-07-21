@@ -1,10 +1,18 @@
 import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } from "./cards.js";
+import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
-import type { CardEffects, PlayerState, ReserveState } from "./types.js";
-import { emptyResources } from "./types.js";
+import type { CardEffects, DragonState, PlayerState, ReserveState } from "./types.js";
+import { emptyResources, HEALTH_TRACK_SIZE } from "./types.js";
 
 export const DUNGEON_ROW_SIZE = 5;
+const MAX_LOG_LINES = 30;
+/**
+ * Quantidade de cubos "pretos" (neutros) sempre disponíveis no saco do dragão.
+ * ⚠️ Estimativa baseada na contagem de componentes ("24 dragon cubes") — não confirmei
+ * se essa é exatamente a mecânica de reposição do saco entre ataques.
+ */
+const BLACK_CUBE_COUNT = 24;
 
 export interface DungeonRowState {
   /** 5 posições visíveis; null enquanto o monte de compra estiver vazio. */
@@ -18,8 +26,12 @@ export interface GameState {
   currentPlayerIndex: number;
   dungeonRow: DungeonRowState;
   reserve: ReserveState;
+  dragon: DragonState;
+  /** Salas cujo artefato já foi pego (por id de sala). */
+  claimedArtifacts: Record<string, boolean>;
   turnNumber: number;
   phase: "playing" | "ended";
+  log: string[];
 }
 
 export class GameEngine {
@@ -41,8 +53,11 @@ export class GameEngine {
       currentPlayerIndex: 0,
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
       reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
+      dragon: { rageTrackPosition: 1 },
+      claimedArtifacts: {},
       turnNumber: 1,
       phase: "playing",
+      log: [],
     };
   }
 
@@ -81,6 +96,100 @@ export class GameEngine {
       player.drawPile = drawPile;
       player.discardPile = discardPile;
     }
+  }
+
+  private damagePlayer(player: PlayerState, amount: number) {
+    player.damage = Math.min(HEALTH_TRACK_SIZE, player.damage + amount);
+    if (player.damage >= HEALTH_TRACK_SIZE && !player.knockedOut) {
+      player.knockedOut = true;
+      this.pushLog(`${player.name} foi nocauteado!`);
+    }
+  }
+
+  /**
+   * Move o jogador por um túnel até uma sala vizinha. Túnel com pegada custa 2 Boots
+   * em vez de 1. Túnel com monstro: paga Swords automaticamente se o jogador tiver o
+   * suficiente; senão, leva 1 de dano (regra oficial: "gaste uma espada ou sofra um
+   * ferimento" — aqui a espada é paga automaticamente quando disponível).
+   */
+  movePlayer(playerId: string, toRoomId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    const room = BOARD.rooms[player.roomId];
+    if (!room) throw new Error(`Sala atual desconhecida: ${player.roomId}`);
+    const tunnel = room.tunnels.find((t) => t.to === toRoomId);
+    if (!tunnel) throw new Error(`Não há túnel de ${room.name} para ${toRoomId}.`);
+
+    const bootCost = tunnel.icon?.footprint ? 2 : 1;
+    if (player.resources.boots < bootCost) {
+      throw new Error(`Boots insuficientes pra mover (precisa ${bootCost}, tem ${player.resources.boots}).`);
+    }
+    player.resources.boots -= bootCost;
+
+    const monsterCost = tunnel.icon?.monsterSwordCost;
+    if (monsterCost) {
+      if (player.resources.swords >= monsterCost) {
+        player.resources.swords -= monsterCost;
+      } else {
+        this.damagePlayer(player, 1);
+        this.pushLog(`${player.name} levou dano passando por um túnel com monstro.`);
+      }
+    }
+
+    player.roomId = toRoomId;
+  }
+
+  /** Pega o artefato da sala atual (se houver e ainda não tiver sido pego). Avança a Trilha de Fúria. */
+  takeArtifact(playerId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    const room = BOARD.rooms[player.roomId];
+    if (!room?.artifactValue) throw new Error(`${room?.name ?? player.roomId} não tem artefato.`);
+    if (this.state.claimedArtifacts[room.id]) throw new Error(`O artefato de ${room.name} já foi pego.`);
+
+    this.state.claimedArtifacts[room.id] = true;
+    player.points += room.artifactValue;
+    this.state.dragon.rageTrackPosition += 1;
+    this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
+  }
+
+  /**
+   * Ataque do dragão: sorteia cubos do saco (jogadores + cubos pretos neutros) em
+   * quantidade igual à posição atual na Trilha de Fúria menos 1 (regra confirmada:
+   * "5ª casa da trilha sorteia 4 cubos"). Cubo de um jogador = 1 dano pra ele.
+   */
+  private triggerDragonAttack() {
+    const drawCount = Math.max(0, this.state.dragon.rageTrackPosition - 1);
+    if (drawCount === 0) return;
+
+    const tickets: (string | null)[] = [];
+    for (const player of this.state.players) {
+      for (let i = 0; i < player.clank; i++) tickets.push(player.id);
+    }
+    for (let i = 0; i < BLACK_CUBE_COUNT; i++) tickets.push(null);
+
+    let blackDrawn = 0;
+    const damagedNames: string[] = [];
+    for (let i = 0; i < drawCount && tickets.length > 0; i++) {
+      const idx = Math.floor(this.rng() * tickets.length);
+      const [drawnId] = tickets.splice(idx, 1);
+      if (drawnId === null) {
+        blackDrawn++;
+        continue;
+      }
+      const player = this.state.players.find((p) => p.id === drawnId);
+      if (!player) continue;
+      player.clank = Math.max(0, player.clank - 1);
+      this.damagePlayer(player, 1);
+      damagedNames.push(player.name);
+    }
+
+    this.pushLog(
+      `O dragão atacou! ${drawCount} cubo(s) sorteado(s): ${damagedNames.length > 0 ? damagedNames.join(", ") + " levou(aram) dano" : "nenhum jogador atingido"}${blackDrawn > 0 ? ` (${blackDrawn} preto(s))` : ""}.`,
+    );
+  }
+
+  private pushLog(line: string) {
+    this.state.log.push(line);
+    while (this.state.log.length > MAX_LOG_LINES) this.state.log.shift();
   }
 
   /** Joga uma carta da mão (por id) — aplica os efeitos e move pro monte "jogadas nesta rodada". */
@@ -174,9 +283,11 @@ export class GameEngine {
       row.drawPile = shuffle(row.discardPile, this.rng);
       row.discardPile = [];
     }
-    row.slots[slotIndex] = row.drawPile.shift() ?? null;
-    // TODO: quando um ataque do dragão for implementado, é aqui que ele é checado
-    // (símbolo de ataque na carta que acabou de entrar na Dungeon Row).
+    const newCardId = row.drawPile.shift() ?? null;
+    row.slots[slotIndex] = newCardId;
+    if (newCardId && getCard(newCardId).triggersDragonAttack) {
+      this.triggerDragonAttack();
+    }
   }
 
   /** Descarta mão + cartas jogadas, compra 5 novas, zera recursos do turno e passa a vez. */

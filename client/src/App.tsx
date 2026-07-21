@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getCard } from "@clank/engine";
+import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
 import type { RoomSnapshot } from "./game/useClankRoom";
 
@@ -29,6 +29,8 @@ export default function App() {
     acquireCard,
     fightMonster,
     acquireFromReserve,
+    movePlayer,
+    takeArtifact,
     endTurn,
     leaveRoom,
   } = useClankRoom();
@@ -61,6 +63,8 @@ export default function App() {
         onAcquireCard={acquireCard}
         onFightMonster={fightMonster}
         onAcquireFromReserve={acquireFromReserve}
+        onMovePlayer={movePlayer}
+        onTakeArtifact={takeArtifact}
         onEndTurn={endTurn}
         onLeave={leaveRoom}
       />
@@ -267,6 +271,8 @@ interface GameScreenProps {
   onAcquireCard: (slotIndex: number) => void;
   onFightMonster: (slotIndex: number) => void;
   onAcquireFromReserve: (cardId: string) => void;
+  onMovePlayer: (toRoomId: string) => void;
+  onTakeArtifact: () => void;
   onEndTurn: () => void;
   onLeave: () => void;
 }
@@ -287,12 +293,16 @@ function GameScreen({
   onAcquireCard,
   onFightMonster,
   onAcquireFromReserve,
+  onMovePlayer,
+  onTakeArtifact,
   onEndTurn,
   onLeave,
 }: GameScreenProps) {
   const isMyTurn = snapshot.currentPlayerId === mySessionId;
   const me = snapshot.players.find((p) => p.id === mySessionId);
   const currentPlayerName = snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.name ?? "?";
+  const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
+  const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
@@ -332,6 +342,68 @@ function GameScreen({
             ))}
           </section>
         )}
+
+        {me && (
+          <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+            <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+              <span>Vida</span>
+              <span>
+                {HEALTH_TRACK_SIZE - me.damage}/{HEALTH_TRACK_SIZE}
+              </span>
+            </div>
+            <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${((HEALTH_TRACK_SIZE - me.damage) / HEALTH_TRACK_SIZE) * 100}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span>Fúria do dragão (sorteia {Math.max(0, snapshot.dragonRageTrack - 1)} cubo(s))</span>
+              <span className="font-mono text-amber-400">{snapshot.dragonRageTrack}</span>
+            </div>
+          </section>
+        )}
+
+        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+          <h2 className="mb-2 text-sm font-semibold text-slate-300">
+            Tabuleiro — {myRoom?.name ?? "?"}
+          </h2>
+          {hasUnclaimedArtifact && (
+            <button
+              onClick={onTakeArtifact}
+              disabled={!isMyTurn}
+              className="mb-2 w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
+            >
+              Pegar artefato ({myRoom!.artifactValue} pts)
+            </button>
+          )}
+          <ul className="grid grid-cols-1 gap-2">
+            {myRoom?.tunnels.map((tunnel) => {
+              const targetRoom = BOARD.rooms[tunnel.to];
+              const bootCost = tunnel.icon?.footprint ? 2 : 1;
+              return (
+                <li
+                  key={tunnel.to}
+                  className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
+                >
+                  <span className="text-sm">
+                    {targetRoom?.name ?? tunnel.to}
+                    {tunnel.icon?.monsterSwordCost && (
+                      <span className="ml-1 text-red-400">👹{tunnel.icon.monsterSwordCost}⚔</span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => onMovePlayer(tunnel.to)}
+                    disabled={!isMyTurn}
+                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                  >
+                    Ir ({bootCost}👢)
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
           <h2 className="mb-2 text-sm font-semibold text-slate-300">Dungeon Row</h2>
@@ -429,7 +501,7 @@ function GameScreen({
                   {p.knockedOut && <span className="text-red-400">(nocauteado)</span>}
                 </span>
                 <span className="text-slate-400">
-                  {p.handCount} na mão · {p.drawPileCount + p.discardPileCount} no baralho ·{" "}
+                  {BOARD.rooms[p.roomId]?.name ?? p.roomId} · {HEALTH_TRACK_SIZE - p.damage}❤ · {p.points}pts ·{" "}
                   <img
                     src="/assets/kenney/board-game-icons/skull.png"
                     alt="clank"

@@ -29,11 +29,18 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 
 > ⚠️ **Custo/efeito de cada carta ainda é placeholder — o PDF só tem nomes e quantidades, não o texto de cada carta.** Verificados de verdade: baralho inicial (100%) e o monstro **Orc Grunt** (2 swords → 3 gold). As outras 67 cartas do catálogo (Dragon Shrine, Shrine, Kobold, Watcher, Diamond, Ruby, Wizard, etc.) têm nome e quantidade reais mas nenhum efeito implementado ainda — ficam disponíveis em `DUNGEON_DECK_CATALOG_REFERENCE` como lista-mestra pra ir preenchendo aos poucos. `explore`, `mercenary`, `secret-tome`, `goblin`, `teleporter` continuam com efeito estimado (`verified: false`).
 
-**Próximos passos (retomam os Marcos abaixo):**
-1. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE` conforme aparecer fonte confiável (screenshot de carta, vídeo de gameplay, etc — não precisa ser tudo de uma vez).
-2. Modelar o tabuleiro (grafo de salas) e renderizar com SVG — hoje o movimento/`boots` não afeta posição nenhuma, é só recurso acumulado (Marco 2).
-3. Combate/dano de verdade (nocaute, cubos de Clank indo pro saco do dragão) — hoje `fightMonster`/monstros dão recompensa mas não geram dano nem cubos de Clank ainda.
-4. Decidir hospedagem definitiva pra testar com os amigos de verdade pela internet (hoje só roda em `localhost`).
+- **Tabuleiro (Marco 2) — implementado.** `engine/src/board.ts`: grafo de ~10 salas (entrada, mercado, 2 salas nas Profundezas com artefato), túneis com ícone de monstro (paga Swords ou leva dano) ou de pegada (2 Boots). ⚠️ **Layout ORIGINAL, não é o tabuleiro físico oficial** — não tenho como reproduzir a posição exata das salas sem fotos/scan do tabuleiro real; segue a mesma mecânica (confirmada) só com um traçado meu. `movePlayer` (gasta boots, resolve ícone de monstro) e `takeArtifact` (pega artefato da sala atual, ganha pontos, avança a Trilha de Fúria) implementados e testados.
+- **Combate/dano (confirmado: trilha de vida = 10 espaços, enche = nocauteado)** — `movePlayer` aplica dano automaticamente quando não há swords pra pagar um túnel com monstro; `damagePlayer` marca nocaute ao encher a trilha.
+- **Clank + saco do dragão (Marco 4) — implementado.** `triggerDragonAttack`: sorteia cubos (jogadores + cubos pretos neutros) em quantidade = posição na Trilha de Fúria menos 1 (confirmado: "5ª casa sorteia 4 cubos"); cubo de jogador = 1 dano + remove do Clank dele. Disparado automaticamente ao repor a Dungeon Row com uma carta que tenha o símbolo de ataque. ⚠️ **Não sei quais das 68 cartas reais têm esse símbolo** — uso uma estimativa (monstros + devices) só pra deixar o mecanismo testável; e a contagem de cubos pretos (24) também é estimada a partir da lista de componentes.
+- Tudo isso testado com 2 clientes reais simultâneos: Brena jogou Sidestep, moveu de "Entrada da Mina" pra "Boca da Mina" gastando o boot certo, e a aba do Anderson viu a atualização (nova sala, novos túneis disponíveis) em tempo real.
+- 46 testes unitários no motor (Vitest), todos passando — cobrem movimento, dano, artefato e ataque do dragão (com RNG determinístico pra sortear um cubo específico e verificar o dano certo).
+
+**Próximos passos:**
+1. Confirmar quais cartas reais têm o símbolo de ataque do dragão (afeta a frequência de ataques).
+2. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
+3. Renderizar o tabuleiro visualmente (hoje é uma lista de túneis em texto/botão, não um mapa desenhado) — SVG do grafo de salas.
+4. Trilha de Contagem Regressiva / condição de fim de jogo (hoje não há como "vencer" ou terminar a partida).
+5. Decidir hospedagem definitiva pra testar com os amigos de verdade pela internet (hoje só roda em `localhost`).
 
 ---
 
