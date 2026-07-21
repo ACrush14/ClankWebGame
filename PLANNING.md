@@ -60,22 +60,22 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
   - 60 testes unitários passando; testado manualmente rodando client+server localmente (Dungeon Row mostra cartas reais como "The Warden", "Skulker", "Skeleton" etc., custos batendo, Reserva com números certos).
   - `DUNGEON_DECK_CATALOG_REFERENCE` (nomes do jogo básico) e `MAJOR_SECRETS_REFERENCE`/`MINOR_SECRETS_REFERENCE` (Secrets do jogo básico) ficaram marcados como legado no arquivo — não usados, só referência caso o projeto volte pro jogo básico algum dia.
 
-**Próximos passos (em ordem de prioridade — ver conversa):**
+**Próximos passos (em ordem de prioridade — ver conversa; reordenado em 2026-07-21 pra priorizar completar o JOGO antes do deploy real):**
 1. ~~Fim de jogo~~ ✅
 2. ~~Mercado de ouro~~ ✅
 3. ~~Túneis com cadeado e mão única~~ ✅
-4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
-5. ~~Confirmar quais cartas reais têm o símbolo de ataque do dragão~~ ✅ (dados do Catacombs)
-6. ~~Ir preenchendo custo/efeito real de mais cartas~~ ✅ (dados do Catacombs — efeitos condicionais/temáticos específicos do Catacombs ainda não implementados, ver nota acima)
-7. ~~Renderizar o tabuleiro visualmente (SVG do grafo de salas)~~ ✅
-8. Cor/avatar por jogador.
-9. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
-10. Reconexão robusta (fora do MVP original).
-11. Regra "só carrega 1 Artefato por vez (2 com a Mochila)" — não implementada; hoje artefatos viram pontos na hora, sem limite de quantos "carregar". Exigiria repensar `takeArtifact`/pontuação (artefato como item carregável que se perde ao ser nocauteado, em vez de pontos banked na hora).
-12. Bônus de 20 pontos por "Mastery" (fugir completamente pra fora, não só sair da masmorra) — não modelado; hoje só existe um conceito de "saiu".
-13. Implementar as mecânicas específicas do Catacombs que hoje só existem como texto de referência (não executadas): lockpicks, prisioneiros, ladrilhos/tiles, Wayshrines, fantasmas, ídolo de macaco, "major secret". Boa parte das cartas tem bônus condicional preso a isso.
-14. ~~`board.ts` re-temado pro Catacombs~~ ✅ (2026-07-21) — nomes de sala trocados pelos termos reais confirmados no texto das cartas (Entrada da Masmorra, Corredor de Pedra, Posto dos Esqueletos, Wayshrine Esquecido, Encruzilhada das Criptas, Túnel dos Prisioneiros, Caverna de Cristal, Câmara Selada). Só cosmético (você escolheu essa opção) — os `id`s internos e a arquitetura de grafo fixo não mudaram; o Catacombs de verdade usa um tabuleiro modular de ladrilhos (ver cartas Dusty Map/Marble Guardian/Sudden Movement/Animated Wall), que continua não implementado.
-15. Confirmar os valores reais de artefato do Clank! Catacombs — hoje `board.ts` ainda usa 7/15/25, que vieram do manual do jogo **básico** (não do Catacombs). Precisa de uma fonte específica do Catacombs (rulebook dele ou fotos do tabuleiro/tokens físicos) pra corrigir.
+4. ~~Confirmar quais cartas reais têm o símbolo de ataque do dragão~~ ✅ (dados do Catacombs)
+5. ~~Ir preenchendo custo/efeito real de mais cartas~~ ✅ (dados do Catacombs — efeitos condicionais/temáticos específicos do Catacombs ainda não implementados, ver item 8)
+6. ~~Renderizar o tabuleiro visualmente (SVG do grafo de salas)~~ ✅
+7. ~~`board.ts` re-temado pro Catacombs~~ ✅ (2026-07-21) — nomes de sala trocados pelos termos reais confirmados no texto das cartas (Entrada da Masmorra, Corredor de Pedra, Posto dos Esqueletos, Wayshrine Esquecido, Encruzilhada das Criptas, Túnel dos Prisioneiros, Caverna de Cristal, Câmara Selada). Só cosmético (você escolheu essa opção) — os `id`s internos e a arquitetura de grafo fixo não mudaram; o Catacombs de verdade usa um tabuleiro modular de ladrilhos (ver cartas Dusty Map/Marble Guardian/Sudden Movement/Animated Wall), que continua não implementado.
+8. Regra "só carrega 1 Artefato por vez (2 com a Mochila)" — não implementada; hoje artefatos viram pontos na hora, sem limite de quantos "carregar". Exigiria repensar `takeArtifact`/pontuação (artefato como item carregável que se perde ao ser nocauteado, em vez de pontos banked na hora).
+9. Bônus de 20 pontos por "Mastery" (fugir completamente pra fora, não só sair da masmorra) — não modelado; hoje só existe um conceito de "saiu".
+10. Implementar as mecânicas específicas do Catacombs que hoje só existem como texto de referência (não executadas): lockpicks, prisioneiros, ladrilhos/tiles, Wayshrines, fantasmas, ídolo de macaco, "major secret". Boa parte das cartas tem bônus condicional preso a isso.
+11. Confirmar os valores reais de artefato do Clank! Catacombs — hoje `board.ts` ainda usa 7/15/25, que vieram do manual do jogo **básico** (não do Catacombs). Precisa de uma fonte específica do Catacombs (rulebook dele ou fotos do tabuleiro/tokens físicos) pra corrigir.
+12. Cor/avatar por jogador.
+13. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
+14. Reconexão robusta (fora do MVP original).
+15. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
 
 ---
 
