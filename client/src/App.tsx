@@ -4,6 +4,7 @@ import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
 import type { RoomSnapshot } from "./game/useClankRoom";
 import { BoardMap } from "./game/BoardMap";
+import { PLAYER_COLORS } from "./game/playerColors";
 
 function cardName(id: string): string {
   if (!id) return "";
@@ -14,6 +15,20 @@ function cardName(id: string): string {
   }
 }
 
+/** Avatar sem arte oficial: círculo colorido com a inicial do nome. */
+function Avatar({ name, color, size = "sm" }: { name: string; color: string; size?: "sm" | "md" }) {
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+  const dims = size === "md" ? "h-8 w-8 text-sm" : "h-5 w-5 text-[10px]";
+  return (
+    <span
+      className={`flex ${dims} shrink-0 items-center justify-center rounded-full font-bold text-slate-950`}
+      style={{ backgroundColor: color }}
+    >
+      {initial}
+    </span>
+  );
+}
+
 export default function App() {
   const {
     room,
@@ -22,9 +37,11 @@ export default function App() {
     error,
     actionError,
     connecting,
+    reconnecting,
     createRoom,
     joinRoom,
     toggleReady,
+    setColor,
     startGame,
     playCard,
     acquireCard,
@@ -39,6 +56,17 @@ export default function App() {
   } = useClankRoom();
   const [name, setName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+
+  if (reconnecting && (!room || !snapshot)) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 text-slate-100">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-700 border-t-amber-400" />
+          <p className="text-sm text-slate-400">Reconectando à sala...</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!room || !snapshot) {
     return (
@@ -83,8 +111,10 @@ export default function App() {
   return (
     <LobbyScreen
       roomId={room.roomId}
+      mySessionId={room.sessionId}
       snapshot={snapshot}
       onToggleReady={toggleReady}
+      onSetColor={setColor}
       onStartGame={startGame}
       onLeave={leaveRoom}
     />
@@ -171,14 +201,17 @@ function HomeScreen({
 
 interface LobbyScreenProps {
   roomId: string;
+  mySessionId: string;
   snapshot: RoomSnapshot;
   onToggleReady: () => void;
+  onSetColor: (color: string) => void;
   onStartGame: () => void;
   onLeave: () => void;
 }
 
-function LobbyScreen({ roomId, snapshot, onToggleReady, onStartGame, onLeave }: LobbyScreenProps) {
+function LobbyScreen({ roomId, mySessionId, snapshot, onToggleReady, onSetColor, onStartGame, onLeave }: LobbyScreenProps) {
   const [copied, setCopied] = useState(false);
+  const me = snapshot.players.find((p) => p.id === mySessionId);
 
   const copyCode = async () => {
     try {
@@ -225,8 +258,11 @@ function LobbyScreen({ roomId, snapshot, onToggleReady, onStartGame, onLeave }: 
                   className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3"
                 >
                   <span className="flex items-center gap-2">
-                    <img src="/assets/kenney/board-game-icons/pawn.png" alt="" className="h-5 w-5 opacity-80" />
-                    <span className={p.connected ? "" : "text-slate-500 line-through"}>{p.name}</span>
+                    <Avatar name={p.name} color={p.color} />
+                    <span className={p.connected ? "" : "text-slate-500 line-through"}>
+                      {p.name}
+                      {!p.connected && " (desconectado)"}
+                    </span>
                   </span>
                   <span
                     className={`rounded-md px-2 py-1 text-xs font-semibold ${
@@ -240,6 +276,25 @@ function LobbyScreen({ roomId, snapshot, onToggleReady, onStartGame, onLeave }: 
             </AnimatePresence>
           </ul>
         </section>
+
+        {me && (
+          <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+            <h2 className="mb-2 text-sm font-semibold text-slate-300">Sua cor</h2>
+            <div className="flex gap-2">
+              {PLAYER_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => onSetColor(c.hex)}
+                  aria-label={`Escolher cor ${c.id}`}
+                  className={`h-11 w-11 rounded-full ring-2 ring-offset-2 ring-offset-slate-900 active:scale-95 ${
+                    me.color === c.hex ? "ring-white" : "ring-transparent"
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="grid grid-cols-2 gap-3">
           <button
@@ -324,11 +379,18 @@ function GameScreen({
     <main className="min-h-dvh bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
       <div className="mx-auto flex max-w-md flex-col gap-4 pb-8">
         <header className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-xs text-slate-400">Turno {snapshot.turnNumber}</p>
-            <p className={`text-lg font-bold ${isMyTurn ? "text-amber-400" : "text-slate-100"}`}>
-              {isMyTurn ? "Sua vez!" : `Vez de ${currentPlayerName}`}
-            </p>
+          <div className="flex items-center gap-2">
+            <Avatar
+              name={currentPlayerName}
+              color={snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.color ?? "#64748b"}
+              size="md"
+            />
+            <div>
+              <p className="text-xs text-slate-400">Turno {snapshot.turnNumber}</p>
+              <p className={`text-lg font-bold ${isMyTurn ? "text-amber-400" : "text-slate-100"}`}>
+                {isMyTurn ? "Sua vez!" : `Vez de ${currentPlayerName}`}
+              </p>
+            </div>
           </div>
           <button onClick={onLeave} className="rounded-lg px-3 py-2 text-sm text-slate-400 active:bg-slate-800">
             Sair
@@ -399,6 +461,7 @@ function GameScreen({
               players={snapshot.players.map((p) => ({
                 id: p.id,
                 name: p.name,
+                color: p.color,
                 roomId: p.roomId,
                 knockedOut: p.knockedOut,
                 hasLeftDungeon: p.hasLeftDungeon,
@@ -449,7 +512,7 @@ function GameScreen({
                   <button
                     onClick={() => onMovePlayer(tunnel.to)}
                     disabled={!isMyTurn}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                   >
                     Ir ({bootCost}👢)
                   </button>
@@ -468,7 +531,7 @@ function GameScreen({
                 <button
                   onClick={() => onBuyMarketItem("key")}
                   disabled={!isMyTurn || !snapshot.marketKeyAvailable || !!me?.hasMasterKey}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                 >
                   {snapshot.marketKeyAvailable ? "Comprar" : "Esgotado"}
                 </button>
@@ -478,7 +541,7 @@ function GameScreen({
                 <button
                   onClick={() => onBuyMarketItem("backpack")}
                   disabled={!isMyTurn || !snapshot.marketBackpackAvailable || !!me?.hasBackpack}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                 >
                   {snapshot.marketBackpackAvailable ? "Comprar" : "Esgotado"}
                 </button>
@@ -490,7 +553,7 @@ function GameScreen({
                 <button
                   onClick={() => onBuyMarketItem("crown")}
                   disabled={!isMyTurn || snapshot.marketCrownsAvailable.length === 0}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                 >
                   {snapshot.marketCrownsAvailable.length > 0 ? "Comprar" : "Esgotado"}
                 </button>
@@ -521,7 +584,7 @@ function GameScreen({
                   <button
                     onClick={() => (isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex))}
                     disabled={!isMyTurn}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                   >
                     {isMonster ? `Lutar (${card.swordCost ?? 0}⚔)` : `Comprar (${card.skillCost ?? 0}✦)`}
                   </button>
@@ -548,7 +611,7 @@ function GameScreen({
                   <button
                     onClick={() => onAcquireFromReserve(cardId)}
                     disabled={!isMyTurn || remaining <= 0}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
                   >
                     {isMonster ? `Lutar (${card.swordCost ?? 0}⚔)` : `Comprar (${card.skillCost ?? 0}✦)`}
                   </button>
@@ -567,7 +630,7 @@ function GameScreen({
                 <button
                   onClick={() => onPlayCard(cardId)}
                   disabled={!isMyTurn}
-                  className="shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950 active:scale-95 disabled:opacity-40"
+                  className="shrink-0 rounded-lg bg-amber-500 px-3 py-2.5 text-xs font-semibold text-slate-950 active:scale-95 disabled:opacity-40"
                 >
                   Jogar
                 </button>
@@ -590,8 +653,9 @@ function GameScreen({
             {snapshot.players.map((p) => (
               <li key={p.id} className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2">
-                  <img src="/assets/kenney/board-game-icons/pawn.png" alt="" className="h-4 w-4 opacity-80" />
+                  <Avatar name={p.name} color={p.color} />
                   {p.name}
+                  {!p.connected && <span className="text-slate-500">(desconectado)</span>}
                   {p.knockedOut && <span className="text-red-400">(nocauteado)</span>}
                   {p.hasLeftDungeon && <span className="text-emerald-400">(escapou)</span>}
                 </span>
@@ -654,7 +718,9 @@ function EndScreen({ snapshot, onLeave }: EndScreenProps) {
                 }`}
               >
                 <span className="flex items-center gap-2 font-semibold">
-                  {i === 0 ? "🏆" : `${i + 1}º`} {p.name}
+                  {i === 0 ? "🏆" : `${i + 1}º`}
+                  <Avatar name={p.name} color={p.color} />
+                  {p.name}
                   {p.knockedOut && p.points === 0 && (
                     <span className={i === 0 ? "text-slate-800" : "text-red-400"}>(eliminado)</span>
                   )}

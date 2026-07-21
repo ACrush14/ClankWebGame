@@ -2,8 +2,12 @@ import { Room, Client } from "colyseus";
 import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
 import { GameEngine } from "@clank/engine";
 
+/** Paleta fixa de cores por jogador — sem arte oficial, só blocos de cor + inicial. */
+const PLAYER_COLORS = ["#38bdf8", "#f472b6", "#a3e635", "#fb923c", "#a78bfa", "#2dd4bf"];
+
 export class Player extends Schema {
   @type("string") name = "Jogador";
+  @type("string") color = PLAYER_COLORS[0];
   @type("boolean") connected = true;
   /** Só usado na fase de lobby. */
   @type("boolean") ready = false;
@@ -70,6 +74,13 @@ export class ClankRoom extends Room<ClankRoomState> {
       this.pushLog(`${clean} entrou na sala.`);
     });
 
+    this.onMessage("set_color", (client, color: string) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || this.state.phase !== "lobby") return;
+      if (!PLAYER_COLORS.includes(color)) return;
+      player.color = color;
+    });
+
     this.onMessage("toggle_ready", (client) => {
       const player = this.state.players.get(client.sessionId);
       if (!player) return;
@@ -110,10 +121,18 @@ export class ClankRoom extends Room<ClankRoomState> {
   onJoin(client: Client) {
     const player = new Player();
     player.name = `Jogador ${this.state.players.size + 1}`;
+    player.color = PLAYER_COLORS[this.state.players.size % PLAYER_COLORS.length];
     this.state.players.set(client.sessionId, player);
   }
 
-  onLeave(client: Client, consented: boolean) {
+  /**
+   * Se o cliente saiu por vontade própria (fechou/clicou "Sair"), remove o assento de
+   * vez. Se foi queda de conexão (aba fechada sem querer, rede caiu), guarda o assento
+   * por 2 minutos — o cliente reconecta com o mesmo `sessionId` (mesma mão, recursos,
+   * posição no tabuleiro etc.) via `client.reconnect(token)`, sem precisar recriar a
+   * sala nem perder o progresso da partida em andamento.
+   */
+  async onLeave(client: Client, consented: boolean) {
     const player = this.state.players.get(client.sessionId);
     if (!player) return;
     player.connected = false;
@@ -121,6 +140,18 @@ export class ClankRoom extends Room<ClankRoomState> {
 
     if (consented) {
       this.state.players.delete(client.sessionId);
+      return;
+    }
+
+    try {
+      await this.allowReconnection(client, 120);
+      player.connected = true;
+      this.pushLog(`${player.name} reconectou.`);
+      // A mão é privada (não faz parte do schema sincronizado) — precisa ser reenviada
+      // na reconexão, já que `onJoin` não roda de novo pra um cliente que só reconectou.
+      if (this.engine) this.sendHand(client.sessionId);
+    } catch {
+      this.pushLog(`${player.name} não reconectou a tempo.`);
     }
   }
 

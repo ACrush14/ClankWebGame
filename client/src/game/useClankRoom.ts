@@ -5,6 +5,7 @@ import type { Room } from "colyseus.js";
 export interface PlayerSnapshot {
   id: string;
   name: string;
+  color: string;
   connected: boolean;
   ready: boolean;
   knockedOut: boolean;
@@ -49,15 +50,47 @@ export interface RoomSnapshot {
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
 
+/** Guarda o token de reconexão da sala atual — sobrevive a refresh de página/fechar aba sem querer. */
+const RECONNECT_KEY = "clank_reconnect";
+
+function readReconnectToken(): string | null {
+  try {
+    const raw = localStorage.getItem(RECONNECT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { token?: string };
+    return parsed.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function saveReconnectToken(token: string) {
+  try {
+    localStorage.setItem(RECONNECT_KEY, JSON.stringify({ token }));
+  } catch {
+    // localStorage indisponível (ex: modo privado) — sem-op, só perde a reconexão automática
+  }
+}
+
+function clearReconnectToken() {
+  try {
+    localStorage.removeItem(RECONNECT_KEY);
+  } catch {
+    // sem-op
+  }
+}
+
 export function useClankRoom() {
   const clientRef = useRef<Client | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const tryReconnectRef = useRef<() => void>(() => {});
   const [room, setRoom] = useState<Room | null>(null);
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [hand, setHand] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
 
   if (!clientRef.current) {
     clientRef.current = new Client(SERVER_URL);
@@ -86,6 +119,7 @@ export function useClankRoom() {
       players.push({
         id,
         name: p.name,
+        color: p.color,
         connected: p.connected,
         ready: p.ready,
         knockedOut: p.knockedOut,
@@ -138,6 +172,7 @@ export function useClankRoom() {
       roomRef.current = r;
       setRoom(r);
       applySnapshot(r);
+      saveReconnectToken(r.reconnectionToken);
       r.onStateChange(() => applySnapshot(r));
       r.onMessage("hand", (cards: string[]) => setHand(cards));
       r.onMessage("error", (message: string) => {
@@ -149,10 +184,38 @@ export function useClankRoom() {
         setRoom(null);
         setSnapshot(null);
         setHand([]);
+        // Se a saída foi voluntária (botão "Sair"), o token já foi limpo antes disso —
+        // tryReconnect vira um no-op. Se foi queda de conexão, tenta voltar sozinho.
+        tryReconnectRef.current();
       });
     },
     [applySnapshot],
   );
+
+  const tryReconnect = useCallback(async () => {
+    const token = readReconnectToken();
+    if (!token || roomRef.current) return;
+    setReconnecting(true);
+    try {
+      const r = await clientRef.current!.reconnect(token);
+      bindRoom(r);
+    } catch {
+      clearReconnectToken();
+    } finally {
+      setReconnecting(false);
+    }
+  }, [bindRoom]);
+
+  useEffect(() => {
+    tryReconnectRef.current = () => void tryReconnect();
+  }, [tryReconnect]);
+
+  // Ao carregar a página (refresh, aba reaberta), tenta reconectar automaticamente
+  // se ainda houver um token válido guardado.
+  useEffect(() => {
+    void tryReconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createRoom = useCallback(
     async (name: string) => {
@@ -190,6 +253,10 @@ export function useClankRoom() {
 
   const toggleReady = useCallback(() => {
     roomRef.current?.send("toggle_ready");
+  }, []);
+
+  const setColor = useCallback((color: string) => {
+    roomRef.current?.send("set_color", color);
   }, []);
 
   const startGame = useCallback(() => {
@@ -242,6 +309,7 @@ export function useClankRoom() {
   }, []);
 
   const leaveRoom = useCallback(() => {
+    clearReconnectToken();
     roomRef.current?.leave();
   }, []);
 
@@ -258,9 +326,11 @@ export function useClankRoom() {
     error,
     actionError,
     connecting,
+    reconnecting,
     createRoom,
     joinRoom,
     toggleReady,
+    setColor,
     startGame,
     playCard,
     acquireCard,

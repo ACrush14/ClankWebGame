@@ -20,11 +20,10 @@ const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   "depths-west": { x: 330, y: 490 },
 };
 
-const PLAYER_TOKEN_COLORS = ["#38bdf8", "#f472b6", "#a3e635", "#fb923c"];
-
 export interface BoardMapPlayer {
   id: string;
   name: string;
+  color: string;
   roomId: string;
   knockedOut: boolean;
   hasLeftDungeon: boolean;
@@ -158,7 +157,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
                 cx={pos.x - 14 + idx * 12}
                 cy={pos.y - 22}
                 r={6}
-                fill={p.knockedOut ? "#7f1d1d" : PLAYER_TOKEN_COLORS[players.findIndex((pl) => pl.id === p.id) % PLAYER_TOKEN_COLORS.length]}
+                fill={p.knockedOut ? "#7f1d1d" : p.color}
                 stroke="#0f172a"
                 strokeWidth={1.5}
               />
