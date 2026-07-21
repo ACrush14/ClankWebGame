@@ -140,6 +140,14 @@ aparece uma confirmação ("Você tem botas restantes. Quer mesmo encerrar o seu
 - As telas de **"REGRAS"** e **"ESQUEMA DO MAPA"** só existem na tela de configurações
   PRÉ-partida (antes de clicar "CRIAR PARTIDA"), não durante o jogo.
 
+## Estratégia de jogo (instrução do usuário)
+
+**Sempre que possível, priorize COMPRAR cartas novas da Dungeon Row/Reserva** (em vez
+de só mover ou lutar) — o objetivo desta pesquisa é ver o máximo de cartas diferentes
+possível, não vencer a partida. Depois de jogar a mão (botão ▶), gaste o Skill/Swords
+gerado comprando/lutando algo na fileira antes de terminar o turno, sempre que o custo
+permitir.
+
 ## Onde estão os dados capturados até agora
 
 Ver [`cartas-capturadas.md`](./cartas-capturadas.md) nesta mesma pasta — lista de todas
