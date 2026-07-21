@@ -1,16 +1,24 @@
 import type { CardDefinition } from "./types.js";
 
 /**
- * Baralho inicial — CONFIRMADO duas vezes: contra fontes sobre o jogo oficial, e agora
- * contra o "Clank! Card List" oficial do BoardGameGeek (Scramble 4, Sidestep 4,
- * Stumble 8, Burgle 24 — divididos por 4 jogadores dá exatamente 1/1/2/6 por jogador).
+ * Baralho inicial — CONFIRMADO contra o manual oficial (PDF do rulebook, seção de
+ * Componentes e Setup, listado duas vezes): "6 Burgle, 2 Stumble, 1 Cautious Advance,
+ * 1 Skillful Move". Os nomes "Sidestep"/"Scramble" que eu tinha antes vieram de fontes
+ * secundárias e estavam ERRADOS — o manual oficial usa "Cautious Advance" (1 Boot) e
+ * "Skillful Move" (1 Skill + 1 Boot); os efeitos numéricos batem, só o nome mudou.
  */
 export const STARTING_DECK: CardDefinition[] = [
   { id: "burgle", name: "Burgle", kind: "starting", playEffects: { skill: 1 }, verified: true },
-  { id: "sidestep", name: "Sidestep", kind: "starting", playEffects: { boots: 1 }, verified: true },
   {
-    id: "scramble",
-    name: "Scramble",
+    id: "cautious-advance",
+    name: "Cautious Advance",
+    kind: "starting",
+    playEffects: { boots: 1 },
+    verified: true,
+  },
+  {
+    id: "skillful-move",
+    name: "Skillful Move",
     kind: "starting",
     playEffects: { skill: 1, boots: 1 },
     verified: true,
@@ -20,8 +28,8 @@ export const STARTING_DECK: CardDefinition[] = [
 
 export const STARTING_DECK_COUNTS: Record<string, number> = {
   burgle: 6,
-  sidestep: 1,
-  scramble: 1,
+  "cautious-advance": 1,
+  "skillful-move": 1,
   stumble: 2,
 };
 
@@ -34,9 +42,9 @@ export function buildStartingDeck(): string[] {
 }
 
 /**
- * ⚠️ PLACEHOLDER — nome e mecânica geral reais, números de custo/efeito estimados por mim.
- * `orc-grunt` é o único 100% verificado (2 Swords → 3 Gold, de um exemplo de jogo escrito
- * por extenso). Os outros ficam assim até eu conseguir o texto/custo real de cada carta.
+ * `orc-grunt` e `move-silently` são 100% verificados contra o manual oficial (exemplo de
+ * jogo escrito por extenso, com o texto e números exatos das duas cartas). `teleporter`
+ * continua ⚠️ PLACEHOLDER — nome e categoria (device) reais, números estimados por mim.
  */
 export const DUNGEON_DECK: CardDefinition[] = [
   {
@@ -57,6 +65,14 @@ export const DUNGEON_DECK: CardDefinition[] = [
     verified: true,
     triggersDragonAttack: true,
   },
+  {
+    id: "move-silently",
+    name: "Move Silently",
+    kind: "item",
+    skillCost: 3,
+    playEffects: { boots: 2, clank: -2 },
+    verified: true,
+  },
 ];
 
 /**
@@ -68,6 +84,7 @@ export const DUNGEON_DECK: CardDefinition[] = [
 export const DUNGEON_DECK_COUNTS: Record<string, number> = {
   teleporter: 2,
   "orc-grunt": 3,
+  "move-silently": 2,
 };
 
 export function buildDungeonDeck(): string[] {
@@ -192,7 +209,7 @@ export const DUNGEON_DECK_CATALOG_REFERENCE: { name: string; count: number; cate
   { name: "Lucky Coin", count: 2, category: "item" },
   { name: "Master Burglar", count: 2, category: "item" },
   { name: "Mister Whiskers", count: 1, category: "item" },
-  { name: "Move Silently", count: 2, category: "item" },
+  // "Move Silently" já está implementada em DUNGEON_DECK (verified: true), removida daqui.
   { name: "Monkey Bot 3000", count: 1, category: "item" },
   { name: "Mountain King, The", count: 1, category: "item" },
   { name: "Pickaxe", count: 2, category: "item" },
@@ -219,3 +236,27 @@ export const DUNGEON_DECK_CATALOG_REFERENCE: { name: string; count: number; cate
   { name: "Wand of Wind", count: 1, category: "item" },
   { name: "Wizard", count: 1, category: "item" },
 ];
+
+/**
+ * Secrets — tokens (não cartas) achados dentro das salas do tabuleiro, revelados ao
+ * entrar na sala. 100% CONFIRMADOS pelo "Field Reference Guide" do manual oficial.
+ * Ainda não implementados no motor (o tabuleiro ainda não modela tokens de sala) —
+ * fica documentado aqui pra quando isso for construído.
+ */
+export const MAJOR_SECRETS_REFERENCE = [
+  { name: "Potion of Greater Healing", effect: "Cura 2 de dano (guarda até usar)." },
+  { name: "Greater Skill Boost", effect: "Ganha 5 Skill na hora." },
+  { name: "Greater Treasure", effect: "Vale 5 Gold." },
+  { name: "Flash of Brilliance", effect: "Compra 3 cartas na hora." },
+  { name: "Chalice", effect: "Vale 7 pontos no fim de jogo (não é um Artefato)." },
+] as const;
+
+export const MINOR_SECRETS_REFERENCE = [
+  { name: "Potion of Healing", effect: "Cura 1 de dano (guarda até usar)." },
+  { name: "Potion of Swiftness", effect: "Ganha 1 Boot (guarda até usar)." },
+  { name: "Potion of Strength", effect: "Ganha 2 Swords (guarda até usar)." },
+  { name: "Skill Boost", effect: "Ganha 2 Skill na hora." },
+  { name: "Treasure", effect: "Vale 2 Gold." },
+  { name: "Magic Spring", effect: "No fim do turno, descarta (trash) uma carta do baralho." },
+  { name: "Dragon Egg", effect: "Vale 3 pontos no fim de jogo; avança a Trilha de Fúria em 1." },
+] as const;

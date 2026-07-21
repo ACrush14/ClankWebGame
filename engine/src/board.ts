@@ -1,23 +1,18 @@
 import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
 
 /**
- * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala do tabuleiro físico) — mas
- * agora informado por uma foto real do tabuleiro oficial que você me passou. Dela,
- * confirmei/corrigi:
- * - Ícone de pegada = 2 Boots (já estava certo).
- * - Ícone de caveira num túnel = 1 Sword ou 1 dano ao passar (já estava certo; no
- *   tabuleiro real a quantidade de caveiras varia o custo — meus túneis já variam
- *   monsterSwordCost por posição, seguindo a mesma ideia).
- * - Ícone de cadeado = precisa da Chave-mestra do Mercado (já estava certo).
- * - Mercado custa 7 Gold por item (já estava certo — o "7" aparece bem no meio do
- *   Mercado na foto).
- * - Valores de artefato REAIS (os círculos de cristal no tabuleiro): 5, 10, 15, 20,
- *   25, 30 — troquei os valores inventados pelos reais.
- * - Trilha de Fúria do dragão: você confirmou que ela avança MAIS quanto MAIOR o
- *   artefato pego (não é sempre +1 fixo como eu tinha). Implementei um avanço em
- *   camadas (5-10 pts → +1, 15-20 pts → +2, 25-30 pts → +3) — é minha melhor
- *   interpretação dos números vistos perto dos ícones de dragão na foto, não uma
- *   leitura exata da escala oficial.
+ * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala do tabuleiro físico), mas os
+ * ícones de túnel/Mercado foram confirmados contra uma foto real do tabuleiro oficial,
+ * e os valores de artefato contra o manual oficial (PDF do rulebook):
+ * - Ícone de pegada = 2 Boots; caveira num túnel = 1 Sword ou 1 dano ao passar; cadeado
+ *   = precisa da Chave-mestra do Mercado; Mercado custa 7 Gold por item.
+ * - Valores de artefato REAIS no jogo base variam por zona de profundidade (5/7/10/15/
+ *   20/25/30); o manual dá dois exemplos exatos (7 e 25) que uso aqui pras zonas rasa
+ *   e funda. `depths-west`=7 (raso, confirmado), `sealed-vault`=25 (fundo, atrás de
+ *   cadeado, confirmado), `depths-east`=15 (zona intermediária — ⚠️ ainda estimativa).
+ * - Trilha de Fúria: avança SEMPRE +1 por artefato pego, independente do valor —
+ *   confirmado no manual (ver `takeArtifact` em game.ts; a escala em camadas que eu
+ *   tinha antes, baseada numa foto, estava errada).
  */
 
 interface RoomSpec {
@@ -47,8 +42,8 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "deep-tunnel", name: "Túnel Profundo" },
   { id: "crystal-cave", name: "Caverna de Cristal" },
   { id: "depths-east", name: "Profundezas — Leste", isDepths: true, artifactValue: 15 },
-  { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 5 },
-  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 30 },
+  { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 7 },
+  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 25 },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [

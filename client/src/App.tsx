@@ -376,7 +376,11 @@ function GameScreen({
             </div>
             {snapshot.countdownTrack > 0 && (
               <div className="mt-2 flex items-center justify-between text-xs text-red-300">
-                <span>⏳ Contagem regressiva — alguém já escapou, corra pra fora!</span>
+                <span>
+                  ⏳ Contagem regressiva —{" "}
+                  {snapshot.players.find((p) => p.id === snapshot.countdownPlayerId)?.name ?? "alguém"} anda nela a
+                  cada turno seu; corra pra fora!
+                </span>
                 <span className="font-mono">{snapshot.countdownTrack}/5</span>
               </div>
             )}

@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { buildStartingDeck, buildDungeonDeck, getCard } from "../src/cards.js";
 
 describe("baralho inicial", () => {
-  it("tem exatamente 10 cartas: 6 Burgle, 1 Sidestep, 1 Scramble, 2 Stumble", () => {
+  it("tem exatamente 10 cartas: 6 Burgle, 1 Cautious Advance, 1 Skillful Move, 2 Stumble", () => {
     const deck = buildStartingDeck();
     expect(deck).toHaveLength(10);
     expect(deck.filter((id) => id === "burgle")).toHaveLength(6);
-    expect(deck.filter((id) => id === "sidestep")).toHaveLength(1);
-    expect(deck.filter((id) => id === "scramble")).toHaveLength(1);
+    expect(deck.filter((id) => id === "cautious-advance")).toHaveLength(1);
+    expect(deck.filter((id) => id === "skillful-move")).toHaveLength(1);
     expect(deck.filter((id) => id === "stumble")).toHaveLength(2);
   });
 

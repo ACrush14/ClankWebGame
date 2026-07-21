@@ -5,7 +5,8 @@ import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
 import type { CardEffects, DragonState, MarketState, PlayerState, ReserveState } from "./types.js";
 import { CROWN_VALUES, COUNTDOWN_TRACK_SIZE, emptyResources, HEALTH_TRACK_SIZE, MARKET_ITEM_COST } from "./types.js";
 
-export const DUNGEON_ROW_SIZE = 5;
+/** CONFIRMADO no manual oficial: "Shuffle the Dungeon Deck and deal six cards..." */
+export const DUNGEON_ROW_SIZE = 6;
 const MAX_LOG_LINES = 30;
 /**
  * Quantidade de cubos "pretos" (neutros) sempre disponíveis no saco do dragão.
@@ -33,8 +34,14 @@ export interface GameState {
   turnNumber: number;
   phase: "playing" | "ended";
   log: string[];
-  /** 0 = ainda não começou (ninguém escapou); 1..COUNTDOWN_TRACK_SIZE = contagem ativa. */
+  /** 0 = ainda não começou; 1..COUNTDOWN_TRACK_SIZE = casa atual de `countdownPlayerId` na trilha. */
   countdownTrack: number;
+  /**
+   * Id do primeiro jogador a sair da masmorra ou ser nocauteado — SÓ ele anda na
+   * Trilha de Contagem Regressiva (regra oficial: os demais que saírem/forem
+   * nocauteados depois NÃO usam a trilha). null até isso acontecer.
+   */
+  countdownPlayerId: string | null;
   /** Pontuação final por jogador — só definida quando `phase === "ended"`. */
   finalScores?: Record<string, number>;
 }
@@ -65,6 +72,7 @@ export class GameEngine {
       phase: "playing",
       log: [],
       countdownTrack: 0,
+      countdownPlayerId: null,
     };
   }
 
@@ -116,7 +124,19 @@ export class GameEngine {
     if (player.damage >= HEALTH_TRACK_SIZE && !player.knockedOut) {
       player.knockedOut = true;
       this.pushLog(`${player.name} foi nocauteado!`);
+      this.startCountdownIfNeeded(player);
     }
+  }
+
+  /**
+   * Na primeira vez que QUALQUER jogador sai da masmorra ou é nocauteado, ele (e só
+   * ele) passa a andar na Trilha de Contagem Regressiva — ver `processCountdownStep`.
+   */
+  private startCountdownIfNeeded(player: PlayerState) {
+    if (this.state.countdownPlayerId !== null) return;
+    this.state.countdownPlayerId = player.id;
+    this.state.countdownTrack = 1;
+    this.pushLog(`${player.name} foi o primeiro a sair da masmorra ou ser nocauteado — a Trilha de Contagem Regressiva começou.`);
   }
 
   /**
@@ -168,14 +188,8 @@ export class GameEngine {
     }
 
     player.hasLeftDungeon = true;
-    if (this.state.countdownTrack === 0) {
-      this.state.countdownTrack = 1;
-      this.pushLog(
-        `${player.name} escapou da masmorra! A Trilha de Contagem Regressiva começou — quem ainda estiver dentro quando ela terminar será nocauteado.`,
-      );
-    } else {
-      this.pushLog(`${player.name} escapou da masmorra!`);
-    }
+    this.pushLog(`${player.name} escapou da masmorra!`);
+    this.startCountdownIfNeeded(player);
 
     this.checkGameEnd();
     if (this.state.phase !== "ended") {
@@ -222,10 +236,11 @@ export class GameEngine {
 
   /**
    * Pega o artefato da sala atual (se houver e ainda não tiver sido pego). Avança a
-   * Trilha de Fúria — quanto MAIOR o artefato, mais ela avança (confirmado: artefatos
-   * grandes deixam o dragão bem mais bravo). ⚠️ A escala exata (5-10→+1, 15-20→+2,
-   * 25-30→+3) é minha melhor interpretação de uma foto do tabuleiro oficial, não uma
-   * leitura garantida dos números exatos.
+   * Trilha de Fúria em exatamente 1 casa — CONFIRMADO no manual oficial ("advance the
+   * Dragon marker **one space** along the Rage Track"), independente do valor do
+   * artefato. (Ontem eu tinha implementado errado, em camadas por tamanho — isso não
+   * existe; o que a foto mostrava com os números 2/3/4 era outra coisa, ver
+   * `processCountdownStep`.)
    */
   takeArtifact(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
@@ -235,20 +250,18 @@ export class GameEngine {
 
     this.state.claimedArtifacts[room.id] = true;
     player.points += room.artifactValue;
-    const rageAdvance = room.artifactValue >= 25 ? 3 : room.artifactValue >= 15 ? 2 : 1;
-    this.state.dragon.rageTrackPosition += rageAdvance;
-    this.pushLog(
-      `${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está ${rageAdvance > 1 ? "muito " : ""}mais irritado.`,
-    );
+    this.state.dragon.rageTrackPosition += 1;
+    this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
   }
 
   /**
    * Ataque do dragão: sorteia cubos do saco (jogadores + cubos pretos neutros) em
    * quantidade igual à posição atual na Trilha de Fúria menos 1 (regra confirmada:
-   * "5ª casa da trilha sorteia 4 cubos"). Cubo de um jogador = 1 dano pra ele.
+   * "5ª casa da trilha sorteia 4 cubos"), mais `extraCubes` (usado pela Trilha de
+   * Contagem Regressiva — ver `processCountdownStep`). Cubo de um jogador = 1 dano.
    */
-  private triggerDragonAttack() {
-    const drawCount = Math.max(0, this.state.dragon.rageTrackPosition - 1);
+  private triggerDragonAttack(extraCubes = 0) {
+    const drawCount = Math.max(0, this.state.dragon.rageTrackPosition - 1) + extraCubes;
     if (drawCount === 0) return;
 
     const tickets: (string | null)[] = [];
@@ -277,19 +290,30 @@ export class GameEngine {
       `O dragão atacou! ${drawCount} cubo(s) sorteado(s): ${damagedNames.length > 0 ? damagedNames.join(", ") + " levou(aram) dano" : "nenhum jogador atingido"}${blackDrawn > 0 ? ` (${blackDrawn} preto(s))` : ""}.`,
     );
 
-    // Trilha de Contagem Regressiva: só avança depois que alguém já escapou (ver leaveDungeon).
-    if (this.state.countdownTrack > 0) {
-      this.state.countdownTrack += 1;
-      if (this.state.countdownTrack >= COUNTDOWN_TRACK_SIZE) {
-        for (const p of this.state.players) {
-          if (!p.knockedOut && !p.hasLeftDungeon) this.damagePlayer(p, HEALTH_TRACK_SIZE);
-        }
-        this.pushLog("A Trilha de Contagem Regressiva terminou — o dragão acordou de vez! Quem ainda estava na masmorra foi nocauteado.");
-      } else {
-        this.pushLog(`A Trilha de Contagem Regressiva avançou (${this.state.countdownTrack}/${COUNTDOWN_TRACK_SIZE}).`);
-      }
-    }
+    this.checkGameEnd();
+  }
 
+  /**
+   * Turno do jogador que está andando na Trilha de Contagem Regressiva (regra oficial:
+   * "on that player's next turn, instead of taking a normal turn..."). Casas 2-4 causam
+   * um ataque instantâneo do dragão com cubos extras (+1/+2/+3); a casa 5 nocauteia na
+   * hora todo mundo que ainda está na masmorra.
+   */
+  private processCountdownStep(player: PlayerState) {
+    this.state.countdownTrack += 1;
+    const space = this.state.countdownTrack;
+    if (space >= 2 && space <= 4) {
+      const extraCubes = space - 1;
+      this.pushLog(
+        `${player.name} anda na Trilha de Contagem Regressiva pra casa ${space}/${COUNTDOWN_TRACK_SIZE} — ataque instantâneo do dragão (+${extraCubes} cubo(s) extra)!`,
+      );
+      this.triggerDragonAttack(extraCubes);
+    } else if (space >= COUNTDOWN_TRACK_SIZE) {
+      for (const p of this.state.players) {
+        if (!p.knockedOut && !p.hasLeftDungeon) this.damagePlayer(p, HEALTH_TRACK_SIZE);
+      }
+      this.pushLog("A Trilha de Contagem Regressiva chegou ao fim — o dragão acordou de vez! Quem ainda estava na masmorra foi nocauteado.");
+    }
     this.checkGameEnd();
   }
 
@@ -459,6 +483,11 @@ export class GameEngine {
     for (let i = 0; i < total; i++) {
       next = (next + 1) % total;
       const candidate = this.state.players[next];
+      if (candidate.id === this.state.countdownPlayerId) {
+        this.processCountdownStep(candidate);
+        if (this.state.phase === "ended") return;
+        continue;
+      }
       if (!candidate.knockedOut && !candidate.hasLeftDungeon) break;
     }
     this.state.currentPlayerIndex = next;

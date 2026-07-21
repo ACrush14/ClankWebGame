@@ -19,9 +19,9 @@ describe("setup", () => {
     }
   });
 
-  it("preenche a Dungeon Row com 5 cartas", () => {
+  it("preenche a Dungeon Row com 6 cartas", () => {
     const game = twoPlayerGame();
-    expect(game.state.dungeonRow.slots).toHaveLength(5);
+    expect(game.state.dungeonRow.slots).toHaveLength(6);
     expect(game.state.dungeonRow.slots.every((s) => s !== null)).toBe(true);
   });
 
@@ -45,12 +45,12 @@ describe("playCard", () => {
   it("jogar Burgle dá 1 skill e move a carta pra playedThisTurn", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.hand = ["burgle", "burgle", "sidestep", "scramble", "stumble"];
+    player.hand = ["burgle", "burgle", "cautious-advance", "skillful-move", "stumble"];
 
     game.playCard(player.id, "burgle");
 
     expect(player.resources.skill).toBe(1);
-    expect(player.hand).toEqual(["burgle", "sidestep", "scramble", "stumble"]);
+    expect(player.hand).toEqual(["burgle", "cautious-advance", "skillful-move", "stumble"]);
     expect(player.playedThisTurn).toEqual(["burgle"]);
   });
 
@@ -68,9 +68,9 @@ describe("playCard", () => {
   it("joga carta acumulando múltiplos recursos (Scramble = skill + boot)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.hand = ["scramble"];
+    player.hand = ["skillful-move"];
 
-    game.playCard(player.id, "scramble");
+    game.playCard(player.id, "skillful-move");
 
     expect(player.resources.skill).toBe(1);
     expect(player.resources.boots).toBe(1);
@@ -94,8 +94,7 @@ describe("acquireCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
 
-    // garante cartas de sobra no monte de compra pra testar o reabastecimento do slot
-    // (o baralho placeholder tem só 5 cartas únicas — do tamanho exato da própria Row)
+    // garante carta de sobra no monte de compra pra testar o reabastecimento do slot
     game.state.dungeonRow.drawPile.push("teleporter");
     game.state.dungeonRow.slots[0] = "teleporter";
     player.resources.skill = getCard("teleporter").skillCost ?? 0;
@@ -300,42 +299,30 @@ describe("movePlayer", () => {
 });
 
 describe("takeArtifact", () => {
-  it("pega um artefato pequeno (5-10 pts) e avança a Trilha de Fúria em +1", () => {
+  it("pega um artefato pequeno (7 pts) e avança a Trilha de Fúria em +1", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "depths-west"; // 5 pontos
+    player.roomId = "depths-west"; // 7 pontos
     const rageBefore = game.state.dragon.rageTrackPosition;
 
     game.takeArtifact(player.id);
 
-    expect(player.points).toBe(5);
+    expect(player.points).toBe(7);
     expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 1);
     expect(game.state.claimedArtifacts["depths-west"]).toBe(true);
   });
 
-  it("pega um artefato médio (15-20 pts) e avança a Trilha de Fúria em +2", () => {
-    const game = twoPlayerGame();
-    const player = game.currentPlayer;
-    player.roomId = "depths-east"; // 15 pontos
-    const rageBefore = game.state.dragon.rageTrackPosition;
-
-    game.takeArtifact(player.id);
-
-    expect(player.points).toBe(15);
-    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 2);
-  });
-
-  it("pega um artefato grande (25-30 pts) e avança a Trilha de Fúria em +3", () => {
+  it("pega um artefato grande (25 pts) e a Trilha de Fúria avança os mesmos +1 fixos (regra oficial, não escala com o valor)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.hasMasterKey = true;
-    player.roomId = "sealed-vault"; // 30 pontos
+    player.roomId = "sealed-vault"; // 25 pontos
     const rageBefore = game.state.dragon.rageTrackPosition;
 
     game.takeArtifact(player.id);
 
-    expect(player.points).toBe(30);
-    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 3);
+    expect(player.points).toBe(25);
+    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 1);
   });
 
   it("lança erro se a sala atual não tem artefato", () => {
@@ -523,30 +510,43 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(game.state.finalScores![p1.id]).toBe(0);
   });
 
-  it("a Trilha de Contagem Regressiva no fim nocauteia quem ainda está dentro", () => {
+  it("só o primeiro a sair usa a Trilha de Contagem Regressiva — anda nos PRÓPRIOS turnos seguintes, não em qualquer ataque do dragão", () => {
     const game = new GameEngine(
       [
         { id: "p1", name: "A" },
         { id: "p2", name: "B" },
       ],
-      () => 0.99, // evita sortear cubo de jogador nos ataques (cai nos cubos pretos)
+      () => 0.99, // evita sortear cubo de jogador nos ataques normais (cai nos cubos pretos)
     );
     const [p1, p2] = game.state.players;
-    game.leaveDungeon(p1.id); // countdownTrack = 1, já avança a vez pro p2 sozinho
+    game.leaveDungeon(p1.id); // p1 vira o "marcador" da trilha (casa 1); vez passa pro p2 sozinha
+    expect(game.state.countdownPlayerId).toBe(p1.id);
+    expect(game.state.countdownTrack).toBe(1);
+    expect(game.currentPlayer.id).toBe(p2.id);
 
-    // dispara 4 ataques do dragão (countdown 1 -> 5) pra estourar a trilha.
-    // refillDungeonSlot é privado; acessado via cast só pra este teste.
+    // um ataque de dragão normal (disparado por reposição da Row) NÃO deve mexer na trilha.
+    game.state.dungeonRow.drawPile.push("orc-grunt");
+    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dragon.rageTrackPosition = 2;
     const triggerRefill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(
       game,
     );
-    for (let i = 0; i < 4; i++) {
-      game.state.dungeonRow.drawPile.push("orc-grunt");
-      game.state.dungeonRow.slots[0] = "orc-grunt";
-      game.state.dragon.rageTrackPosition = 2; // garante drawCount > 0 em cada ataque
-      triggerRefill(0);
-    }
+    triggerRefill(0);
+    expect(game.state.countdownTrack).toBe(1);
 
+    // p2 termina o turno -> como só sobra p1 (o marcador) no rodízio, ele processa a
+    // trilha em vez de jogar (casa 1 -> 2), e a vez volta pro p2.
+    game.endTurn(p2.id);
+    expect(game.state.countdownTrack).toBe(2);
+    expect(game.currentPlayer.id).toBe(p2.id);
+
+    game.endTurn(p2.id); // casa 2 -> 3
+    game.endTurn(p2.id); // casa 3 -> 4
+    expect(game.state.countdownTrack).toBe(4);
+
+    game.endTurn(p2.id); // casa 4 -> 5: nocauteia quem ainda está dentro
     expect(p2.knockedOut).toBe(true);
+    expect(game.state.countdownTrack).toBe(5);
     expect(game.state.phase).toBe("ended");
   });
 });

@@ -39,6 +39,8 @@ export interface RoomSnapshot {
   /** Ids de sala cujo artefato já foi pego. */
   claimedArtifacts: Record<string, boolean>;
   countdownTrack: number;
+  /** Id do jogador andando na Trilha de Contagem Regressiva; "" = ninguém ainda. */
+  countdownPlayerId: string;
   marketKeyAvailable: boolean;
   marketBackpackAvailable: boolean;
   marketCrownsAvailable: number[];
@@ -72,6 +74,7 @@ export function useClankRoom() {
       dragonRageTrack: number;
       claimedArtifacts: Map<string, boolean>;
       countdownTrack: number;
+      countdownPlayerId: string;
       marketKeyAvailable: boolean;
       marketBackpackAvailable: boolean;
       marketCrownsAvailable: number[];
@@ -121,6 +124,7 @@ export function useClankRoom() {
       dragonRageTrack: state.dragonRageTrack,
       claimedArtifacts,
       countdownTrack: state.countdownTrack,
+      countdownPlayerId: state.countdownPlayerId ?? "",
       marketKeyAvailable: state.marketKeyAvailable,
       marketBackpackAvailable: state.marketBackpackAvailable,
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),

@@ -42,6 +42,8 @@ export class ClankRoomState extends Schema {
   /** Ids de sala cujo artefato já foi pego (o tabuleiro em si é estático — vem de @clank/engine no cliente). */
   @type({ map: "boolean" }) claimedArtifacts = new MapSchema<boolean>();
   @type("number") countdownTrack = 0;
+  /** Id do jogador que anda na Trilha de Contagem Regressiva (só ele — regra oficial); "" = ninguém ainda. */
+  @type("string") countdownPlayerId = "";
   @type("boolean") marketKeyAvailable = true;
   @type("boolean") marketBackpackAvailable = true;
   @type(["number"]) marketCrownsAvailable = new ArraySchema<number>();
@@ -179,6 +181,7 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.state.currentPlayerId = state.players[state.currentPlayerIndex]?.id ?? "";
     this.state.dragonRageTrack = state.dragon.rageTrackPosition;
     this.state.countdownTrack = state.countdownTrack;
+    this.state.countdownPlayerId = state.countdownPlayerId ?? "";
     this.state.marketKeyAvailable = state.market.masterKeyAvailable;
     this.state.marketBackpackAvailable = state.market.backpackAvailable;
     this.state.marketCrownsAvailable.clear();
