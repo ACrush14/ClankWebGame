@@ -27,7 +27,7 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Mercenário (Mercenary) | Qty 14-15 | Efeito: Skill+1, Swords+2 | Custo 2
 - Goblin | Monstro, nunca esgota | Custo Swords 2 | Efeito ao vencer: $1 | "(Não descarte após o combate.)"
 
-## Dungeon Row — capturadas ao vivo (13 tipos)
+## Dungeon Row — capturadas ao vivo (17 tipos)
 
 - Capitão Rebelde (Rebel Captain) | Companheiro | Efeito: Skill+2 | VP 1 | Custo 3 | "Se houver outro companheiro em sua área de jogo, compre uma carta."
 - Boticária (Apothecary) | Companheiro | Efeito: nenhum incondicional | VP 2 | Custo 3 | "Descarte uma carta para escolher uma das seguintes opções: 3 Swords -OU- $2 -OU- cura 1 (coração)."
@@ -40,17 +40,21 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Furtividade (Sneak) | Custo 1 | Efeito: Boots+1 | "-2 Clank!" | "A escuridão é uma das maiores armas de um ladrão."
 - Espada Cantante (Singing Sword) | Custo 5 | VP 2 | Efeito: Swords+2 | "+1 Clank!" | "Cuidado! Ela não tem dó."
 - Rubi (Ruby) | Gema | Custo 6 | VP 6 | Efeito: "Compre uma carta." | ADQUIRIR: +2 Clank!
+- Porta Animada (Animated Door) | Monstro | Custo Swords 1 | DERROTA: Boots+1 | Tem símbolo de Dragon Attack (dispara ataque do dragão ao ser revelada) | "Às vezes é a porta que bate em você."
+- Troll das Cavernas (Cave Troll) | Monstro | Custo Swords 4 | Tipo especial "Subterrâneo" (Combata somente nas Profundezas) | DERROTA: $3 e compre duas cartas
+- Esmeralda (Emerald) | Gema | Custo 5 | VP 5 | Efeito: "Compre uma carta." | ADQUIRIR: +2 Clank!
+- Perspicácia (provável "Brilliance") | Custo 6 | Efeito: "Compre três cartas." | "Não se preocupe, tenho uma ideia."
 
 ## Cartas ainda faltando (dos 68 tipos do catálogo antigo, ~47 restantes)
 
-Amulet of Vigor, Archaeologist, Boots of Swiftness, Bracers of Agility, Brilliance,
+Amulet of Vigor, Archaeologist, Boots of Swiftness, Bracers of Agility,
 Diamond, Dragon's Eye, The Duke, Dwarven Peddler, Elven Boots, Elven Cloak, Elven
-Dagger, Emerald, Flying Carpet, Invoker of the Ancients, Kobold Merchant, Lucky Coin,
+Dagger, Flying Carpet, Invoker of the Ancients, Kobold Merchant, Lucky Coin,
 Master Burglar, Mister Whiskers, Move Silently, Monkey Bot 3000, Mountain King,
 Pickaxe, Queen of Hearts, Rebel Miner, Rebel Scout, Rebel Soldier, Sapphire, Search,
-Silver Spear, Sleight of Hand, Swagger, Treasure Hunter, Treasure Map, Tunnel Guide,
+Silver Spear, Swagger, Treasure Hunter, Treasure Map, Tunnel Guide,
 Underworld Dealing, Wand of Recall, Wand of Wind, Wizard, Ladder, Shrine, Teleporter,
-Vault The, Animated Door, Belcher, Cave Troll, Crystal Golem, Kobold, Ogre, Orc Grunt
+Vault The, Belcher, Crystal Golem, Kobold, Ogre, Orc Grunt
 (já tinha, verificado em sessão anterior), Overlord, Watcher.
 
 ## Observações de regras confirmadas ao vivo
@@ -63,3 +67,4 @@ Vault The, Animated Door, Belcher, Cave Troll, Crystal Golem, Kobold, Ogre, Orc 
 - **PERIGO (Danger) é DIFERENTE do símbolo de Dragon Attack**: Danger é passivo/persistente (aumenta o total de cubos sorteados em TODO ataque do dragão enquanto a carta ficar na fileira sem ser comprada); Dragon Attack dispara um ataque IMEDIATO só uma vez, quando a carta é revelada pra repor a fileira. Motor atual só modela o segundo — precisaria de um campo novo tipo `dangerBonus` ou similar pra reimplementar Danger.
 - Cartas do tipo "Gema" têm efeito de "ADQUIRIR: +2 Clank!" — custo extra em barulho só ao comprar, separado do efeito de jogar depois.
 - Dois tabuleiros oficiais: "Castelo" e "Montículos e Covas", mais opção "Aleatório".
+- Existe o marcador de tipo **"Subterrâneo"** em monstros (visto em "Troll das Cavernas"): "Combata somente nas Profundezas" — ou seja, esses monstros só podem ser enfrentados se o jogador estiver numa sala da zona "Profundezas" (parte mais funda do mapa), não em qualquer lugar da fileira. Regra que o motor atual não modela (`fightMonster` não distingue localização).

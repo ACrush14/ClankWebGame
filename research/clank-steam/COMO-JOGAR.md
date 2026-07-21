@@ -129,6 +129,20 @@ Botão **"ENCERRAR TURNO"** (canto inferior direito). Se ainda tiver Boots sobra
 aparece uma confirmação ("Você tem botas restantes. Quer mesmo encerrar o seu turno?")
 — responder "SIM" pra continuar sem se mover.
 
+### ⚠️ Bug/travamento confirmado: botão "ENCERRAR TURNO" fica em branco e não clica
+
+Se você adquirir um Dispositivo com efeito de "USE" no momento da compra (ex: Altar —
+"$1 -OU- cura 1") e escolher **"USAR MAIS TARDE"** em vez de usar na hora, o botão
+"ENCERRAR TURNO" pode ficar renderizado como uma caixa vazia (sem texto) e PARAR de
+responder a cliques — mesmo cliques em outros lugares da tela continuam funcionando
+normalmente (não é o bug de foco do Windows/Textinputhost). **Solução**: clicar de novo
+na miniatura do dispositivo pendente (fica numa "bandeja" perto do canto inferior
+direito, com borda de fogo/destaque) pra abrir o popup de uso de novo, e dessa vez
+escolher de fato uma das opções (ex: "$1") em vez de adiar — isso libera o botão de
+encerrar turno imediatamente. Ainda não confirmei se dá pra encerrar o turno deixando o
+dispositivo pendente de verdade (talvez seja assim mesmo por design, ou seja só um bug
+de UI) — na dúvida, sempre resolva o "USE" pendente antes de tentar encerrar o turno.
+
 ## Outras telas úteis
 
 - Ícone de **lista** (canto superior direito): "Registro de ações" — mostra o log de
@@ -147,6 +161,15 @@ de só mover ou lutar) — o objetivo desta pesquisa é ver o máximo de cartas 
 possível, não vencer a partida. Depois de jogar a mão (botão ▶), gaste o Skill/Swords
 gerado comprando/lutando algo na fileira antes de terminar o turno, sempre que o custo
 permitir.
+
+**⚠️ Também é obrigatório MOVER o personagem sempre que houver Boots sobrando** —
+clicar nas salas adjacentes com brilho/contorno dourado (ver seção "Mover o personagem
+pelo tabuleiro") ANTES de clicar em "ENCERRAR TURNO". Erro já cometido uma vez nesta
+pesquisa: terminei o turno com Boots > 0 sem mover, só porque cliquei direto no botão
+de encerrar e confirmei "SIM" no popup de aviso — o usuário corrigiu isso explicitamente.
+Checklist de fim de turno, nesta ordem: (1) jogar a mão toda (▶), (2) comprar/lutar
+enquanto o custo permitir, (3) **mover pelas salas adjacentes enquanto Boots > 0**, (4)
+só então clicar "ENCERRAR TURNO".
 
 ## Onde estão os dados capturados até agora
 
