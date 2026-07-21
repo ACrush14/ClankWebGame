@@ -411,7 +411,7 @@ describe("túneis com cadeado e de mão única", () => {
     expect(player.roomId).toBe("sealed-vault");
   });
 
-  it("o escorregador do Cofre Selado só funciona num sentido", () => {
+  it("o escorregador da Câmara Selada só funciona num sentido", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.roomId = "sealed-vault";

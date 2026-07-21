@@ -1,18 +1,26 @@
 import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
 
 /**
- * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala do tabuleiro físico), mas os
- * ícones de túnel/Mercado foram confirmados contra uma foto real do tabuleiro oficial,
- * e os valores de artefato contra o manual oficial (PDF do rulebook):
- * - Ícone de pegada = 2 Boots; caveira num túnel = 1 Sword ou 1 dano ao passar; cadeado
- *   = precisa da Chave-mestra do Mercado; Mercado custa 7 Gold por item.
- * - Valores de artefato REAIS no jogo base variam por zona de profundidade (5/7/10/15/
- *   20/25/30); o manual dá dois exemplos exatos (7 e 25) que uso aqui pras zonas rasa
- *   e funda. `depths-west`=7 (raso, confirmado), `sealed-vault`=25 (fundo, atrás de
- *   cadeado, confirmado), `depths-east`=15 (zona intermediária — ⚠️ ainda estimativa).
- * - Trilha de Fúria: avança SEMPRE +1 por artefato pego, independente do valor —
- *   confirmado no manual (ver `takeArtifact` em game.ts; a escala em camadas que eu
- *   tinha antes, baseada numa foto, estava errada).
+ * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala de nenhum tabuleiro físico) —
+ * os `id`s internos das salas não mudaram (são só identificadores técnicos, nunca
+ * aparecem pro jogador), mas os NOMES exibidos foram re-temados pro **Clank! Catacombs**
+ * (2026-07-21), já que o conteúdo de cartas do projeto vem de lá (ver cards.ts): "Crystal
+ * Cave", "Market room", "Wayshrine" e "Depths"/"Deep" são termos reais confirmados no
+ * texto oficial de várias cartas (Lie in Wait, Astral Projection, Waystone, Robbery, The
+ * Warden etc.); "Prisioneiros" e criptas são um nod temático ao roster de monstros
+ * esqueleto e às cartas que libertam prisioneiros (Diversion, Riot, The Warden).
+ *
+ * O Catacombs de verdade usa um tabuleiro MODULAR (ladrilhos quadrados colocados/
+ * rotacionados durante o jogo — ver cartas como Dusty Map, Marble Guardian, Sudden
+ * Movement, Animated Wall) — isso NÃO foi implementado aqui, decisão consciente pra não
+ * reescrever a arquitetura do motor. Isto continua sendo um grafo fixo de salas, só com
+ * nomes/tema do Catacombs.
+ *
+ * Regras que continuam confirmadas contra fontes reais (jogo básico, mecânica
+ * compartilhada com o Catacombs): ícone de pegada = 2 Boots; caveira num túnel = 1 Sword
+ * ou 1 dano ao passar; cadeado = precisa da Chave-mestra do Mercado; Mercado custa 7 Gold
+ * por item. Valores de artefato (7/15/25) ainda vêm do manual do jogo **básico** — não
+ * confirmei se o Catacombs usa a mesma escala.
  */
 
 interface RoomSpec {
@@ -33,17 +41,17 @@ interface EdgeSpec {
 }
 
 const ROOM_SPECS: RoomSpec[] = [
-  { id: "entrance", name: "Entrada da Mina", isEntrance: true },
-  { id: "mine-entry", name: "Boca da Mina" },
-  { id: "guard-post", name: "Posto de Guarda" },
-  { id: "narrow-passage", name: "Passagem Estreita" },
+  { id: "entrance", name: "Entrada da Masmorra", isEntrance: true },
+  { id: "mine-entry", name: "Corredor de Pedra" },
+  { id: "guard-post", name: "Posto dos Esqueletos" },
+  { id: "narrow-passage", name: "Wayshrine Esquecido" },
   { id: "market-room", name: "Mercado", isMarket: true },
-  { id: "crossroads", name: "Encruzilhada" },
-  { id: "deep-tunnel", name: "Túnel Profundo" },
+  { id: "crossroads", name: "Encruzilhada das Criptas" },
+  { id: "deep-tunnel", name: "Túnel dos Prisioneiros" },
   { id: "crystal-cave", name: "Caverna de Cristal" },
-  { id: "depths-east", name: "Profundezas — Leste", isDepths: true, artifactValue: 15 },
-  { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 7 },
-  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 25 },
+  { id: "depths-east", name: "Profundezas — Cripta Leste", isDepths: true, artifactValue: 15 },
+  { id: "depths-west", name: "Profundezas — Cripta Oeste", isDepths: true, artifactValue: 7 },
+  { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25 },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
@@ -58,9 +66,9 @@ const EDGE_SPECS: EdgeSpec[] = [
   { a: "crossroads", b: "crystal-cave", icon: { footprint: true } },
   { a: "deep-tunnel", b: "depths-east", icon: { monsterSwordCost: 1 } },
   { a: "crystal-cave", b: "depths-west" },
-  // Cofre Selado: precisa da Chave-mestra do Mercado pra entrar (túnel com cadeado).
+  // Câmara Selada: precisa da Chave-mestra do Mercado pra entrar (túnel com cadeado).
   { a: "deep-tunnel", b: "sealed-vault", icon: { locked: true } },
-  // Escorregador de fuga: só dá pra sair do Cofre direto pra Entrada, não pra voltar por ele.
+  // Escorregador de fuga: só dá pra sair da Câmara direto pra Entrada, não pra voltar por ele.
   { a: "sealed-vault", b: "entrance", oneWay: true },
 ];
 
