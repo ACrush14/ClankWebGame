@@ -372,7 +372,12 @@ export class GameEngine {
     this.applyEffects(player, card.playEffects);
   }
 
-  /** Compra uma carta da Dungeon Row pagando Skill — vai pro descarte do jogador (entra no baralho dele). */
+  /**
+   * Compra uma carta da Dungeon Row pagando Skill. Devices são regra especial: dão o
+   * efeito de "USE" na hora e vão pro descarte da MASMORRA (não entram no baralho do
+   * jogador, regra oficial: "do not become part of your deck"); as demais vão pro
+   * descarte do jogador normalmente.
+   */
   acquireCard(playerId: string, slotIndex: number) {
     const player = this.requireCurrentPlayer(playerId);
     const cardId = this.state.dungeonRow.slots[slotIndex];
@@ -386,7 +391,11 @@ export class GameEngine {
     }
 
     player.resources.skill -= cost;
-    player.discardPile.push(cardId);
+    if (card.kind === "device") {
+      this.state.dungeonRow.discardPile.push(cardId);
+    } else {
+      player.discardPile.push(cardId);
+    }
     this.applyEffects(player, card.acquireEffects);
     this.refillDungeonSlot(slotIndex);
   }

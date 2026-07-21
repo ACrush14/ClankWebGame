@@ -5,6 +5,8 @@ dist
 *.log
 .DS_Store
 
-# Material de referencia de terceiros (ex: PDF de lista de cartas do BGG) - so uso local,
-# nao redistribuir. Os dados relevantes ja foram extraidos pra engine/src/cards.ts.
+# Material de referencia de terceiros (ex: PDF de lista de cartas do BGG, planilha de
+# cartas do Catacombs) - so uso local, nao redistribuir. Os dados relevantes ja foram
+# extraidos pra engine/src/cards.ts.
 *.pdf
+*.xlsx

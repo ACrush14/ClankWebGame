@@ -1,6 +1,6 @@
 # ClankWebGame — Plano de Projeto
 
-Versão web do jogo de tabuleiro **Clank!** (Renegade Game Studios / Paul Dennen) para jogar com amigos remotamente, em tempo real, pelo navegador.
+Versão web do jogo de tabuleiro **Clank!** (Renegade Game Studios / Paul Dennen) para jogar com amigos remotamente, em tempo real, pelo navegador. Regras/mecânica seguem o Clank! básico; o **conteúdo de cartas** (nomes, custos, efeitos) vem do **Clank! Catacombs** — jogo "irmão" standalone com o mesmo motor — desde 2026-07-21, ver seção 0.
 
 > ⚠️ **Nota de propriedade intelectual:** Clank! é uma marca e obra registrada da Renegade Game Studios. Este plano assume um projeto **pessoal, não-comercial, fechado (jogar só com amigos)** — sem monetização, sem distribuição pública, sem usar a arte oficial do jogo (produzir arte própria ou placeholders). Se algum dia quiser publicar/divulgar o projeto, será necessário trocar para um "reskin" com nome e tema próprios para evitar problemas de licenciamento.
 
@@ -51,22 +51,30 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
   - Referência completa de **Major/Minor Secrets** (tokens de sala) transcrita em `cards.ts` — ainda não implementados no motor (tabuleiro não modela tokens de sala).
   - 59 testes unitários passando depois das correções; typecheck limpo em `engine`/`server`/`client`.
 - **Tabuleiro renderizado como mapa SVG (item 7) — implementado (2026-07-21).** `client/src/game/BoardMap.tsx`: grafo de salas/túneis desenhado com cores por tipo de sala, ícones de túnel (monstro+custo, pegada, cadeado, mão-única tracejado), círculos de artefato com o valor, e tokens de jogador na sala atual; clicar numa sala alcançável move o jogador (mesma ação do botão "Ir"). Testado manualmente rodando client+server localmente. **Ainda não é uma cópia do layout físico** — mesma limitação do grafo em si (ver acima).
-
-> ⚠️ **Itens 5 e 6 continuam bloqueados por falta de fonte:** pesquisei bastante (WebSearch, WebFetch, navegador) atrás de custo/efeito completo das ~66 cartas restantes e de qual carta tem o símbolo de ataque do dragão. Bati em paredes reais: BoardGameGeek bloqueia scraping (403 em todas as páginas de arquivo/fórum) e exige login pra baixar os PDFs de card list; o Scribd "Clank! Complete Card List" também exige login pro documento completo; não achei wiki dedicada nem implementação open-source (BGA não tem Clank!) com os dados. Isso é diferente do manual de regras (que consegui baixar de `cdn.1j1ju.com` sem login) — o "Card List" com texto de carta parece só circular dentro do BGG por trás de login. **Preciso de: acesso de login ao BGG (sua conta, se tiver) pra baixar "TJAC's Clank! Card List" (tem uma página de legenda de símbolos que provavelmente cobre o símbolo do dragão), ou fotos suas das cartas físicas se você comprar/pegar emprestado o jogo.**
+- **PIVOT pro Clank! Catacombs pro conteúdo de cartas (itens 5 e 6 resolvidos, 2026-07-21).** Bati numa parede real tentando achar dados completos de carta do Clank! básico (BGG bloqueia scraping/exige login, Scribd exige login) — documentado e reportado a você. Você foi no BGG, achou e me passou uma planilha comunitária completa (`Clank!_Catacombs_Card_List.xlsx`) — só que do **Clank! Catacombs**, o jogo "irmão" standalone (mesmo motor: Skill/Swords/Boots, Saco do Dragão, Trilha de Fúria, símbolo de "Dragon Attack" — só muda o tema, masmorra de anões em vez de covil de dragão, e o roster de cartas). Perguntei se você queria caçar o equivalente do jogo básico ou usar os dados do Catacombs — você escolheu **usar o Catacombs**. Resultado:
+  - Reescrevi `engine/src/cards.ts` inteiro com as **79 cartas reais do Catacombs** (nome, custo, Skill/Swords/Boots diretos, VP, símbolo de Dragon Attack, quantidade — 100% conferidos contra a planilha). O texto oficial completo de cada carta fica num comentário `// Texto oficial (...)` acima da definição — nada foi perdido.
+  - Efeitos mecânicos (`playEffects`/`acquireEffects`) foram preenchidos com um parser conservador que só assume cláusulas de recurso simples e SEM condicional/escolha (ex: "+1 Clank!", "$2", "Draw a card.") — qualquer coisa com "if/may/choose/-or-/each other/lockpick/prisoner/tile/etc." fica só no texto, não é executada. Isso significa: toda carta faz PELO MENOS seu efeito numérico direto (Skill/Swords/Boots/VP), mas bônus condicionais/temáticos do Catacombs (lockpicks, prisioneiros, ladrilhos, Wayshrines, fantasmas, ídolo de macaco) **não estão implementados** — o motor não modela esses conceitos ainda.
+  - **Corrigi um bug real no caminho:** Devices agora vão pro descarte da MASMORRA ao serem adquiridos, não pro baralho do jogador (regra oficial: "do not become part of your deck") — antes disso `acquireCard` tratava Device igual a item normal.
+  - **Também descobri e reverti outro erro meu**: os nomes reais das cartas iniciais são **"Sidestep"/"Scramble"** (não "Cautious Advance"/"Skillful Move" como eu tinha "corrigido" ontem lendo o PDF do manual — aparentemente li errado; a planilha do Catacombs E a lista oficial do BGG concordam em "Sidestep"/"Scramble", então confiei nas duas fontes independentes em vez da minha própria leitura do PDF).
+  - Reserva (Mercenary/Explore/Secret Tome/Goblin) também ganhou números reais do Catacombs (custos mudaram: Mercenary 2✦→2 skill+2 swords ao jogar, Explore 3✦, Secret Tome 7✦/7pts, Goblin 2⚔).
+  - 60 testes unitários passando; testado manualmente rodando client+server localmente (Dungeon Row mostra cartas reais como "The Warden", "Skulker", "Skeleton" etc., custos batendo, Reserva com números certos).
+  - `DUNGEON_DECK_CATALOG_REFERENCE` (nomes do jogo básico) e `MAJOR_SECRETS_REFERENCE`/`MINOR_SECRETS_REFERENCE` (Secrets do jogo básico) ficaram marcados como legado no arquivo — não usados, só referência caso o projeto volte pro jogo básico algum dia.
 
 **Próximos passos (em ordem de prioridade — ver conversa):**
 1. ~~Fim de jogo~~ ✅
 2. ~~Mercado de ouro~~ ✅
 3. ~~Túneis com cadeado e mão única~~ ✅
 4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
-5. **Bloqueado — precisa de você:** confirmar quais cartas reais têm o símbolo de ataque do dragão (ver nota acima).
-6. **Bloqueado — precisa de você:** ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE` (ver nota acima).
+5. ~~Confirmar quais cartas reais têm o símbolo de ataque do dragão~~ ✅ (dados do Catacombs)
+6. ~~Ir preenchendo custo/efeito real de mais cartas~~ ✅ (dados do Catacombs — efeitos condicionais/temáticos específicos do Catacombs ainda não implementados, ver nota acima)
 7. ~~Renderizar o tabuleiro visualmente (SVG do grafo de salas)~~ ✅
 8. Cor/avatar por jogador.
 9. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
 10. Reconexão robusta (fora do MVP original).
 11. Regra "só carrega 1 Artefato por vez (2 com a Mochila)" — não implementada; hoje artefatos viram pontos na hora, sem limite de quantos "carregar". Exigiria repensar `takeArtifact`/pontuação (artefato como item carregável que se perde ao ser nocauteado, em vez de pontos banked na hora).
 12. Bônus de 20 pontos por "Mastery" (fugir completamente pra fora, não só sair da masmorra) — não modelado; hoje só existe um conceito de "saiu".
+13. Implementar as mecânicas específicas do Catacombs que hoje só existem como texto de referência (não executadas): lockpicks, prisioneiros, ladrilhos/tiles, Wayshrines, fantasmas, ídolo de macaco, "major secret". Boa parte das cartas tem bônus condicional preso a isso.
+14. `board.ts` ainda usa nomenclatura/valores de artefato herdados do jogo básico (salas "Mina", artefatos 7/15/25) — não foi re-temado pro Catacombs; considerar ajustar nomes de sala pra bater com o tema de masmorra de anões, já que o conteúdo de cartas agora é do Catacombs.
 
 ---
 

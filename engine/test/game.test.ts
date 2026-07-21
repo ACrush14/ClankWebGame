@@ -45,12 +45,12 @@ describe("playCard", () => {
   it("jogar Burgle dá 1 skill e move a carta pra playedThisTurn", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.hand = ["burgle", "burgle", "cautious-advance", "skillful-move", "stumble"];
+    player.hand = ["burgle", "burgle", "sidestep", "scramble", "stumble"];
 
     game.playCard(player.id, "burgle");
 
     expect(player.resources.skill).toBe(1);
-    expect(player.hand).toEqual(["burgle", "cautious-advance", "skillful-move", "stumble"]);
+    expect(player.hand).toEqual(["burgle", "sidestep", "scramble", "stumble"]);
     expect(player.playedThisTurn).toEqual(["burgle"]);
   });
 
@@ -68,9 +68,9 @@ describe("playCard", () => {
   it("joga carta acumulando múltiplos recursos (Scramble = skill + boot)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.hand = ["skillful-move"];
+    player.hand = ["scramble"];
 
-    game.playCard(player.id, "skillful-move");
+    game.playCard(player.id, "scramble");
 
     expect(player.resources.skill).toBe(1);
     expect(player.resources.boots).toBe(1);
@@ -95,15 +95,31 @@ describe("acquireCard", () => {
     const player = game.currentPlayer;
 
     // garante carta de sobra no monte de compra pra testar o reabastecimento do slot
-    game.state.dungeonRow.drawPile.push("teleporter");
-    game.state.dungeonRow.slots[0] = "teleporter";
-    player.resources.skill = getCard("teleporter").skillCost ?? 0;
+    game.state.dungeonRow.drawPile.unshift("bard");
+    game.state.dungeonRow.slots[0] = "expert-guide";
+    player.resources.skill = getCard("expert-guide").skillCost ?? 0;
 
     game.acquireCard(player.id, 0);
 
-    expect(player.discardPile).toContain("teleporter");
+    expect(player.discardPile).toContain("expert-guide");
     expect(player.resources.skill).toBe(0);
     expect(game.state.dungeonRow.slots[0]).not.toBeNull();
+  });
+
+  it("Device vai pro descarte da masmorra, não pro baralho do jogador (regra oficial)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+
+    game.state.dungeonRow.drawPile.unshift("bard");
+    game.state.dungeonRow.slots[0] = "darkened-alcove";
+    player.clank = 2;
+    player.resources.skill = getCard("darkened-alcove").skillCost ?? 0;
+
+    game.acquireCard(player.id, 0);
+
+    expect(player.discardPile).not.toContain("darkened-alcove");
+    expect(game.state.dungeonRow.discardPile).toContain("darkened-alcove");
+    expect(player.clank).toBe(0); // efeito de USE (-2 Clank!) ainda é aplicado na hora
   });
 
   it("lança erro se skill insuficiente", () => {
@@ -119,7 +135,7 @@ describe("acquireCard", () => {
   it("lança erro ao tentar comprar um monstro com acquireCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dungeonRow.slots[0] = "skeleton";
     player.resources.skill = 99;
 
     expect(() => game.acquireCard(player.id, 0)).toThrow(/monstro/i);
@@ -130,22 +146,22 @@ describe("fightMonster", () => {
   it("vence o monstro pagando swords, ganha a recompensa, e a carta NÃO vai pro baralho do jogador", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.drawPile.push("orc-grunt");
-    game.state.dungeonRow.slots[0] = "orc-grunt";
-    player.resources.swords = 2;
+    game.state.dungeonRow.drawPile.unshift("skeleton");
+    game.state.dungeonRow.slots[0] = "skeleton";
+    player.resources.swords = 1;
 
     game.fightMonster(player.id, 0);
 
     expect(player.resources.swords).toBe(0);
-    expect(player.gold).toBe(3);
-    expect(player.discardPile).not.toContain("orc-grunt");
-    expect(game.state.dungeonRow.discardPile).toContain("orc-grunt");
+    expect(player.gold).toBe(2);
+    expect(player.discardPile).not.toContain("skeleton");
+    expect(game.state.dungeonRow.discardPile).toContain("skeleton");
   });
 
   it("lança erro se swords insuficientes", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dungeonRow.slots[0] = "skeleton";
     player.resources.swords = 0;
 
     expect(() => game.fightMonster(player.id, 0)).toThrow(/swords insuficientes/i);
@@ -353,8 +369,8 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     player.clank = 1;
     player.resources.swords = 2;
     game.state.dragon.rageTrackPosition = 2; // sorteia 1 cubo (posição - 1)
-    game.state.dungeonRow.slots[0] = "orc-grunt";
-    game.state.dungeonRow.drawPile.push("orc-grunt"); // garante reposição pra disparar o ataque
+    game.state.dungeonRow.slots[0] = "keymaster"; // monstro sem recompensa de gold/clank
+    game.state.dungeonRow.drawPile.unshift("crystal-kobold"); // tem o símbolo de ataque do dragão
 
     game.fightMonster(player.id, 0);
 
@@ -367,8 +383,8 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     const player = game.currentPlayer;
     player.clank = 1;
     player.resources.swords = 2;
-    game.state.dungeonRow.slots[0] = "orc-grunt";
-    game.state.dungeonRow.drawPile.push("orc-grunt");
+    game.state.dungeonRow.slots[0] = "keymaster";
+    game.state.dungeonRow.drawPile.unshift("crystal-kobold");
 
     game.fightMonster(player.id, 0);
 
@@ -525,8 +541,8 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(game.currentPlayer.id).toBe(p2.id);
 
     // um ataque de dragão normal (disparado por reposição da Row) NÃO deve mexer na trilha.
-    game.state.dungeonRow.drawPile.push("orc-grunt");
-    game.state.dungeonRow.slots[0] = "orc-grunt";
+    game.state.dungeonRow.drawPile.unshift("crystal-kobold");
+    game.state.dungeonRow.slots[0] = "crystal-kobold";
     game.state.dragon.rageTrackPosition = 2;
     const triggerRefill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(
       game,
