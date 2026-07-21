@@ -317,6 +317,8 @@ function GameScreen({
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
   const canLeaveDungeon = !!myRoom?.isEntrance;
+  const artifactLimit = me?.hasBackpack ? 2 : 1;
+  const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
@@ -410,10 +412,13 @@ function GameScreen({
           {hasUnclaimedArtifact && (
             <button
               onClick={onTakeArtifact}
-              disabled={!isMyTurn}
+              disabled={!isMyTurn || atArtifactLimit}
+              title={atArtifactLimit ? `Você já carrega o máximo de artefatos (${artifactLimit})` : undefined}
               className="mb-2 w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
             >
-              Pegar artefato ({myRoom!.artifactValue} pts)
+              {atArtifactLimit
+                ? `Máximo de artefatos carregados (${me?.artifactsCarried}/${artifactLimit})`
+                : `Pegar artefato (${myRoom!.artifactValue} pts) — ${me?.artifactsCarried ?? 0}/${artifactLimit}`}
             </button>
           )}
           {canLeaveDungeon && (

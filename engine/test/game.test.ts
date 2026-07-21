@@ -380,6 +380,36 @@ describe("takeArtifact", () => {
     game.takeArtifact(player.id);
     expect(() => game.takeArtifact(player.id)).toThrow(/já foi pego/i);
   });
+
+  it("sem Mochila só carrega 1 artefato por vez", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hasMasterKey = true;
+    player.roomId = "depths-west";
+    game.takeArtifact(player.id);
+    expect(player.artifactsCarried).toBe(1);
+
+    player.roomId = "sealed-vault";
+    expect(() => game.takeArtifact(player.id)).toThrow(/já está carregando o máximo/i);
+    // não pontuou o segundo artefato nem marcou a sala como já pega
+    expect(player.points).toBe(7);
+    expect(game.state.claimedArtifacts["sealed-vault"]).toBeUndefined();
+  });
+
+  it("com a Mochila dá pra carregar 2 artefatos", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hasMasterKey = true;
+    player.hasBackpack = true;
+    player.roomId = "depths-west";
+    game.takeArtifact(player.id);
+
+    player.roomId = "sealed-vault";
+    game.takeArtifact(player.id);
+
+    expect(player.artifactsCarried).toBe(2);
+    expect(player.points).toBe(7 + 25);
+  });
 });
 
 describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
@@ -536,6 +566,20 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(game.state.phase).toBe("ended");
     expect(game.state.finalScores).toBeDefined();
     expect(game.state.finalScores![p1.id]).toBe(10);
+  });
+
+  it("Mastery: +20 pontos pra quem escapa carregando um artefato antes de ser nocauteado", () => {
+    const game = twoPlayerGame();
+    const [p1, p2] = game.state.players;
+    p1.roomId = "depths-west"; // 7 pontos
+    game.takeArtifact(p1.id); // p1 pega o artefato de verdade (artifactsCarried = 1)
+    p1.roomId = "entrance";
+
+    game.leaveDungeon(p1.id); // escapou carregando artefato -> ganha Mastery
+    game.leaveDungeon(p2.id); // p2 não tem artefato -> sem Mastery
+
+    expect(game.state.finalScores![p1.id]).toBe(7 + 20);
+    expect(game.state.finalScores![p2.id]).toBe(0);
   });
 
   it("jogador nocauteado sem nenhum artefato/coroa pontua 0 (eliminado)", () => {

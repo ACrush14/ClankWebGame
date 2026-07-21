@@ -146,6 +146,8 @@ export interface PlayerState {
   roomId: string;
   /** Pontos de artefatos e coroas pegos (somados no fim de jogo). */
   points: number;
+  /** Quantos artefatos está carregando agora — limite normal é 1 (2 com a Mochila). */
+  artifactsCarried: number;
   /** Ouro é moeda persistente (não reseta a cada turno como skill/swords/boots). */
   gold: number;
   hasMasterKey: boolean;

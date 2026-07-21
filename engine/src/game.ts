@@ -241,6 +241,12 @@ export class GameEngine {
    * artefato. (Ontem eu tinha implementado errado, em camadas por tamanho — isso não
    * existe; o que a foto mostrava com os números 2/3/4 era outra coisa, ver
    * `processCountdownStep`.)
+   *
+   * Limite de carga: normalmente só dá pra carregar 1 Artefato por vez (2 com a
+   * Mochila) — regra oficial. Aqui os pontos continuam sendo banked na hora do jeito
+   * que já funcionava (não modelo "largar" um artefato se for nocauteado, isso não é
+   * uma regra confirmada); o limite só trava pegar um artefato A MAIS enquanto já
+   * estiver no teto.
    */
   takeArtifact(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
@@ -248,8 +254,17 @@ export class GameEngine {
     if (!room?.artifactValue) throw new Error(`${room?.name ?? player.roomId} não tem artefato.`);
     if (this.state.claimedArtifacts[room.id]) throw new Error(`O artefato de ${room.name} já foi pego.`);
 
+    const limit = player.hasBackpack ? 2 : 1;
+    if (player.artifactsCarried >= limit) {
+      throw new Error(
+        `${player.name} já está carregando o máximo de artefatos (${limit})` +
+          (player.hasBackpack ? "." : " — compre a Mochila no Mercado pra carregar 2."),
+      );
+    }
+
     this.state.claimedArtifacts[room.id] = true;
     player.points += room.artifactValue;
+    player.artifactsCarried += 1;
     this.state.dragon.rageTrackPosition += 1;
     this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
   }
@@ -335,12 +350,20 @@ export class GameEngine {
   }
 
   /**
-   * Pontuação final = pontos de artefatos/coroas + Gold + valor das cartas no baralho.
-   * Regra oficial: nocauteado sem nenhum artefato (nem coroa) = eliminado, pontua 0;
-   * nocauteado COM artefato = "resgatado", pontua normalmente. Uso `points === 0` como
-   * proxy de "sem artefato/coroa" (é a única fonte desses pontos hoje no motor).
+   * Pontuação final = pontos de artefatos/coroas + Gold + valor das cartas no baralho
+   * + bônus de Mastery. Regra oficial: nocauteado sem nenhum artefato (nem coroa) =
+   * eliminado, pontua 0; nocauteado COM artefato = "resgatado", pontua normalmente. Uso
+   * `points === 0` como proxy de "sem artefato/coroa" (é a única fonte desses pontos
+   * hoje no motor).
+   *
+   * Mastery (CONFIRMADO): "If you make it all the way back [outside, à Entrada] before
+   * being knocked out, you will receive a Mastery token worth an additional 20 points."
+   * — só quem escapou de verdade (`hasLeftDungeon`, o que já implica não ter sido
+   * nocauteado, já que `leaveDungeon` exige estar jogando) E está carregando pelo menos
+   * 1 artefato ganha o bônus.
    */
   private computeFinalScores(): Record<string, number> {
+    const MASTERY_BONUS = 20;
     const scores: Record<string, number> = {};
     for (const player of this.state.players) {
       const eliminated = player.knockedOut && player.points === 0;
@@ -350,7 +373,8 @@ export class GameEngine {
       }
       const deckCardIds = [...player.hand, ...player.drawPile, ...player.discardPile, ...player.playedThisTurn];
       const cardPoints = deckCardIds.reduce((sum, id) => sum + (getCard(id).points ?? 0), 0);
-      scores[player.id] = player.points + player.gold + cardPoints;
+      const masteryBonus = player.hasLeftDungeon && player.artifactsCarried > 0 ? MASTERY_BONUS : 0;
+      scores[player.id] = player.points + player.gold + cardPoints + masteryBonus;
     }
     return scores;
   }

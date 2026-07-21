@@ -19,6 +19,7 @@ export interface PlayerSnapshot {
   damage: number;
   roomId: string;
   points: number;
+  artifactsCarried: number;
   hasMasterKey: boolean;
   hasBackpack: boolean;
   hasLeftDungeon: boolean;
@@ -99,6 +100,7 @@ export function useClankRoom() {
         damage: p.damage,
         roomId: p.roomId,
         points: p.points,
+        artifactsCarried: p.artifactsCarried,
         hasMasterKey: p.hasMasterKey,
         hasBackpack: p.hasBackpack,
         hasLeftDungeon: p.hasLeftDungeon,
