@@ -6,7 +6,7 @@ Versão web do jogo de tabuleiro **Clank!** (Renegade Game Studios / Paul Dennen
 
 ---
 
-## 0. Status atual (atualizado em 2026-07-20)
+## 0. Status atual (atualizado em 2026-07-21)
 
 Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-online) — HTML5, lobby por código, até 8 jogadores, também disponível como app Android. Confirma que **web-first + wrapper mobile depois** é o caminho certo (não precisa de engine de jogo dedicada).
 
@@ -40,19 +40,33 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 - **Testado com 2 clientes reais, partida completa do início ao fim:** os dois jogadores saem pela Entrada assim que a partida começa (turno 1) → primeira saída dispara a Trilha de Contagem Regressiva (visível em tempo real nas duas abas, "1/5") → segunda saída termina a partida → tela de resultado aparece nas duas abas simultaneamente com ranking e vencedor. **Corrigido no caminho:** o mesmo bug do `ArraySchema#splice()` de antes, dessa vez na sincronização das coroas do Mercado.
 - 58 testes unitários no motor (Vitest), todos passando — 12 novos cobrindo túneis com cadeado/mão única, Mercado, `leaveDungeon` e fim de jogo (incluindo a Trilha de Contagem Regressiva forçando nocaute em quem ficou pra trás).
 - **Modo combinado (um processo só) — implementado.** O `server/` agora serve o `client/dist` (se existir) no mesmo processo Express/Colyseus — `npm run build:client && npm start` sobe front + back juntos numa porta só (`http://localhost:2567`). Testado de ponta a ponta (criar sala funcionou pela mesma porta que serve o HTML). Simplifica o deploy de amanhã: só precisa de **um** serviço de hospedagem, não dois. Corrigido no caminho: `server/package.json` tinha um `start` quebrado (`node dist/index.js` — o `@clank/engine` é consumido como TS puro via workspace, `node` puro não roda TS; trocado pra `tsx src/index.ts`, igual o `dev`).
-- **Tabuleiro corrigido com uma foto real do tabuleiro oficial.** Você mandou fotos do tabuleiro físico do Clank! — confirmou vários mecanismos que eu tinha estimado (pegada = 2 Boots, caveira = 1 Sword ou 1 dano, cadeado = precisa da Chave-mestra, Mercado = 7 Gold) e corrigiu os **valores de artefato**, que agora são os reais (5/10/15/20/25/30 — troquei os 3 valores inventados que eu tinha pelos reais: `depths-west`=5, `depths-east`=15, `sealed-vault`=30). Também revelou que a **Trilha de Fúria avança mais quanto maior o artefato** (não é +1 fixo) — implementei em camadas (5-10→+1, 15-20→+2, 25-30→+3), minha melhor leitura da foto, ainda não é a escala exata confirmada. O layout de salas continua sendo meu (não uma cópia sala-por-sala — isso exigiria mapear cada conexão da foto uma por uma, risco alto de erro), mas agora as regras/números batem com o jogo real.
+- **Tabuleiro ajustado com uma foto real do tabuleiro oficial (2026-07-20).** Confirmou vários mecanismos que eu tinha estimado (pegada = 2 Boots, caveira = 1 Sword ou 1 dano, cadeado = precisa da Chave-mestra, Mercado = 7 Gold). O layout de salas continua sendo meu (não uma cópia sala-por-sala do tabuleiro físico).
+- **Consegui e li o manual oficial em PDF na íntegra (12 páginas, via `Read` multimodal) — corrigiu vários erros meus (2026-07-21):**
+  - Baralho inicial: os nomes reais são **"Cautious Advance"** e **"Skillful Move"** (eu tinha "Sidestep"/"Scramble", de fonte secundária errada — os efeitos numéricos já estavam certos).
+  - Dungeon Row: **6 cartas visíveis**, não 5 (confirmado: "deal six cards").
+  - **Trilha de Fúria avança SEMPRE +1 por artefato pego**, independente do valor — a escala em camadas (+1/+2/+3 por tamanho) que eu tinha implementado a partir de uma foto **estava errada**, revertida.
+  - **Trilha de Contagem Regressiva redesenhada do zero** pra regra real: só o **primeiro** jogador a sair da masmorra ou ser nocauteado anda nela — e anda nos **próprios turnos seguintes** (em vez de jogar normalmente), não a cada ataque do dragão. Casas 2/3/4 disparam um ataque instantâneo do dragão com +1/+2/+3 cubos extras; casa 5 nocauteia na hora todo mundo que ainda está dentro.
+  - Valores de artefato: o manual dá dois exemplos exatos (**7** e **25**) — usados agora em `depths-west` (7) e `sealed-vault` (25); `depths-east` (15) continua estimativa (zona intermediária).
+  - Carta **"Move Silently"** adicionada 100% verificada (3 skill → 2 boots, -2 Clank), com exemplo de jogo completo no manual.
+  - Referência completa de **Major/Minor Secrets** (tokens de sala) transcrita em `cards.ts` — ainda não implementados no motor (tabuleiro não modela tokens de sala).
+  - 59 testes unitários passando depois das correções; typecheck limpo em `engine`/`server`/`client`.
+- **Tabuleiro renderizado como mapa SVG (item 7) — implementado (2026-07-21).** `client/src/game/BoardMap.tsx`: grafo de salas/túneis desenhado com cores por tipo de sala, ícones de túnel (monstro+custo, pegada, cadeado, mão-única tracejado), círculos de artefato com o valor, e tokens de jogador na sala atual; clicar numa sala alcançável move o jogador (mesma ação do botão "Ir"). Testado manualmente rodando client+server localmente. **Ainda não é uma cópia do layout físico** — mesma limitação do grafo em si (ver acima).
+
+> ⚠️ **Itens 5 e 6 continuam bloqueados por falta de fonte:** pesquisei bastante (WebSearch, WebFetch, navegador) atrás de custo/efeito completo das ~66 cartas restantes e de qual carta tem o símbolo de ataque do dragão. Bati em paredes reais: BoardGameGeek bloqueia scraping (403 em todas as páginas de arquivo/fórum) e exige login pra baixar os PDFs de card list; o Scribd "Clank! Complete Card List" também exige login pro documento completo; não achei wiki dedicada nem implementação open-source (BGA não tem Clank!) com os dados. Isso é diferente do manual de regras (que consegui baixar de `cdn.1j1ju.com` sem login) — o "Card List" com texto de carta parece só circular dentro do BGG por trás de login. **Preciso de: acesso de login ao BGG (sua conta, se tiver) pra baixar "TJAC's Clank! Card List" (tem uma página de legenda de símbolos que provavelmente cobre o símbolo do dragão), ou fotos suas das cartas físicas se você comprar/pegar emprestado o jogo.**
 
 **Próximos passos (em ordem de prioridade — ver conversa):**
 1. ~~Fim de jogo~~ ✅
 2. ~~Mercado de ouro~~ ✅
 3. ~~Túneis com cadeado e mão única~~ ✅
 4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
-5. Confirmar quais cartas reais têm o símbolo de ataque do dragão.
-6. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
-7. Renderizar o tabuleiro visualmente (SVG do grafo de salas, hoje é lista de botões) — agora com uma foto de referência real, isso fica bem mais fácil de fazer parecido com o jogo de verdade.
+5. **Bloqueado — precisa de você:** confirmar quais cartas reais têm o símbolo de ataque do dragão (ver nota acima).
+6. **Bloqueado — precisa de você:** ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE` (ver nota acima).
+7. ~~Renderizar o tabuleiro visualmente (SVG do grafo de salas)~~ ✅
 8. Cor/avatar por jogador.
 9. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
 10. Reconexão robusta (fora do MVP original).
+11. Regra "só carrega 1 Artefato por vez (2 com a Mochila)" — não implementada; hoje artefatos viram pontos na hora, sem limite de quantos "carregar". Exigiria repensar `takeArtifact`/pontuação (artefato como item carregável que se perde ao ser nocauteado, em vez de pontos banked na hora).
+12. Bônus de 20 pontos por "Mastery" (fugir completamente pra fora, não só sair da masmorra) — não modelado; hoje só existe um conceito de "saiu".
 
 ---
 
@@ -75,11 +89,11 @@ Fonte: [rulebook oficial](https://cdn.1j1ju.com/medias/dc/cc/ae-clank-a-deck-bui
 
 **Recursos não gastos no turno são perdidos** (não acumulam pro próximo turno).
 
-**Saco do dragão (não é um dado, mas é sorteio aleatório):** todo Clank! (barulho) que os jogadores geram fica na "Área de Clank"; quando um ataque do dragão é acionado, todos esses cubos vão pro saco e sorteia-se uma quantidade de cubos **igual à posição atual na Trilha de Fúria** (não é fixo — sobe conforme artefatos são pegos ou segredos de "ovo de dragão" são revelados). Cubos pretos são neutros; cubos da cor de um jogador causam dano a esse jogador.
+**Saco do dragão (não é um dado, mas é sorteio aleatório):** todo Clank! (barulho) que os jogadores geram fica na "Área de Clank"; quando um ataque do dragão é acionado, todos esses cubos vão pro saco e sorteia-se uma quantidade de cubos **igual à posição atual na Trilha de Fúria menos 1**. A Trilha de Fúria avança **sempre +1 espaço** cada vez que um artefato é pego (não escala com o valor do artefato) ou quando um segredo "Dragon Egg" é revelado. Cubos pretos são neutros; cubos da cor de um jogador causam dano a esse jogador.
 
-**Mercado:** custo fixo de 7 de ouro pra qualquer item (chave-mestra, mochila, coroas de 8-10 pontos). Precisa estar numa sala de Mercado pra comprar.
+**Mercado:** custo fixo de 7 de ouro pra qualquer item (chave-mestra, mochila, coroas de 10/9/8 pontos, na ordem). Precisa estar numa sala de Mercado pra comprar.
 
-**Fim de jogo:** termina quando todos os jogadores saem da masmorra ou são nocauteados. Quem sai entra numa "Trilha de Contagem Regressiva" com ataques do dragão crescentes; na 5ª casa, o dragão nocauteia instantaneamente quem ainda estiver dentro. Pontuação = valor dos artefatos + tokens coletados + ouro + valor das cartas no baralho. Nocauteado sem artefato (ou ainda nas Profundezas) = eliminado; com artefato = resgatado e pontua.
+**Fim de jogo:** termina quando todos os jogadores saem da masmorra ou são nocauteados. O **primeiro** jogador a sair ou ser nocauteado — só ele — entra na "Trilha de Contagem Regressiva": nos seus próprios turnos seguintes, em vez de jogar normalmente, ele anda uma casa na trilha. Casas 2/3/4 disparam um ataque instantâneo do dragão com +1/+2/+3 cubos extras (além do sorteio normal); a 5ª casa nocauteia instantaneamente todo mundo que ainda estiver dentro. Pontuação = valor dos artefatos + tokens coletados + ouro + valor das cartas no baralho. Nocauteado sem artefato (ou ainda nas Profundezas) = eliminado; com artefato = resgatado e pontua.
 
 ## 3. Escopo do MVP
 
