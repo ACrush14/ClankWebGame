@@ -1,13 +1,16 @@
-/** Os três recursos reais do jogo — Clank! não usa dados em nenhum momento. */
+/**
+ * Os três recursos reais do turno — Clank! não usa dados em nenhum momento. Zerados a
+ * cada início de turno ("recursos não gastos são perdidos"). Gold NÃO é um recurso de
+ * turno — é moeda persistente, guardada em `PlayerState.gold` (ver ali o porquê).
+ */
 export interface Resources {
   skill: number;
   swords: number;
   boots: number;
-  gold: number;
 }
 
 export function emptyResources(): Resources {
-  return { skill: 0, swords: 0, boots: 0, gold: 0 };
+  return { skill: 0, swords: 0, boots: 0 };
 }
 
 export type CardKind = "starting" | "dungeon" | "monster" | "item" | "device";
@@ -60,6 +63,8 @@ export interface TunnelIcon {
   monsterSwordCost?: number;
   /** Túnel de pegada — custa 2 Boots em vez de 1. */
   footprint?: boolean;
+  /** Cadeado — só passa com a Chave-mestra do Mercado (uso ilimitado depois de comprada). */
+  locked?: boolean;
 }
 
 export interface Tunnel {
@@ -97,8 +102,26 @@ export interface ReserveState {
   remaining: Record<string, number>;
 }
 
+/**
+ * Mercado — itens comprados com Gold (não com Skill), só numa sala com `isMarket`.
+ * CONFIRMADO: custo fixo de 7 Gold por item; coroas valem 10/9/8 pontos (a mais
+ * valiosa disponível primeiro).
+ */
+export const MARKET_ITEM_COST = 7;
+export const CROWN_VALUES = [10, 9, 8];
+
+export interface MarketState {
+  masterKeyAvailable: boolean;
+  backpackAvailable: boolean;
+  /** Valores de coroa ainda disponíveis, do maior pro menor. */
+  crownsAvailable: number[];
+}
+
 /** Tamanho da trilha de vida — CONFIRMADO (10 espaços; enche = nocauteado). */
 export const HEALTH_TRACK_SIZE = 10;
+
+/** Tamanho da Trilha de Contagem Regressiva — ⚠️ estimativa (confirmei "5ª casa" como o fim). */
+export const COUNTDOWN_TRACK_SIZE = 5;
 
 export interface PlayerState {
   id: string;
@@ -119,6 +142,12 @@ export interface PlayerState {
   damage: number;
   knockedOut: boolean;
   roomId: string;
-  /** Pontos de artefatos pegos (somados no fim de jogo). */
+  /** Pontos de artefatos e coroas pegos (somados no fim de jogo). */
   points: number;
+  /** Ouro é moeda persistente (não reseta a cada turno como skill/swords/boots). */
+  gold: number;
+  hasMasterKey: boolean;
+  hasBackpack: boolean;
+  /** Já escapou da masmorra pela Entrada (fora de jogo, aguardando o fim da partida). */
+  hasLeftDungeon: boolean;
 }

@@ -61,7 +61,7 @@ describe("playCard", () => {
 
     game.playCard(player.id, "stumble");
 
-    expect(player.resources).toEqual({ skill: 0, swords: 0, boots: 0, gold: 0 });
+    expect(player.resources).toEqual({ skill: 0, swords: 0, boots: 0 });
     expect(player.clank).toBe(1);
   });
 
@@ -138,7 +138,7 @@ describe("fightMonster", () => {
     game.fightMonster(player.id, 0);
 
     expect(player.resources.swords).toBe(0);
-    expect(player.resources.gold).toBe(3);
+    expect(player.gold).toBe(3);
     expect(player.discardPile).not.toContain("orc-grunt");
     expect(game.state.dungeonRow.discardPile).toContain("orc-grunt");
   });
@@ -176,7 +176,7 @@ describe("acquireFromReserve", () => {
     game.acquireFromReserve(player.id, "goblin");
 
     expect(game.state.reserve.remaining.goblin).toBe(1);
-    expect(player.resources.gold).toBe(3);
+    expect(player.gold).toBe(3);
   });
 
   it("lança erro quando a pilha da Reserva esgota", () => {
@@ -211,7 +211,7 @@ describe("endTurn", () => {
 
     expect(player.hand).toHaveLength(5);
     expect(player.playedThisTurn).toHaveLength(0);
-    expect(player.resources).toEqual({ skill: 0, swords: 0, boots: 0, gold: 0 });
+    expect(player.resources).toEqual({ skill: 0, swords: 0, boots: 0 });
     expect(game.currentPlayer.id).toBe("p2");
   });
 
@@ -361,5 +361,167 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     game.fightMonster(player.id, 0);
 
     expect(player.damage).toBe(0);
+  });
+});
+
+describe("túneis com cadeado e de mão única", () => {
+  it("lança erro ao tentar passar por um túnel com cadeado sem a Chave-mestra", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "deep-tunnel";
+    player.resources.boots = 1;
+    expect(() => game.movePlayer(player.id, "sealed-vault")).toThrow(/cadeado/i);
+  });
+
+  it("com a Chave-mestra, passa livremente", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "deep-tunnel";
+    player.hasMasterKey = true;
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "sealed-vault");
+    expect(player.roomId).toBe("sealed-vault");
+  });
+
+  it("o escorregador do Cofre Selado só funciona num sentido", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "sealed-vault";
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "entrance");
+    expect(player.roomId).toBe("entrance");
+
+    // não existe túnel de volta da entrada pro cofre
+    player.resources.boots = 99;
+    expect(() => game.movePlayer(player.id, "sealed-vault")).toThrow(/não há túnel/i);
+  });
+});
+
+describe("buyMarketItem", () => {
+  function inMarket(game: GameEngine) {
+    const player = game.currentPlayer;
+    player.roomId = "market-room";
+    return player;
+  }
+
+  it("lança erro se não estiver numa sala de Mercado", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.gold = 99;
+    expect(() => game.buyMarketItem(player.id, "key")).toThrow(/sala de mercado/i);
+  });
+
+  it("lança erro se gold insuficiente", () => {
+    const game = twoPlayerGame();
+    const player = inMarket(game);
+    player.gold = 0;
+    expect(() => game.buyMarketItem(player.id, "key")).toThrow(/gold insuficiente/i);
+  });
+
+  it("compra a Chave-mestra, gasta 7 gold, e ela não pode ser comprada de novo", () => {
+    const game = twoPlayerGame();
+    const player = inMarket(game);
+    player.gold = 7;
+
+    game.buyMarketItem(player.id, "key");
+
+    expect(player.hasMasterKey).toBe(true);
+    expect(player.gold).toBe(0);
+    expect(game.state.market.masterKeyAvailable).toBe(false);
+
+    const other = game.state.players[1];
+    other.roomId = "market-room";
+    other.gold = 7;
+    game.endTurn(player.id);
+    expect(() => game.buyMarketItem(other.id, "key")).toThrow(/já foi comprada/i);
+  });
+
+  it("compra coroas em ordem decrescente de valor (10, depois 9)", () => {
+    const game = twoPlayerGame();
+    const player = inMarket(game);
+    player.gold = 14;
+
+    game.buyMarketItem(player.id, "crown");
+    expect(player.points).toBe(10);
+
+    game.buyMarketItem(player.id, "crown");
+    expect(player.points).toBe(19);
+    expect(game.state.market.crownsAvailable).toEqual([8]);
+  });
+});
+
+describe("leaveDungeon e fim de jogo", () => {
+  it("lança erro se não estiver na sala de Entrada", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "mine-entry";
+    expect(() => game.leaveDungeon(player.id)).toThrow(/entrada/i);
+  });
+
+  it("sair pela primeira vez começa a Trilha de Contagem Regressiva", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+
+    game.leaveDungeon(player.id);
+
+    expect(player.hasLeftDungeon).toBe(true);
+    expect(game.state.countdownTrack).toBe(1);
+    expect(game.state.phase).toBe("playing"); // o outro jogador ainda está na masmorra
+  });
+
+  it("termina a partida e calcula a pontuação quando todos saem/são nocauteados", () => {
+    const game = twoPlayerGame();
+    const [p1, p2] = game.state.players;
+    p1.points = 10; // artefato pego
+
+    game.leaveDungeon(p1.id); // já avança a vez sozinho (não tem mais o que fazer depois de sair)
+    expect(game.currentPlayer.id).toBe(p2.id);
+
+    game.leaveDungeon(p2.id);
+
+    expect(game.state.phase).toBe("ended");
+    expect(game.state.finalScores).toBeDefined();
+    expect(game.state.finalScores![p1.id]).toBe(10);
+  });
+
+  it("jogador nocauteado sem nenhum artefato/coroa pontua 0 (eliminado)", () => {
+    const game = twoPlayerGame();
+    const [p1, p2] = game.state.players;
+    p1.points = 0;
+    p1.damage = 10;
+    p1.knockedOut = true;
+    p2.points = 5;
+    game.state.currentPlayerIndex = 1; // p1 nocauteado manualmente, não passou pelo advanceTurn
+
+    game.leaveDungeon(p2.id);
+
+    expect(game.state.finalScores![p1.id]).toBe(0);
+  });
+
+  it("a Trilha de Contagem Regressiva no fim nocauteia quem ainda está dentro", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0.99, // evita sortear cubo de jogador nos ataques (cai nos cubos pretos)
+    );
+    const [p1, p2] = game.state.players;
+    game.leaveDungeon(p1.id); // countdownTrack = 1, já avança a vez pro p2 sozinho
+
+    // dispara 4 ataques do dragão (countdown 1 -> 5) pra estourar a trilha.
+    // refillDungeonSlot é privado; acessado via cast só pra este teste.
+    const triggerRefill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(
+      game,
+    );
+    for (let i = 0; i < 4; i++) {
+      game.state.dungeonRow.drawPile.push("orc-grunt");
+      game.state.dungeonRow.slots[0] = "orc-grunt";
+      game.state.dragon.rageTrackPosition = 2; // garante drawCount > 0 em cada ataque
+      triggerRefill(0);
+    }
+
+    expect(p2.knockedOut).toBe(true);
+    expect(game.state.phase).toBe("ended");
   });
 });

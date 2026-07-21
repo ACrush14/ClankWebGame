@@ -21,11 +21,15 @@ export class Player extends Schema {
   @type("number") damage = 0;
   @type("string") roomId = "";
   @type("number") points = 0;
+  @type("boolean") hasMasterKey = false;
+  @type("boolean") hasBackpack = false;
+  @type("boolean") hasLeftDungeon = false;
+  @type("number") finalScore = -1;
 }
 
 export class ClankRoomState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
-  @type("string") phase: "lobby" | "playing" = "lobby";
+  @type("string") phase: "lobby" | "playing" | "ended" = "lobby";
   @type(["string"]) log = new ArraySchema<string>();
 
   // Estado de jogo público (visível a todos — mãos são privadas, ver mensagem "hand")
@@ -37,6 +41,10 @@ export class ClankRoomState extends Schema {
   @type("number") dragonRageTrack = 1;
   /** Ids de sala cujo artefato já foi pego (o tabuleiro em si é estático — vem de @clank/engine no cliente). */
   @type({ map: "boolean" }) claimedArtifacts = new MapSchema<boolean>();
+  @type("number") countdownTrack = 0;
+  @type("boolean") marketKeyAvailable = true;
+  @type("boolean") marketBackpackAvailable = true;
+  @type(["number"]) marketCrownsAvailable = new ArraySchema<number>();
 }
 
 const MAX_PLAYERS = 4;
@@ -84,6 +92,12 @@ export class ClankRoom extends Room<ClankRoomState> {
     );
     this.onMessage("take_artifact", (client) =>
       this.handleAction(client, () => this.engine!.takeArtifact(client.sessionId)),
+    );
+    this.onMessage("leave_dungeon", (client) =>
+      this.handleAction(client, () => this.engine!.leaveDungeon(client.sessionId)),
+    );
+    this.onMessage("buy_market_item", (client, item: "key" | "backpack" | "crown") =>
+      this.handleAction(client, () => this.engine!.buyMarketItem(client.sessionId, item)),
     );
     this.onMessage("end_turn", (client) => this.handleAction(client, () => this.engine!.endTurn(client.sessionId)));
 
@@ -164,6 +178,12 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.state.turnNumber = state.turnNumber;
     this.state.currentPlayerId = state.players[state.currentPlayerIndex]?.id ?? "";
     this.state.dragonRageTrack = state.dragon.rageTrackPosition;
+    this.state.countdownTrack = state.countdownTrack;
+    this.state.marketKeyAvailable = state.market.masterKeyAvailable;
+    this.state.marketBackpackAvailable = state.market.backpackAvailable;
+    this.state.marketCrownsAvailable.clear();
+    for (const value of state.market.crownsAvailable) this.state.marketCrownsAvailable.push(value);
+    if (state.phase === "ended") this.state.phase = "ended";
 
     this.state.dungeonRowSlots.clear();
     for (const id of state.dungeonRow.slots) this.state.dungeonRowSlots.push(id ?? "");
@@ -186,11 +206,15 @@ export class ClankRoom extends Room<ClankRoomState> {
       schemaPlayer.skill = enginePlayer.resources.skill;
       schemaPlayer.swords = enginePlayer.resources.swords;
       schemaPlayer.boots = enginePlayer.resources.boots;
-      schemaPlayer.gold = enginePlayer.resources.gold;
+      schemaPlayer.gold = enginePlayer.gold;
       schemaPlayer.clank = enginePlayer.clank;
       schemaPlayer.damage = enginePlayer.damage;
       schemaPlayer.roomId = enginePlayer.roomId;
       schemaPlayer.points = enginePlayer.points;
+      schemaPlayer.hasMasterKey = enginePlayer.hasMasterKey;
+      schemaPlayer.hasBackpack = enginePlayer.hasBackpack;
+      schemaPlayer.hasLeftDungeon = enginePlayer.hasLeftDungeon;
+      schemaPlayer.finalScore = state.finalScores?.[enginePlayer.id] ?? -1;
     }
 
     // Repassa pro log da sala só as linhas novas geradas pelo motor desde a última sync

@@ -7,11 +7,13 @@ describe("tabuleiro", () => {
     expect(BOARD.rooms[BOARD.entranceRoomId].isEntrance).toBe(true);
   });
 
-  it("todo túnel é bidirecional (se A liga a B, B liga a A)", () => {
+  it("todo túnel é bidirecional, exceto os de mão única conhecidos", () => {
+    const oneWayExceptions = new Set(["sealed-vault->entrance"]);
     for (const room of Object.values(BOARD.rooms)) {
       for (const tunnel of room.tunnels) {
         const target = BOARD.rooms[tunnel.to];
         expect(target, `sala ${tunnel.to} referenciada por ${room.id} não existe`).toBeDefined();
+        if (oneWayExceptions.has(`${room.id}->${tunnel.to}`)) continue;
         const backTunnel = target.tunnels.find((t) => t.to === room.id);
         expect(backTunnel, `${target.id} não tem túnel de volta pra ${room.id}`).toBeDefined();
       }

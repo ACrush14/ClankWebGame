@@ -31,6 +31,8 @@ export default function App() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
+    leaveDungeon,
+    buyMarketItem,
     endTurn,
     leaveRoom,
   } = useClankRoom();
@@ -52,6 +54,10 @@ export default function App() {
     );
   }
 
+  if (snapshot.phase === "ended") {
+    return <EndScreen snapshot={snapshot} onLeave={leaveRoom} />;
+  }
+
   if (snapshot.phase === "playing") {
     return (
       <GameScreen
@@ -65,6 +71,8 @@ export default function App() {
         onAcquireFromReserve={acquireFromReserve}
         onMovePlayer={movePlayer}
         onTakeArtifact={takeArtifact}
+        onLeaveDungeon={leaveDungeon}
+        onBuyMarketItem={buyMarketItem}
         onEndTurn={endTurn}
         onLeave={leaveRoom}
       />
@@ -273,6 +281,8 @@ interface GameScreenProps {
   onAcquireFromReserve: (cardId: string) => void;
   onMovePlayer: (toRoomId: string) => void;
   onTakeArtifact: () => void;
+  onLeaveDungeon: () => void;
+  onBuyMarketItem: (item: "key" | "backpack" | "crown") => void;
   onEndTurn: () => void;
   onLeave: () => void;
 }
@@ -295,6 +305,8 @@ function GameScreen({
   onAcquireFromReserve,
   onMovePlayer,
   onTakeArtifact,
+  onLeaveDungeon,
+  onBuyMarketItem,
   onEndTurn,
   onLeave,
 }: GameScreenProps) {
@@ -303,6 +315,7 @@ function GameScreen({
   const currentPlayerName = snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.name ?? "?";
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
+  const canLeaveDungeon = !!myRoom?.isEntrance;
 
   return (
     <main className="min-h-dvh bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
@@ -361,6 +374,12 @@ function GameScreen({
               <span>Fúria do dragão (sorteia {Math.max(0, snapshot.dragonRageTrack - 1)} cubo(s))</span>
               <span className="font-mono text-amber-400">{snapshot.dragonRageTrack}</span>
             </div>
+            {snapshot.countdownTrack > 0 && (
+              <div className="mt-2 flex items-center justify-between text-xs text-red-300">
+                <span>⏳ Contagem regressiva — alguém já escapou, corra pra fora!</span>
+                <span className="font-mono">{snapshot.countdownTrack}/5</span>
+              </div>
+            )}
           </section>
         )}
 
@@ -377,6 +396,15 @@ function GameScreen({
               Pegar artefato ({myRoom!.artifactValue} pts)
             </button>
           )}
+          {canLeaveDungeon && (
+            <button
+              onClick={onLeaveDungeon}
+              disabled={!isMyTurn}
+              className="mb-2 w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-50 active:scale-[0.98] disabled:opacity-40"
+            >
+              Sair da masmorra
+            </button>
+          )}
           <ul className="grid grid-cols-1 gap-2">
             {myRoom?.tunnels.map((tunnel) => {
               const targetRoom = BOARD.rooms[tunnel.to];
@@ -391,6 +419,7 @@ function GameScreen({
                     {tunnel.icon?.monsterSwordCost && (
                       <span className="ml-1 text-red-400">👹{tunnel.icon.monsterSwordCost}⚔</span>
                     )}
+                    {tunnel.icon?.locked && <span className="ml-1 text-amber-300">🔒</span>}
                   </span>
                   <button
                     onClick={() => onMovePlayer(tunnel.to)}
@@ -404,6 +433,46 @@ function GameScreen({
             })}
           </ul>
         </section>
+
+        {myRoom?.isMarket && (
+          <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+            <h2 className="mb-2 text-sm font-semibold text-slate-300">Mercado (7💰 cada item)</h2>
+            <ul className="grid grid-cols-1 gap-2">
+              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
+                <span className="text-sm">Chave-mestra {me?.hasMasterKey && "✓"}</span>
+                <button
+                  onClick={() => onBuyMarketItem("key")}
+                  disabled={!isMyTurn || !snapshot.marketKeyAvailable || !!me?.hasMasterKey}
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                >
+                  {snapshot.marketKeyAvailable ? "Comprar" : "Esgotado"}
+                </button>
+              </li>
+              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
+                <span className="text-sm">Mochila {me?.hasBackpack && "✓"}</span>
+                <button
+                  onClick={() => onBuyMarketItem("backpack")}
+                  disabled={!isMyTurn || !snapshot.marketBackpackAvailable || !!me?.hasBackpack}
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                >
+                  {snapshot.marketBackpackAvailable ? "Comprar" : "Esgotado"}
+                </button>
+              </li>
+              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
+                <span className="text-sm">
+                  Coroa {snapshot.marketCrownsAvailable[0] !== undefined && `(${snapshot.marketCrownsAvailable[0]} pts)`}
+                </span>
+                <button
+                  onClick={() => onBuyMarketItem("crown")}
+                  disabled={!isMyTurn || snapshot.marketCrownsAvailable.length === 0}
+                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
+                >
+                  {snapshot.marketCrownsAvailable.length > 0 ? "Comprar" : "Esgotado"}
+                </button>
+              </li>
+            </ul>
+          </section>
+        )}
 
         <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
           <h2 className="mb-2 text-sm font-semibold text-slate-300">Dungeon Row</h2>
@@ -499,6 +568,7 @@ function GameScreen({
                   <img src="/assets/kenney/board-game-icons/pawn.png" alt="" className="h-4 w-4 opacity-80" />
                   {p.name}
                   {p.knockedOut && <span className="text-red-400">(nocauteado)</span>}
+                  {p.hasLeftDungeon && <span className="text-emerald-400">(escapou)</span>}
                 </span>
                 <span className="text-slate-400">
                   {BOARD.rooms[p.roomId]?.name ?? p.roomId} · {HEALTH_TRACK_SIZE - p.damage}❤ · {p.points}pts ·{" "}
@@ -528,3 +598,64 @@ function GameScreen({
   );
 }
 
+interface EndScreenProps {
+  snapshot: RoomSnapshot;
+  onLeave: () => void;
+}
+
+function EndScreen({ snapshot, onLeave }: EndScreenProps) {
+  const ranked = [...snapshot.players].sort((a, b) => b.finalScore - a.finalScore);
+  const winner = ranked[0];
+
+  return (
+    <main className="min-h-dvh flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
+      <div className="w-full max-w-sm space-y-6">
+        <header className="text-center space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-amber-400">Partida encerrada!</h1>
+          {winner && (
+            <p className="text-sm text-slate-400">
+              {winner.name} venceu com {winner.finalScore} pontos.
+            </p>
+          )}
+        </header>
+
+        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+          <ul className="space-y-2">
+            {ranked.map((p, i) => (
+              <li
+                key={p.id}
+                className={`flex items-center justify-between rounded-xl px-4 py-3 ${
+                  i === 0 ? "bg-amber-500 text-slate-950" : "bg-slate-800"
+                }`}
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  {i === 0 ? "🏆" : `${i + 1}º`} {p.name}
+                  {p.knockedOut && p.points === 0 && (
+                    <span className={i === 0 ? "text-slate-800" : "text-red-400"}>(eliminado)</span>
+                  )}
+                </span>
+                <span className="font-mono">{p.finalScore} pts</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
+          <h2 className="mb-2 text-sm font-semibold text-slate-300">Eventos</h2>
+          <ul className="max-h-40 space-y-1 overflow-y-auto text-sm text-slate-400">
+            {[...snapshot.log].reverse().map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </section>
+
+        <button
+          onClick={onLeave}
+          className="w-full rounded-xl bg-slate-700 px-4 py-3 text-base font-semibold active:scale-[0.98]"
+        >
+          Sair da sala
+        </button>
+      </div>
+    </main>
+  );
+}

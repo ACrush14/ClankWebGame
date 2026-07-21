@@ -22,6 +22,8 @@ interface EdgeSpec {
   a: string;
   b: string;
   icon?: Tunnel["icon"];
+  /** Só cria o túnel a→b, não o de volta (ex: um escorregador de fuga). */
+  oneWay?: boolean;
 }
 
 const ROOM_SPECS: RoomSpec[] = [
@@ -35,6 +37,7 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "crystal-cave", name: "Caverna de Cristal" },
   { id: "depths-east", name: "Profundezas — Leste", isDepths: true, artifactValue: 10 },
   { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 6 },
+  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 15 },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
@@ -49,6 +52,10 @@ const EDGE_SPECS: EdgeSpec[] = [
   { a: "crossroads", b: "crystal-cave", icon: { footprint: true } },
   { a: "deep-tunnel", b: "depths-east", icon: { monsterSwordCost: 1 } },
   { a: "crystal-cave", b: "depths-west" },
+  // Cofre Selado: precisa da Chave-mestra do Mercado pra entrar (túnel com cadeado).
+  { a: "deep-tunnel", b: "sealed-vault", icon: { locked: true } },
+  // Escorregador de fuga: só dá pra sair do Cofre direto pra Entrada, não pra voltar por ele.
+  { a: "sealed-vault", b: "entrance", oneWay: true },
 ];
 
 function buildBoard(): BoardDefinition {
@@ -66,7 +73,9 @@ function buildBoard(): BoardDefinition {
   }
   for (const edge of EDGE_SPECS) {
     rooms[edge.a].tunnels.push({ to: edge.b, icon: edge.icon });
-    rooms[edge.b].tunnels.push({ to: edge.a, icon: edge.icon });
+    if (!edge.oneWay) {
+      rooms[edge.b].tunnels.push({ to: edge.a, icon: edge.icon });
+    }
   }
   return { rooms, entranceRoomId: "entrance" };
 }

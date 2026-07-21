@@ -20,6 +20,10 @@ export function createPlayer(id: string, name: string, rng: Rng = Math.random): 
     knockedOut: false,
     roomId: BOARD.entranceRoomId,
     points: 0,
+    gold: 0,
+    hasMasterKey: false,
+    hasBackpack: false,
+    hasLeftDungeon: false,
   };
 }
 

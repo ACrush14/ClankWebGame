@@ -2,8 +2,8 @@ import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } 
 import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
-import type { CardEffects, DragonState, PlayerState, ReserveState } from "./types.js";
-import { emptyResources, HEALTH_TRACK_SIZE } from "./types.js";
+import type { CardEffects, DragonState, MarketState, PlayerState, ReserveState } from "./types.js";
+import { CROWN_VALUES, COUNTDOWN_TRACK_SIZE, emptyResources, HEALTH_TRACK_SIZE, MARKET_ITEM_COST } from "./types.js";
 
 export const DUNGEON_ROW_SIZE = 5;
 const MAX_LOG_LINES = 30;
@@ -27,11 +27,16 @@ export interface GameState {
   dungeonRow: DungeonRowState;
   reserve: ReserveState;
   dragon: DragonState;
+  market: MarketState;
   /** Salas cujo artefato já foi pego (por id de sala). */
   claimedArtifacts: Record<string, boolean>;
   turnNumber: number;
   phase: "playing" | "ended";
   log: string[];
+  /** 0 = ainda não começou (ninguém escapou); 1..COUNTDOWN_TRACK_SIZE = contagem ativa. */
+  countdownTrack: number;
+  /** Pontuação final por jogador — só definida quando `phase === "ended"`. */
+  finalScores?: Record<string, number>;
 }
 
 export class GameEngine {
@@ -54,10 +59,12 @@ export class GameEngine {
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
       reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
       dragon: { rageTrackPosition: 1 },
+      market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
       claimedArtifacts: {},
       turnNumber: 1,
       phase: "playing",
       log: [],
+      countdownTrack: 0,
     };
   }
 
@@ -66,12 +73,18 @@ export class GameEngine {
   }
 
   private requireCurrentPlayer(playerId: string): PlayerState {
+    if (this.state.phase === "ended") {
+      throw new Error("A partida já terminou.");
+    }
     const player = this.currentPlayer;
     if (player.id !== playerId) {
       throw new Error(`Não é a vez de ${playerId} — é a vez de ${player.name}.`);
     }
     if (player.knockedOut) {
       throw new Error(`${player.name} está nocauteado e não pode jogar.`);
+    }
+    if (player.hasLeftDungeon) {
+      throw new Error(`${player.name} já deixou a masmorra.`);
     }
     return player;
   }
@@ -81,7 +94,7 @@ export class GameEngine {
     if (effects.skill) player.resources.skill += effects.skill;
     if (effects.swords) player.resources.swords += effects.swords;
     if (effects.boots) player.resources.boots += effects.boots;
-    if (effects.gold) player.resources.gold += effects.gold;
+    if (effects.gold) player.gold += effects.gold;
     // Clamp em 0: algumas cartas reais do jogo removem Clank (ex: "Move Silently"),
     // mas o Clank do jogador nunca é negativo.
     if (effects.clank) player.clank = Math.max(0, player.clank + effects.clank);
@@ -119,6 +132,10 @@ export class GameEngine {
     const tunnel = room.tunnels.find((t) => t.to === toRoomId);
     if (!tunnel) throw new Error(`Não há túnel de ${room.name} para ${toRoomId}.`);
 
+    if (tunnel.icon?.locked && !player.hasMasterKey) {
+      throw new Error(`Esse túnel tem um cadeado — precisa da Chave-mestra do Mercado.`);
+    }
+
     const bootCost = tunnel.icon?.footprint ? 2 : 1;
     if (player.resources.boots < bootCost) {
       throw new Error(`Boots insuficientes pra mover (precisa ${bootCost}, tem ${player.resources.boots}).`);
@@ -136,6 +153,71 @@ export class GameEngine {
     }
 
     player.roomId = toRoomId;
+    this.checkGameEnd();
+  }
+
+  /**
+   * Sai da masmorra pela Entrada — fica fora de jogo pro resto da partida. Se for a
+   * primeira pessoa a sair, começa a Trilha de Contagem Regressiva (ver triggerDragonAttack).
+   * Encerra o turno automaticamente (não tem mais o que fazer depois de sair).
+   */
+  leaveDungeon(playerId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    if (player.roomId !== BOARD.entranceRoomId) {
+      throw new Error(`Só dá pra sair da masmorra pela ${BOARD.rooms[BOARD.entranceRoomId].name}.`);
+    }
+
+    player.hasLeftDungeon = true;
+    if (this.state.countdownTrack === 0) {
+      this.state.countdownTrack = 1;
+      this.pushLog(
+        `${player.name} escapou da masmorra! A Trilha de Contagem Regressiva começou — quem ainda estiver dentro quando ela terminar será nocauteado.`,
+      );
+    } else {
+      this.pushLog(`${player.name} escapou da masmorra!`);
+    }
+
+    this.checkGameEnd();
+    if (this.state.phase !== "ended") {
+      this.advanceTurn();
+    }
+  }
+
+  /** Compra um item do Mercado (Chave-mestra, Mochila ou Coroa) pagando Gold — só numa sala de Mercado. */
+  buyMarketItem(playerId: string, item: "key" | "backpack" | "crown") {
+    const player = this.requireCurrentPlayer(playerId);
+    const room = BOARD.rooms[player.roomId];
+    if (!room?.isMarket) {
+      throw new Error(`Precisa estar numa sala de Mercado pra comprar (está em ${room?.name ?? player.roomId}).`);
+    }
+    if (player.gold < MARKET_ITEM_COST) {
+      throw new Error(`Gold insuficiente pra comprar no Mercado (precisa ${MARKET_ITEM_COST}, tem ${player.gold}).`);
+    }
+
+    if (item === "key") {
+      if (!this.state.market.masterKeyAvailable) throw new Error("A Chave-mestra já foi comprada.");
+      player.gold -= MARKET_ITEM_COST;
+      player.hasMasterKey = true;
+      this.state.market.masterKeyAvailable = false;
+      this.pushLog(`${player.name} comprou a Chave-mestra.`);
+      return;
+    }
+
+    if (item === "backpack") {
+      if (!this.state.market.backpackAvailable) throw new Error("A Mochila já foi comprada.");
+      player.gold -= MARKET_ITEM_COST;
+      player.hasBackpack = true;
+      this.state.market.backpackAvailable = false;
+      this.pushLog(`${player.name} comprou a Mochila.`);
+      return;
+    }
+
+    const value = this.state.market.crownsAvailable[0];
+    if (value === undefined) throw new Error("Não há mais coroas disponíveis.");
+    player.gold -= MARKET_ITEM_COST;
+    player.points += value;
+    this.state.market.crownsAvailable.shift();
+    this.pushLog(`${player.name} comprou uma coroa (${value} pontos).`);
   }
 
   /** Pega o artefato da sala atual (se houver e ainda não tiver sido pego). Avança a Trilha de Fúria. */
@@ -185,6 +267,59 @@ export class GameEngine {
     this.pushLog(
       `O dragão atacou! ${drawCount} cubo(s) sorteado(s): ${damagedNames.length > 0 ? damagedNames.join(", ") + " levou(aram) dano" : "nenhum jogador atingido"}${blackDrawn > 0 ? ` (${blackDrawn} preto(s))` : ""}.`,
     );
+
+    // Trilha de Contagem Regressiva: só avança depois que alguém já escapou (ver leaveDungeon).
+    if (this.state.countdownTrack > 0) {
+      this.state.countdownTrack += 1;
+      if (this.state.countdownTrack >= COUNTDOWN_TRACK_SIZE) {
+        for (const p of this.state.players) {
+          if (!p.knockedOut && !p.hasLeftDungeon) this.damagePlayer(p, HEALTH_TRACK_SIZE);
+        }
+        this.pushLog("A Trilha de Contagem Regressiva terminou — o dragão acordou de vez! Quem ainda estava na masmorra foi nocauteado.");
+      } else {
+        this.pushLog(`A Trilha de Contagem Regressiva avançou (${this.state.countdownTrack}/${COUNTDOWN_TRACK_SIZE}).`);
+      }
+    }
+
+    this.checkGameEnd();
+  }
+
+  /** A partida termina quando todo mundo saiu da masmorra ou foi nocauteado. */
+  private checkGameEnd() {
+    if (this.state.phase === "ended") return;
+    const allDone = this.state.players.every((p) => p.knockedOut || p.hasLeftDungeon);
+    if (!allDone) return;
+
+    this.state.phase = "ended";
+    const scores = this.computeFinalScores();
+    this.state.finalScores = scores;
+
+    const [winnerId, winnerScore] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0] ?? [undefined, 0];
+    const winner = this.state.players.find((p) => p.id === winnerId);
+    this.pushLog(
+      winner ? `A partida terminou! ${winner.name} venceu com ${winnerScore} pontos.` : "A partida terminou.",
+    );
+  }
+
+  /**
+   * Pontuação final = pontos de artefatos/coroas + Gold + valor das cartas no baralho.
+   * Regra oficial: nocauteado sem nenhum artefato (nem coroa) = eliminado, pontua 0;
+   * nocauteado COM artefato = "resgatado", pontua normalmente. Uso `points === 0` como
+   * proxy de "sem artefato/coroa" (é a única fonte desses pontos hoje no motor).
+   */
+  private computeFinalScores(): Record<string, number> {
+    const scores: Record<string, number> = {};
+    for (const player of this.state.players) {
+      const eliminated = player.knockedOut && player.points === 0;
+      if (eliminated) {
+        scores[player.id] = 0;
+        continue;
+      }
+      const deckCardIds = [...player.hand, ...player.drawPile, ...player.discardPile, ...player.playedThisTurn];
+      const cardPoints = deckCardIds.reduce((sum, id) => sum + (getCard(id).points ?? 0), 0);
+      scores[player.id] = player.points + player.gold + cardPoints;
+    }
+    return scores;
   }
 
   private pushLog(line: string) {
@@ -314,7 +449,8 @@ export class GameEngine {
     let next = this.state.currentPlayerIndex;
     for (let i = 0; i < total; i++) {
       next = (next + 1) % total;
-      if (!this.state.players[next].knockedOut) break;
+      const candidate = this.state.players[next];
+      if (!candidate.knockedOut && !candidate.hasLeftDungeon) break;
     }
     this.state.currentPlayerIndex = next;
     this.state.turnNumber += 1;

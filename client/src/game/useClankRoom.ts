@@ -19,11 +19,16 @@ export interface PlayerSnapshot {
   damage: number;
   roomId: string;
   points: number;
+  hasMasterKey: boolean;
+  hasBackpack: boolean;
+  hasLeftDungeon: boolean;
+  /** -1 enquanto a partida não terminou. */
+  finalScore: number;
 }
 
 export interface RoomSnapshot {
   players: PlayerSnapshot[];
-  phase: "lobby" | "playing";
+  phase: "lobby" | "playing" | "ended";
   log: string[];
   currentPlayerId: string;
   turnNumber: number;
@@ -33,6 +38,10 @@ export interface RoomSnapshot {
   dragonRageTrack: number;
   /** Ids de sala cujo artefato já foi pego. */
   claimedArtifacts: Record<string, boolean>;
+  countdownTrack: number;
+  marketKeyAvailable: boolean;
+  marketBackpackAvailable: boolean;
+  marketCrownsAvailable: number[];
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
@@ -54,7 +63,7 @@ export function useClankRoom() {
   const applySnapshot = useCallback((r: Room) => {
     const state = r.state as unknown as {
       players?: Map<string, PlayerSnapshot>;
-      phase: "lobby" | "playing";
+      phase: "lobby" | "playing" | "ended";
       log: string[];
       currentPlayerId: string;
       turnNumber: number;
@@ -62,6 +71,10 @@ export function useClankRoom() {
       reserveRemaining: Map<string, number>;
       dragonRageTrack: number;
       claimedArtifacts: Map<string, boolean>;
+      countdownTrack: number;
+      marketKeyAvailable: boolean;
+      marketBackpackAvailable: boolean;
+      marketCrownsAvailable: number[];
     };
     if (!state || !state.players) return;
     const players: PlayerSnapshot[] = [];
@@ -83,6 +96,10 @@ export function useClankRoom() {
         damage: p.damage,
         roomId: p.roomId,
         points: p.points,
+        hasMasterKey: p.hasMasterKey,
+        hasBackpack: p.hasBackpack,
+        hasLeftDungeon: p.hasLeftDungeon,
+        finalScore: p.finalScore,
       });
     });
     const reserveRemaining: Record<string, number> = {};
@@ -103,6 +120,10 @@ export function useClankRoom() {
       reserveRemaining,
       dragonRageTrack: state.dragonRageTrack,
       claimedArtifacts,
+      countdownTrack: state.countdownTrack,
+      marketKeyAvailable: state.marketKeyAvailable,
+      marketBackpackAvailable: state.marketBackpackAvailable,
+      marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
     });
   }, []);
 
@@ -199,6 +220,16 @@ export function useClankRoom() {
     roomRef.current?.send("take_artifact");
   }, []);
 
+  const leaveDungeon = useCallback(() => {
+    setActionError(null);
+    roomRef.current?.send("leave_dungeon");
+  }, []);
+
+  const buyMarketItem = useCallback((item: "key" | "backpack" | "crown") => {
+    setActionError(null);
+    roomRef.current?.send("buy_market_item", item);
+  }, []);
+
   const endTurn = useCallback(() => {
     setActionError(null);
     roomRef.current?.send("end_turn");
@@ -231,6 +262,8 @@ export function useClankRoom() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
+    leaveDungeon,
+    buyMarketItem,
     endTurn,
     leaveRoom,
   };

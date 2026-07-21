@@ -33,14 +33,24 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 - **Combate/dano (confirmado: trilha de vida = 10 espaços, enche = nocauteado)** — `movePlayer` aplica dano automaticamente quando não há swords pra pagar um túnel com monstro; `damagePlayer` marca nocaute ao encher a trilha.
 - **Clank + saco do dragão (Marco 4) — implementado.** `triggerDragonAttack`: sorteia cubos (jogadores + cubos pretos neutros) em quantidade = posição na Trilha de Fúria menos 1 (confirmado: "5ª casa sorteia 4 cubos"); cubo de jogador = 1 dano + remove do Clank dele. Disparado automaticamente ao repor a Dungeon Row com uma carta que tenha o símbolo de ataque. ⚠️ **Não sei quais das 68 cartas reais têm esse símbolo** — uso uma estimativa (monstros + devices) só pra deixar o mecanismo testável; e a contagem de cubos pretos (24) também é estimada a partir da lista de componentes.
 - Tudo isso testado com 2 clientes reais simultâneos: Brena jogou Sidestep, moveu de "Entrada da Mina" pra "Boca da Mina" gastando o boot certo, e a aba do Anderson viu a atualização (nova sala, novos túneis disponíveis) em tempo real.
-- 46 testes unitários no motor (Vitest), todos passando — cobrem movimento, dano, artefato e ataque do dragão (com RNG determinístico pra sortear um cubo específico e verificar o dano certo).
 
-**Próximos passos:**
-1. Confirmar quais cartas reais têm o símbolo de ataque do dragão (afeta a frequência de ataques).
-2. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
-3. Renderizar o tabuleiro visualmente (hoje é uma lista de túneis em texto/botão, não um mapa desenhado) — SVG do grafo de salas.
-4. Trilha de Contagem Regressiva / condição de fim de jogo (hoje não há como "vencer" ou terminar a partida).
-5. Decidir hospedagem definitiva pra testar com os amigos de verdade pela internet (hoje só roda em `localhost`).
+- **Fim de jogo / Trilha de Contagem Regressiva — implementado.** `leaveDungeon` (só pela sala de Entrada, encerra o turno sozinho); a primeira saída começa a Trilha (5 casas — ⚠️ estimativa, só confirmei "5ª casa" como o fim); cada ataque do dragão depois disso avança a Trilha; no fim dela, todo mundo que ainda está dentro é nocauteado automaticamente. Partida termina quando todos saíram ou foram nocauteados; pontuação final = artefatos/coroas + Gold + valor das cartas no baralho (regra oficial: nocauteado sem nenhum artefato/coroa pontua 0 — "eliminado"; com artefato pontua normal — "resgatado").
+- **Mercado de Gold — implementado.** `buyMarketItem`: Chave-mestra, Mochila e Coroas (10/9/8 pontos, na ordem — tudo confirmado), 7 Gold cada, só numa sala de Mercado. **Corrigido um bug real no caminho:** Gold estava dentro dos recursos por turno (`Resources`) e sendo zerado a cada `endTurn` — Gold é moeda persistente, não recurso de turno; movido pra um campo próprio em `PlayerState`.
+- **Túneis com cadeado e de mão única — implementados.** Nova sala "Cofre Selado" (15 pontos de artefato) só acessível com a Chave-mestra; um "escorregador" de fuga de lá direto pra Entrada que só funciona nesse sentido.
+- **Testado com 2 clientes reais, partida completa do início ao fim:** os dois jogadores saem pela Entrada assim que a partida começa (turno 1) → primeira saída dispara a Trilha de Contagem Regressiva (visível em tempo real nas duas abas, "1/5") → segunda saída termina a partida → tela de resultado aparece nas duas abas simultaneamente com ranking e vencedor. **Corrigido no caminho:** o mesmo bug do `ArraySchema#splice()` de antes, dessa vez na sincronização das coroas do Mercado.
+- 58 testes unitários no motor (Vitest), todos passando — 12 novos cobrindo túneis com cadeado/mão única, Mercado, `leaveDungeon` e fim de jogo (incluindo a Trilha de Contagem Regressiva forçando nocaute em quem ficou pra trás).
+
+**Próximos passos (em ordem de prioridade — ver conversa):**
+1. ~~Fim de jogo~~ ✅
+2. ~~Mercado de ouro~~ ✅
+3. ~~Túneis com cadeado e mão única~~ ✅
+4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io pro servidor, Vercel/Netlify pro cliente) — não crio conta em nada sozinho.
+5. Confirmar quais cartas reais têm o símbolo de ataque do dragão.
+6. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
+7. Renderizar o tabuleiro visualmente (SVG do grafo de salas, hoje é lista de botões).
+8. Cor/avatar por jogador.
+9. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
+10. Reconexão robusta (fora do MVP original).
 
 ---
 
