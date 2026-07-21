@@ -300,17 +300,42 @@ describe("movePlayer", () => {
 });
 
 describe("takeArtifact", () => {
-  it("pega o artefato, ganha os pontos e avança a Trilha de Fúria", () => {
+  it("pega um artefato pequeno (5-10 pts) e avança a Trilha de Fúria em +1", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "depths-east";
+    player.roomId = "depths-west"; // 5 pontos
     const rageBefore = game.state.dragon.rageTrackPosition;
 
     game.takeArtifact(player.id);
 
-    expect(player.points).toBe(10);
+    expect(player.points).toBe(5);
     expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 1);
-    expect(game.state.claimedArtifacts["depths-east"]).toBe(true);
+    expect(game.state.claimedArtifacts["depths-west"]).toBe(true);
+  });
+
+  it("pega um artefato médio (15-20 pts) e avança a Trilha de Fúria em +2", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "depths-east"; // 15 pontos
+    const rageBefore = game.state.dragon.rageTrackPosition;
+
+    game.takeArtifact(player.id);
+
+    expect(player.points).toBe(15);
+    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 2);
+  });
+
+  it("pega um artefato grande (25-30 pts) e avança a Trilha de Fúria em +3", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hasMasterKey = true;
+    player.roomId = "sealed-vault"; // 30 pontos
+    const rageBefore = game.state.dragon.rageTrackPosition;
+
+    game.takeArtifact(player.id);
+
+    expect(player.points).toBe(30);
+    expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 3);
   });
 
   it("lança erro se a sala atual não tem artefato", () => {

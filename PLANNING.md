@@ -40,6 +40,7 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 - **Testado com 2 clientes reais, partida completa do início ao fim:** os dois jogadores saem pela Entrada assim que a partida começa (turno 1) → primeira saída dispara a Trilha de Contagem Regressiva (visível em tempo real nas duas abas, "1/5") → segunda saída termina a partida → tela de resultado aparece nas duas abas simultaneamente com ranking e vencedor. **Corrigido no caminho:** o mesmo bug do `ArraySchema#splice()` de antes, dessa vez na sincronização das coroas do Mercado.
 - 58 testes unitários no motor (Vitest), todos passando — 12 novos cobrindo túneis com cadeado/mão única, Mercado, `leaveDungeon` e fim de jogo (incluindo a Trilha de Contagem Regressiva forçando nocaute em quem ficou pra trás).
 - **Modo combinado (um processo só) — implementado.** O `server/` agora serve o `client/dist` (se existir) no mesmo processo Express/Colyseus — `npm run build:client && npm start` sobe front + back juntos numa porta só (`http://localhost:2567`). Testado de ponta a ponta (criar sala funcionou pela mesma porta que serve o HTML). Simplifica o deploy de amanhã: só precisa de **um** serviço de hospedagem, não dois. Corrigido no caminho: `server/package.json` tinha um `start` quebrado (`node dist/index.js` — o `@clank/engine` é consumido como TS puro via workspace, `node` puro não roda TS; trocado pra `tsx src/index.ts`, igual o `dev`).
+- **Tabuleiro corrigido com uma foto real do tabuleiro oficial.** Você mandou fotos do tabuleiro físico do Clank! — confirmou vários mecanismos que eu tinha estimado (pegada = 2 Boots, caveira = 1 Sword ou 1 dano, cadeado = precisa da Chave-mestra, Mercado = 7 Gold) e corrigiu os **valores de artefato**, que agora são os reais (5/10/15/20/25/30 — troquei os 3 valores inventados que eu tinha pelos reais: `depths-west`=5, `depths-east`=15, `sealed-vault`=30). Também revelou que a **Trilha de Fúria avança mais quanto maior o artefato** (não é +1 fixo) — implementei em camadas (5-10→+1, 15-20→+2, 25-30→+3), minha melhor leitura da foto, ainda não é a escala exata confirmada. O layout de salas continua sendo meu (não uma cópia sala-por-sala — isso exigiria mapear cada conexão da foto uma por uma, risco alto de erro), mas agora as regras/números batem com o jogo real.
 
 **Próximos passos (em ordem de prioridade — ver conversa):**
 1. ~~Fim de jogo~~ ✅
@@ -48,7 +49,7 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
 5. Confirmar quais cartas reais têm o símbolo de ataque do dragão.
 6. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
-7. Renderizar o tabuleiro visualmente (SVG do grafo de salas, hoje é lista de botões).
+7. Renderizar o tabuleiro visualmente (SVG do grafo de salas, hoje é lista de botões) — agora com uma foto de referência real, isso fica bem mais fácil de fazer parecido com o jogo de verdade.
 8. Cor/avatar por jogador.
 9. Retestar mobile (não testado desde que tabuleiro/combate/mercado foram adicionados).
 10. Reconexão robusta (fora do MVP original).

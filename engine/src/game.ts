@@ -220,7 +220,13 @@ export class GameEngine {
     this.pushLog(`${player.name} comprou uma coroa (${value} pontos).`);
   }
 
-  /** Pega o artefato da sala atual (se houver e ainda não tiver sido pego). Avança a Trilha de Fúria. */
+  /**
+   * Pega o artefato da sala atual (se houver e ainda não tiver sido pego). Avança a
+   * Trilha de Fúria — quanto MAIOR o artefato, mais ela avança (confirmado: artefatos
+   * grandes deixam o dragão bem mais bravo). ⚠️ A escala exata (5-10→+1, 15-20→+2,
+   * 25-30→+3) é minha melhor interpretação de uma foto do tabuleiro oficial, não uma
+   * leitura garantida dos números exatos.
+   */
   takeArtifact(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
     const room = BOARD.rooms[player.roomId];
@@ -229,8 +235,11 @@ export class GameEngine {
 
     this.state.claimedArtifacts[room.id] = true;
     player.points += room.artifactValue;
-    this.state.dragon.rageTrackPosition += 1;
-    this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
+    const rageAdvance = room.artifactValue >= 25 ? 3 : room.artifactValue >= 15 ? 2 : 1;
+    this.state.dragon.rageTrackPosition += rageAdvance;
+    this.pushLog(
+      `${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está ${rageAdvance > 1 ? "muito " : ""}mais irritado.`,
+    );
   }
 
   /**

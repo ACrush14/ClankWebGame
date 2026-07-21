@@ -1,12 +1,23 @@
 import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
 
 /**
- * ⚠️ Layout ORIGINAL, não é reprodução do tabuleiro físico oficial — não tenho acesso
- * a fotos/escaneamento do tabuleiro real do Clank! (seria necessário pra reproduzir a
- * posição exata das salas). Este é um grafo de mina desenhado por mim, seguindo a
- * mesma estrutura mecânica das regras confirmadas: entrada no topo, túneis com ícone
- * de monstro (paga Swords ou leva dano) ou de pegada (custa 2 Boots), uma sala de
- * Mercado, e duas salas nas Profundezas com artefato pra pegar.
+ * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala do tabuleiro físico) — mas
+ * agora informado por uma foto real do tabuleiro oficial que você me passou. Dela,
+ * confirmei/corrigi:
+ * - Ícone de pegada = 2 Boots (já estava certo).
+ * - Ícone de caveira num túnel = 1 Sword ou 1 dano ao passar (já estava certo; no
+ *   tabuleiro real a quantidade de caveiras varia o custo — meus túneis já variam
+ *   monsterSwordCost por posição, seguindo a mesma ideia).
+ * - Ícone de cadeado = precisa da Chave-mestra do Mercado (já estava certo).
+ * - Mercado custa 7 Gold por item (já estava certo — o "7" aparece bem no meio do
+ *   Mercado na foto).
+ * - Valores de artefato REAIS (os círculos de cristal no tabuleiro): 5, 10, 15, 20,
+ *   25, 30 — troquei os valores inventados pelos reais.
+ * - Trilha de Fúria do dragão: você confirmou que ela avança MAIS quanto MAIOR o
+ *   artefato pego (não é sempre +1 fixo como eu tinha). Implementei um avanço em
+ *   camadas (5-10 pts → +1, 15-20 pts → +2, 25-30 pts → +3) — é minha melhor
+ *   interpretação dos números vistos perto dos ícones de dragão na foto, não uma
+ *   leitura exata da escala oficial.
  */
 
 interface RoomSpec {
@@ -35,9 +46,9 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "crossroads", name: "Encruzilhada" },
   { id: "deep-tunnel", name: "Túnel Profundo" },
   { id: "crystal-cave", name: "Caverna de Cristal" },
-  { id: "depths-east", name: "Profundezas — Leste", isDepths: true, artifactValue: 10 },
-  { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 6 },
-  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 15 },
+  { id: "depths-east", name: "Profundezas — Leste", isDepths: true, artifactValue: 15 },
+  { id: "depths-west", name: "Profundezas — Oeste", isDepths: true, artifactValue: 5 },
+  { id: "sealed-vault", name: "Cofre Selado", isDepths: true, artifactValue: 30 },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
