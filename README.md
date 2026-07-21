@@ -5,12 +5,12 @@ Versão web (e mobile-friendly) do jogo de tabuleiro Clank!, feita pra jogar com
 ## Estrutura
 
 - `client/` — React + TypeScript + Vite + Tailwind CSS + Framer Motion.
-- `server/` — servidor de salas em tempo real com [Colyseus](https://colyseus.io/).
-- `engine/` — motor de regras do jogo (TypeScript puro, sem UI/rede, testável isoladamente com Vitest). Ainda não está plugado no `server/`.
+- `server/` — servidor de salas em tempo real com [Colyseus](https://colyseus.io/). Tem o motor de regras (`engine/`) plugado — é ele quem roda o jogo de verdade.
+- `engine/` — motor de regras do jogo (TypeScript puro, sem UI/rede, testável isoladamente com Vitest).
 
-## Rodando localmente
+## Rodando localmente (desenvolvimento — dois processos)
 
-Requer Node.js 20+.
+Requer Node.js 20+. Ideal pra desenvolver: o Vite dá hot-reload instantâneo no cliente.
 
 ```bash
 npm install          # instala as três workspaces (client, server e engine)
@@ -26,6 +26,17 @@ npm run dev:client    # só o cliente Vite
 ```
 
 Para testar multiplayer localmente, abra `http://localhost:5173` em duas abas/dispositivos na mesma rede — a segunda entra usando o código de sala mostrado na primeira.
+
+## Rodando em modo combinado (um processo só — igual produção)
+
+O mesmo servidor Express que roda o Colyseus também serve os arquivos estáticos do cliente, se `client/dist` existir. Assim front e back viram **um processo só, uma porta só** — útil pra testar como vai ficar em produção, e simplifica o deploy (só precisa de **um** serviço de hospedagem, não dois).
+
+```bash
+npm run build:client   # builda o cliente (client/dist)
+npm start               # sobe o server, que já serve o client/dist junto
+```
+
+Abra `http://localhost:2567` — tudo (front + WebSocket) na mesma porta. Sem `client/dist`, o servidor sobe normalmente e só atende o WebSocket (modo antigo).
 
 ## Variáveis de ambiente (client)
 

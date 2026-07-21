@@ -39,12 +39,13 @@ Referência de UX escolhida: [Uno Online (Blyster)](https://blyster.itch.io/uno-
 - **Túneis com cadeado e de mão única — implementados.** Nova sala "Cofre Selado" (15 pontos de artefato) só acessível com a Chave-mestra; um "escorregador" de fuga de lá direto pra Entrada que só funciona nesse sentido.
 - **Testado com 2 clientes reais, partida completa do início ao fim:** os dois jogadores saem pela Entrada assim que a partida começa (turno 1) → primeira saída dispara a Trilha de Contagem Regressiva (visível em tempo real nas duas abas, "1/5") → segunda saída termina a partida → tela de resultado aparece nas duas abas simultaneamente com ranking e vencedor. **Corrigido no caminho:** o mesmo bug do `ArraySchema#splice()` de antes, dessa vez na sincronização das coroas do Mercado.
 - 58 testes unitários no motor (Vitest), todos passando — 12 novos cobrindo túneis com cadeado/mão única, Mercado, `leaveDungeon` e fim de jogo (incluindo a Trilha de Contagem Regressiva forçando nocaute em quem ficou pra trás).
+- **Modo combinado (um processo só) — implementado.** O `server/` agora serve o `client/dist` (se existir) no mesmo processo Express/Colyseus — `npm run build:client && npm start` sobe front + back juntos numa porta só (`http://localhost:2567`). Testado de ponta a ponta (criar sala funcionou pela mesma porta que serve o HTML). Simplifica o deploy de amanhã: só precisa de **um** serviço de hospedagem, não dois. Corrigido no caminho: `server/package.json` tinha um `start` quebrado (`node dist/index.js` — o `@clank/engine` é consumido como TS puro via workspace, `node` puro não roda TS; trocado pra `tsx src/index.ts`, igual o `dev`).
 
 **Próximos passos (em ordem de prioridade — ver conversa):**
 1. ~~Fim de jogo~~ ✅
 2. ~~Mercado de ouro~~ ✅
 3. ~~Túneis com cadeado e mão única~~ ✅
-4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io pro servidor, Vercel/Netlify pro cliente) — não crio conta em nada sozinho.
+4. **Deploy real (hospedagem)** — pra jogar com os amigos pela internet de verdade. Preciso da sua decisão/conta em algum serviço (Railway/Fly.io/Render — agora só precisa de UM, já que front+back rodam juntos). Não crio conta em nada sozinho.
 5. Confirmar quais cartas reais têm o símbolo de ataque do dragão.
 6. Ir preenchendo custo/efeito real de mais cartas do `DUNGEON_DECK_CATALOG_REFERENCE`.
 7. Renderizar o tabuleiro visualmente (SVG do grafo de salas, hoje é lista de botões).
