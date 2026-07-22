@@ -49,17 +49,12 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Procurar (Search) | Custo 4 | Efeito: Skill+2, Boots+1 | "Toda vez que ganhar ouro neste turno, aumente o valor ganho em 1." | "Não vai sobrar pedra sobre pedra."
 - Soldado Orc = **Orc Grunt** (confirmado! mesmo texto de derrota "$3" e mesma frase de flavor traduzida encontrados no manual oficial em inglês) | Monstro | Custo Swords 2 | Tem símbolo de Dragon Attack | DERROTA: $3 | "Com suas incursões constantes, os Orcs buscam esmagar a rebelião."
 
-## Cartas ainda faltando (dos 68 tipos do catálogo antigo, ~47 restantes)
+## Cartas ainda faltando (custo/efeito/texto) — lista completa com quantidades
 
-Amulet of Vigor, Archaeologist, Boots of Swiftness, Bracers of Agility,
-Diamond, Dragon's Eye, The Duke, Dwarven Peddler, Elven Boots, Elven Cloak, Elven
-Dagger, Flying Carpet, Invoker of the Ancients, Kobold Merchant, Lucky Coin,
-Master Burglar, Mister Whiskers, Move Silently, Monkey Bot 3000, Mountain King,
-Pickaxe, Queen of Hearts, Rebel Miner, Rebel Scout, Rebel Soldier,
-Silver Spear, Swagger, Treasure Hunter, Treasure Map, Tunnel Guide,
-Underworld Dealing, Wand of Recall, Wand of Wind, Wizard, Ladder, Shrine, Teleporter,
-Vault The, Crystal Golem, Kobold, Ogre
-(Orc Grunt já confirmado — ver "Soldado Orc" acima), Overlord, Watcher.
+Ver [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md) — catálogo
+completo dos 100 cartas do Dungeon Deck com nome + quantidade de cada (fonte: lista
+comunitária enviada pelo usuário), cruzado com o que já capturamos aqui. ~30 tipos
+ainda faltando (custo/efeito/texto), todos já identificados por nome.
 
 ## Observações de regras confirmadas ao vivo
 

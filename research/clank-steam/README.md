@@ -15,11 +15,14 @@ numa sessão anterior, antes de perceber que a versão de referência é a base 
   (nome, custo, efeito, texto, VP), no formato como foram sendo capturadas ao vivo.
 - [`regras-oficiais-rulebook.md`](./regras-oficiais-rulebook.md) — regras extraídas do
   **manual oficial em PDF** (via `WebFetch`/`Read`, texto puro — bem mais barato que
-  automação de tela). Não tem as ~68 cartas da Dungeon Row (isso só está nas cartas
-  físicas), mas cobre praticamente todo o resto do regramento com precisão de fonte
-  oficial: Segredos Maiores/Menores, itens de Mercado, glossário de termos (Acquire vs
-  Arrive, Danger, Trash, Teleport), Trilha de Contagem Regressiva em detalhe, e a
-  resolução do mistério dos Ídolos de Macaco.
+  automação de tela). Cobre quase todo o regramento com precisão de fonte oficial:
+  Segredos Maiores/Menores, itens de Mercado, glossário de termos (Acquire vs Arrive,
+  Danger, Trash, Teleport), Trilha de Contagem Regressiva em detalhe, e a resolução do
+  mistério dos Ídolos de Macaco.
+- [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md) — catálogo
+  completo das 100 cartas do Dungeon Deck (nome + quantidade de cada, fonte: lista
+  comunitária), cruzado com o que já foi capturado. Não tem custo/efeito/texto, mas
+  fecha de vez a dúvida de quais são as cartas do jogo base e quantas cópias existem.
 
 ## Por que essa pesquisa existe
 
@@ -37,10 +40,12 @@ ler os popups de carta e ir catalogando.
 
 | Categoria | Status |
 |---|---|
-| Baralho inicial (4 cartas) | ✅ 100% confirmado |
+| Baralho inicial (4 cartas) | ✅ 100% confirmado (nome, quantidade E efeito) |
 | Reserva (4 pilhas fixas) | ✅ 100% confirmado — bate com o motor atual |
-| Dungeon Row (cartas variáveis) | 🟡 18 tipos capturados de ~68 do catálogo antigo (~26%) |
-| Regras/mecânicas distintas do motor atual | 🟡 5 diferenças confirmadas (ver abaixo) |
+| Catálogo de nomes+quantidades do Dungeon Deck (100 cartas) | ✅ 100% conhecido (ver [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md)) |
+| Dungeon Row — custo/efeito/texto completo | 🟡 21 tipos capturados de ~51 tipos únicos (~41%) |
+| Regras confirmadas via manual oficial | ✅ Segredos, Mercado, glossário de termos, Countdown Track — todas batem ou já corrigiram o motor |
+| Regras/mecânicas distintas do motor atual (pendentes) | 🟡 5 diferenças confirmadas, ainda não implementadas (ver abaixo) |
 | Reversão de `cards.ts`/`board.ts` pro conteúdo base | ⏸️ Ainda **não iniciada** — aguardando catálogo mais completo antes de reescrever o motor |
 
 ## Baralho inicial (100% confirmado)
