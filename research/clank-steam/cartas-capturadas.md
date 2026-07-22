@@ -27,7 +27,7 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Mercenário (Mercenary) | Qty 14-15 | Efeito: Skill+1, Swords+2 | Custo 2
 - Goblin | Monstro, nunca esgota | Custo Swords 2 | Efeito ao vencer: $1 | "(Não descarte após o combate.)"
 
-## Dungeon Row — capturadas ao vivo (17 tipos)
+## Dungeon Row — capturadas ao vivo (21 tipos)
 
 - Capitão Rebelde (Rebel Captain) | Companheiro | Efeito: Skill+2 | VP 1 | Custo 3 | "Se houver outro companheiro em sua área de jogo, compre uma carta."
 - Boticária (Apothecary) | Companheiro | Efeito: nenhum incondicional | VP 2 | Custo 3 | "Descarte uma carta para escolher uma das seguintes opções: 3 Swords -OU- $2 -OU- cura 1 (coração)."
@@ -44,6 +44,10 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Troll das Cavernas (Cave Troll) | Monstro | Custo Swords 4 | Tipo especial "Subterrâneo" (Combata somente nas Profundezas) | DERROTA: $3 e compre duas cartas
 - Esmeralda (Emerald) | Gema | Custo 5 | VP 5 | Efeito: "Compre uma carta." | ADQUIRIR: +2 Clank!
 - Perspicácia (provável "Brilliance") | Custo 6 | Efeito: "Compre três cartas." | "Não se preocupe, tenho uma ideia."
+- Arrotador (Belcher) | Monstro | Custo Swords 2 | Tem símbolo de Dragon Attack | DERROTA: $4, +2 Clank! | "Esta criatura asquerosa é conhecida por seu grito de guerra incomum."
+- Safira (Sapphire) | Gema | Custo 4 | VP 4 | Efeito: "Compre uma carta." | ADQUIRIR: +2 Clank!
+- Procurar (Search) | Custo 4 | Efeito: Skill+2, Boots+1 | "Toda vez que ganhar ouro neste turno, aumente o valor ganho em 1." | "Não vai sobrar pedra sobre pedra."
+- Soldado Orc = **Orc Grunt** (confirmado! mesmo texto de derrota "$3" e mesma frase de flavor traduzida encontrados no manual oficial em inglês) | Monstro | Custo Swords 2 | Tem símbolo de Dragon Attack | DERROTA: $3 | "Com suas incursões constantes, os Orcs buscam esmagar a rebelião."
 
 ## Cartas ainda faltando (dos 68 tipos do catálogo antigo, ~47 restantes)
 
@@ -51,11 +55,11 @@ Amulet of Vigor, Archaeologist, Boots of Swiftness, Bracers of Agility,
 Diamond, Dragon's Eye, The Duke, Dwarven Peddler, Elven Boots, Elven Cloak, Elven
 Dagger, Flying Carpet, Invoker of the Ancients, Kobold Merchant, Lucky Coin,
 Master Burglar, Mister Whiskers, Move Silently, Monkey Bot 3000, Mountain King,
-Pickaxe, Queen of Hearts, Rebel Miner, Rebel Scout, Rebel Soldier, Sapphire, Search,
+Pickaxe, Queen of Hearts, Rebel Miner, Rebel Scout, Rebel Soldier,
 Silver Spear, Swagger, Treasure Hunter, Treasure Map, Tunnel Guide,
 Underworld Dealing, Wand of Recall, Wand of Wind, Wizard, Ladder, Shrine, Teleporter,
-Vault The, Belcher, Crystal Golem, Kobold, Ogre, Orc Grunt
-(já tinha, verificado em sessão anterior), Overlord, Watcher.
+Vault The, Crystal Golem, Kobold, Ogre
+(Orc Grunt já confirmado — ver "Soldado Orc" acima), Overlord, Watcher.
 
 ## Observações de regras confirmadas ao vivo
 
@@ -67,4 +71,5 @@ Vault The, Belcher, Crystal Golem, Kobold, Ogre, Orc Grunt
 - **PERIGO (Danger) é DIFERENTE do símbolo de Dragon Attack**: Danger é passivo/persistente (aumenta o total de cubos sorteados em TODO ataque do dragão enquanto a carta ficar na fileira sem ser comprada); Dragon Attack dispara um ataque IMEDIATO só uma vez, quando a carta é revelada pra repor a fileira. Motor atual só modela o segundo — precisaria de um campo novo tipo `dangerBonus` ou similar pra reimplementar Danger.
 - Cartas do tipo "Gema" têm efeito de "ADQUIRIR: +2 Clank!" — custo extra em barulho só ao comprar, separado do efeito de jogar depois.
 - Dois tabuleiros oficiais: "Castelo" e "Montículos e Covas", mais opção "Aleatório".
+- Existem **túneis que causam dano** (mostram um aviso "Você receberá dano ao passar por este túnel. Continuar?" com ícone de coração -1) — além do custo normal em Boots. Se o jogador estiver com pouca vida e sem Swords suficientes (aparentemente esses túneis também podem exigir Swords, não só Boots), o jogo BLOQUEIA a passagem com o aviso: "Atenção! Como você está com pouca vida e não tem espadas suficientes, não conseguirá passar por este túnel." Ou seja, existe proteção automática contra o jogador se colocar em risco de nocaute nesses túneis. Motor atual (`movePlayer`) não modela túneis com custo em vida nem esse bloqueio de segurança.
 - Existe o marcador de tipo **"Subterrâneo"** em monstros (visto em "Troll das Cavernas"): "Combata somente nas Profundezas" — ou seja, esses monstros só podem ser enfrentados se o jogador estiver numa sala da zona "Profundezas" (parte mais funda do mapa), não em qualquer lugar da fileira. Regra que o motor atual não modela (`fightMonster` não distingue localização).

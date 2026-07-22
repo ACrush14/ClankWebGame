@@ -13,6 +13,13 @@ numa sessão anterior, antes de perceber que a versão de referência é a base 
   retomar qualquer sessão de automação.
 - [`cartas-capturadas.md`](./cartas-capturadas.md) — dados brutos de cada carta lida
   (nome, custo, efeito, texto, VP), no formato como foram sendo capturadas ao vivo.
+- [`regras-oficiais-rulebook.md`](./regras-oficiais-rulebook.md) — regras extraídas do
+  **manual oficial em PDF** (via `WebFetch`/`Read`, texto puro — bem mais barato que
+  automação de tela). Não tem as ~68 cartas da Dungeon Row (isso só está nas cartas
+  físicas), mas cobre praticamente todo o resto do regramento com precisão de fonte
+  oficial: Segredos Maiores/Menores, itens de Mercado, glossário de termos (Acquire vs
+  Arrive, Danger, Trash, Teleport), Trilha de Contagem Regressiva em detalhe, e a
+  resolução do mistério dos Ídolos de Macaco.
 
 ## Por que essa pesquisa existe
 
