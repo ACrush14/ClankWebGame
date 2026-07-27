@@ -30,11 +30,33 @@ import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
  * ⚠️ Mecânicas do Catacombs ainda por confirmar/implementar: você jogou uma versão sem
  * prisioneiros/fantasmas (as cartas que citam isso — Diversion, Riot, The Warden, White/
  * Black Tourmaline — ficam sem esse efeito condicional aplicado), mas com "cabines da
- * masmorra" (ainda não sei a que se refere exatamente — não modelado), Cavernas de
- * Cristal (já existe, ver `isCrystalCave` abaixo) e Ídolos de Macaco (citados em "Boots
- * of the Ape Lord"/"Thirst for Adventure", mas eu não sei ainda ONDE/COMO se consegue um
- * — sem isso não dá pra implementar a aquisição, só a checagem "se você tiver".
+ * masmorra" (ainda não sei a que se refere exatamente — não modelado).
+ *
+ * Ídolos de Macaco: RESOLVIDO (2026-07-24) via planilha do usuário cruzada com fotos
+ * oficiais — são 3 tokens (Macaco Surdo/Cego/Mudo, 5 pontos cada) numa única sala
+ * "Monkey Shrine". Mecanismo de pegar implementado (`GameEngine.takeMonkeyIdol`,
+ * `PlayerState.monkeyIdolsHeld`) — ver room `monkey-shrine` abaixo. A posição/ligação
+ * dela no grafo é provisória (só pra deixar testável); a posição real no tabuleiro
+ * físico ainda não foi conferida. Cartas que citam "se você tiver um Ídolo de Macaco"
+ * (Boots of the Ape Lord, Thirst for Adventure) continuam sem esse bônus condicional
+ * ligado — isso é um efeito por carta (como `applyRoomConditionalEffects`), fora do
+ * escopo de só "ter o mecanismo de pegar o ídolo".
  */
+
+/**
+ * Nomes dos 7 Artefatos reais do jogo base, pela escala de valor — CONFIRMADO contra
+ * fotos oficiais das cartas/tokens físicos. Tabela completa mantida aqui pra quando o
+ * tabuleiro for expandido (hoje só 3 dos 7 valores estão de fato colocados em salas).
+ */
+export const ARTIFACT_NAMES_BY_VALUE: Record<number, string> = {
+  5: "Anel",
+  7: "Cruz",
+  10: "Vaso",
+  15: "Banana",
+  20: "Escudo",
+  25: "Armadura",
+  30: "Orbe",
+};
 
 interface RoomSpec {
   id: string;
@@ -44,6 +66,8 @@ interface RoomSpec {
   isDepths?: boolean;
   isCrystalCave?: boolean;
   artifactValue?: number;
+  artifactName?: string;
+  monkeyIdolNames?: string[];
 }
 
 interface EdgeSpec {
@@ -63,9 +87,12 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "crossroads", name: "Encruzilhada das Criptas" },
   { id: "deep-tunnel", name: "Túnel dos Prisioneiros" },
   { id: "crystal-cave", name: "Caverna de Cristal", isCrystalCave: true },
-  { id: "depths-east", name: "Profundezas — Cripta Leste", isDepths: true, artifactValue: 15 },
-  { id: "depths-west", name: "Profundezas — Cripta Oeste", isDepths: true, artifactValue: 7 },
-  { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25 },
+  { id: "depths-east", name: "Profundezas — Cripta Leste", isDepths: true, artifactValue: 15, artifactName: ARTIFACT_NAMES_BY_VALUE[15] },
+  { id: "depths-west", name: "Profundezas — Cripta Oeste", isDepths: true, artifactValue: 7, artifactName: ARTIFACT_NAMES_BY_VALUE[7] },
+  { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25, artifactName: ARTIFACT_NAMES_BY_VALUE[25] },
+  // Posição provisória (ligada à Encruzilhada) — o jogo físico tem uma única sala
+  // "Monkey Shrine" com os 3 Ídolos juntos. Ver EDGE_SPECS abaixo.
+  { id: "monkey-shrine", name: "Santuário dos Macacos", monkeyIdolNames: ["Macaco Surdo", "Macaco Cego", "Macaco Mudo"] },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
@@ -84,6 +111,7 @@ const EDGE_SPECS: EdgeSpec[] = [
   { a: "deep-tunnel", b: "sealed-vault", icon: { locked: true } },
   // Escorregador de fuga: só dá pra sair da Câmara direto pra Entrada, não pra voltar por ele.
   { a: "sealed-vault", b: "entrance", oneWay: true },
+  { a: "crossroads", b: "monkey-shrine" },
 ];
 
 function buildBoard(): BoardDefinition {
@@ -98,6 +126,8 @@ function buildBoard(): BoardDefinition {
       isDepths: spec.isDepths,
       isCrystalCave: spec.isCrystalCave,
       artifactValue: spec.artifactValue,
+      artifactName: spec.artifactName,
+      monkeyIdolNames: spec.monkeyIdolNames,
     };
   }
   for (const edge of EDGE_SPECS) {

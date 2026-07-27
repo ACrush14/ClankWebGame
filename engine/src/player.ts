@@ -25,6 +25,7 @@ export function createPlayer(id: string, name: string, rng: Rng = Math.random): 
     hasMasterKey: false,
     hasBackpack: false,
     hasLeftDungeon: false,
+    monkeyIdolsHeld: [],
   };
 }
 

@@ -26,6 +26,7 @@ export class Player extends Schema {
   @type("string") roomId = "";
   @type("number") points = 0;
   @type("number") artifactsCarried = 0;
+  @type("number") monkeyIdolsHeld = 0;
   @type("boolean") hasMasterKey = false;
   @type("boolean") hasBackpack = false;
   @type("boolean") hasLeftDungeon = false;
@@ -106,6 +107,9 @@ export class ClankRoom extends Room<ClankRoomState> {
     );
     this.onMessage("take_artifact", (client) =>
       this.handleAction(client, () => this.engine!.takeArtifact(client.sessionId)),
+    );
+    this.onMessage("take_monkey_idol", (client) =>
+      this.handleAction(client, () => this.engine!.takeMonkeyIdol(client.sessionId)),
     );
     this.onMessage("leave_dungeon", (client) =>
       this.handleAction(client, () => this.engine!.leaveDungeon(client.sessionId)),
@@ -247,6 +251,7 @@ export class ClankRoom extends Room<ClankRoomState> {
       schemaPlayer.roomId = enginePlayer.roomId;
       schemaPlayer.points = enginePlayer.points;
       schemaPlayer.artifactsCarried = enginePlayer.artifactsCarried;
+      schemaPlayer.monkeyIdolsHeld = enginePlayer.monkeyIdolsHeld.length;
       schemaPlayer.hasMasterKey = enginePlayer.hasMasterKey;
       schemaPlayer.hasBackpack = enginePlayer.hasBackpack;
       schemaPlayer.hasLeftDungeon = enginePlayer.hasLeftDungeon;

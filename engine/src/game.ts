@@ -2,8 +2,15 @@ import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } 
 import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
-import type { CardEffects, DragonState, MarketState, PlayerState, ReserveState } from "./types.js";
-import { CROWN_VALUES, COUNTDOWN_TRACK_SIZE, emptyResources, HEALTH_TRACK_SIZE, MARKET_ITEM_COST } from "./types.js";
+import type { CardDefinition, CardEffects, DragonState, MarketState, PlayerState, ReserveState } from "./types.js";
+import {
+  CROWN_VALUES,
+  COUNTDOWN_TRACK_SIZE,
+  emptyResources,
+  HEALTH_TRACK_SIZE,
+  MARKET_ITEM_COST,
+  MONKEY_IDOL_VALUE,
+} from "./types.js";
 
 /** CONFIRMADO no manual oficial: "Shuffle the Dungeon Deck and deal six cards..." */
 export const DUNGEON_ROW_SIZE = 6;
@@ -31,6 +38,8 @@ export interface GameState {
   market: MarketState;
   /** Salas cujo artefato já foi pego (por id de sala). */
   claimedArtifacts: Record<string, boolean>;
+  /** Ídolos de Macaco já pegos, por nome (ex: "Macaco Surdo") — únicos no jogo todo. */
+  claimedMonkeyIdols: Record<string, boolean>;
   turnNumber: number;
   phase: "playing" | "ended";
   log: string[];
@@ -68,6 +77,7 @@ export class GameEngine {
       dragon: { rageTrackPosition: 1 },
       market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
       claimedArtifacts: {},
+      claimedMonkeyIdols: {},
       turnNumber: 1,
       phase: "playing",
       log: [],
@@ -106,6 +116,7 @@ export class GameEngine {
     // Clamp em 0: algumas cartas reais do jogo removem Clank (ex: "Move Silently"),
     // mas o Clank do jogador nunca é negativo.
     if (effects.clank) player.clank = Math.max(0, player.clank + effects.clank);
+    if (effects.heal) player.damage = Math.max(0, player.damage - effects.heal);
     if (effects.drawCards) {
       const { drawn, drawPile, discardPile } = drawCards(
         player.drawPile,
@@ -116,6 +127,21 @@ export class GameEngine {
       player.hand.push(...drawn);
       player.drawPile = drawPile;
       player.discardPile = discardPile;
+    }
+  }
+
+  /**
+   * Algumas cartas só podem ser adquiridas/enfrentadas numa sala com determinada flag
+   * (ex: "Deep" = só nas Profundezas; Crystal Golem/Crystal Kobold = só na Caverna de
+   * Cristal). CONFIRMADO no manual oficial e em fotos das cartas físicas.
+   */
+  private checkRoomRequirement(player: PlayerState, card: CardDefinition) {
+    if (!card.requiresRoomFlag) return;
+    const room = BOARD.rooms[player.roomId];
+    if (!room?.[card.requiresRoomFlag]) {
+      throw new Error(
+        `${card.name} só pode ser adquirida/enfrentada numa sala do tipo "${card.requiresRoomFlag}" (você está em ${room?.name ?? player.roomId}).`,
+      );
     }
   }
 
@@ -270,13 +296,44 @@ export class GameEngine {
   }
 
   /**
+   * PERIGO (Danger) — CONFIRMADO no manual oficial: cada carta com esse marcador
+   * presente na Dungeon Row soma +1 cubo extra em TODO ataque do dragão, enquanto
+   * ficar lá sem ser adquirida/vencida. Reserva não conta (regra é só "in the Dungeon Row").
+   */
+  private countDangerCards(): number {
+    return this.state.dungeonRow.slots.filter((id) => id && getCard(id).isDanger).length;
+  }
+
+  /**
+   * Pega um Ídolo de Macaco da sala atual (RESOLVIDO 2026-07-24 — ver nota no topo do
+   * board.ts). São 3 tokens únicos no jogo todo (Macaco Surdo/Cego/Mudo), cada um vale
+   * `MONKEY_IDOL_VALUE` pontos, banked na hora igual artefato/coroa. Sem limite de
+   * quantidade carregada (regra oficial não menciona limite, diferente de Artefato).
+   */
+  takeMonkeyIdol(playerId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    const room = BOARD.rooms[player.roomId];
+    const available = (room?.monkeyIdolNames ?? []).find((name) => !this.state.claimedMonkeyIdols[name]);
+    if (!available) {
+      throw new Error(`${room?.name ?? player.roomId} não tem Ídolo de Macaco disponível.`);
+    }
+
+    this.state.claimedMonkeyIdols[available] = true;
+    player.monkeyIdolsHeld.push(available);
+    player.points += MONKEY_IDOL_VALUE;
+    this.pushLog(`${player.name} pegou o Ídolo de Macaco "${available}" (${MONKEY_IDOL_VALUE} pontos)!`);
+  }
+
+  /**
    * Ataque do dragão: sorteia cubos do saco (jogadores + cubos pretos neutros) em
    * quantidade igual à posição atual na Trilha de Fúria menos 1 (regra confirmada:
    * "5ª casa da trilha sorteia 4 cubos"), mais `extraCubes` (usado pela Trilha de
-   * Contagem Regressiva — ver `processCountdownStep`). Cubo de um jogador = 1 dano.
+   * Contagem Regressiva — ver `processCountdownStep`) e +1 por carta com PERIGO
+   * atualmente na Dungeon Row. Cubo de um jogador = 1 dano.
    */
   private triggerDragonAttack(extraCubes = 0) {
-    const drawCount = Math.max(0, this.state.dragon.rageTrackPosition - 1) + extraCubes;
+    const drawCount =
+      Math.max(0, this.state.dragon.rageTrackPosition - 1) + extraCubes + this.countDangerCards();
     if (drawCount === 0) return;
 
     const tickets: (string | null)[] = [];
@@ -424,6 +481,7 @@ export class GameEngine {
 
     const card = getCard(cardId);
     if (card.kind === "monster") throw new Error(`${card.name} é um monstro — use fightMonster.`);
+    this.checkRoomRequirement(player, card);
     const cost = card.skillCost ?? 0;
     if (player.resources.skill < cost) {
       throw new Error(`Skill insuficiente pra comprar ${card.name} (precisa ${cost}, tem ${player.resources.skill}).`);
@@ -447,6 +505,7 @@ export class GameEngine {
 
     const card = getCard(cardId);
     if (card.kind !== "monster") throw new Error(`${card.name} não é um monstro — use acquireCard.`);
+    this.checkRoomRequirement(player, card);
     const cost = card.swordCost ?? 0;
     if (player.resources.swords < cost) {
       throw new Error(`Swords insuficientes pra vencer ${card.name} (precisa ${cost}, tem ${player.resources.swords}).`);
@@ -469,6 +528,7 @@ export class GameEngine {
     const card = getCard(cardId);
     const remaining = this.state.reserve.remaining[cardId] ?? 0;
     if (remaining <= 0) throw new Error(`${card.name} esgotou na Reserva.`);
+    this.checkRoomRequirement(player, card);
 
     if (card.kind === "monster") {
       const cost = card.swordCost ?? 0;
@@ -493,6 +553,20 @@ export class GameEngine {
     this.state.reserve.remaining[cardId] = remaining - 1;
   }
 
+  /**
+   * ARRIVE — CONFIRMADO no manual oficial: efeito aplicado a TODOS os jogadores quando a
+   * carta é revelada pra repor a Dungeon Row, executado ANTES de qualquer Dragon Attack
+   * disparado pela mesma reposição (ver `refillDungeonSlot`). Ex: Watcher/Overlord/
+   * Archoverlord dão "+1 Clank!" a todos ao serem revelados.
+   */
+  private applyArriveEffects(card: CardDefinition) {
+    if (!card.arriveEffects) return;
+    for (const player of this.state.players) {
+      this.applyEffects(player, card.arriveEffects);
+    }
+    this.pushLog(`${card.name} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
+  }
+
   private refillDungeonSlot(slotIndex: number) {
     const row = this.state.dungeonRow;
     if (row.drawPile.length === 0 && row.discardPile.length > 0) {
@@ -501,8 +575,12 @@ export class GameEngine {
     }
     const newCardId = row.drawPile.shift() ?? null;
     row.slots[slotIndex] = newCardId;
-    if (newCardId && getCard(newCardId).triggersDragonAttack) {
-      this.triggerDragonAttack();
+    if (newCardId) {
+      const card = getCard(newCardId);
+      this.applyArriveEffects(card);
+      if (card.triggersDragonAttack) {
+        this.triggerDragonAttack();
+      }
     }
   }
 

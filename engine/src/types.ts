@@ -28,7 +28,12 @@ export interface CardEffects {
   clank?: number;
   /** Compra cartas extras da mão além das 5 padrão do turno. */
   drawCards?: number;
+  /** Cura esse tanto de dano (reduz `damage`, nunca abaixo de 0). CONFIRMADO em várias cartas reais (Apothecary, Shrine, Cleric of the Sun, poções de Segredo). */
+  heal?: number;
 }
+
+/** Flag de sala que algumas cartas exigem pra serem adquiridas/enfrentadas (ver `CardDefinition.requiresRoomFlag`). */
+export type RoomFlag = "isDepths" | "isCrystalCave";
 
 export interface CardDefinition {
   id: string;
@@ -55,6 +60,28 @@ export interface CardDefinition {
    * uma estimativa (monstros e devices) só pra deixar o mecanismo testável. Ver cards.ts.
    */
   triggersDragonAttack?: boolean;
+  /**
+   * PERIGO (Danger) — CONFIRMADO no manual oficial: enquanto esta carta ficar na Dungeon
+   * Row (sem ser adquirida/vencida), TODO ataque do dragão puxa +1 cubo extra do saco.
+   * Diferente de `triggersDragonAttack`: aqui o efeito é passivo/persistente, não um
+   * disparo único ao ser revelada.
+   */
+  isDanger?: boolean;
+  /**
+   * Efeito ao ser revelada pra repor a Dungeon Row — CONFIRMADO no manual oficial,
+   * aplicado a TODOS os jogadores (não só ao atual), executado ANTES de qualquer Dragon
+   * Attack disparado pela mesma reposição (ordem confirmada: "carried out when the card
+   * is revealed, before any Dragon Attack..."). Ex: Watcher/Overlord/Archoverlord dão
+   * "+1 Clank!" a todos os jogadores ao serem revelados.
+   */
+  arriveEffects?: CardEffects;
+  /**
+   * Restrição de localização pra adquirir (Devices) ou enfrentar (Monstros) esta carta —
+   * CONFIRMADO no manual oficial ("Deep" = só nas Profundezas; ex: Crystal Golem/Crystal
+   * Kobold = só numa Caverna de Cristal). `fightMonster`/`acquireCard` lançam erro se o
+   * jogador não estiver numa sala com essa flag.
+   */
+  requiresRoomFlag?: RoomFlag;
 }
 
 /** Ícones possíveis num túnel — controlam o custo/risco de passar por ele. */
@@ -83,6 +110,14 @@ export interface RoomDefinition {
   isCrystalCave?: boolean;
   /** Valor em pontos do artefato nesta sala, se ainda não foi pego. */
   artifactValue?: number;
+  /** Nome do artefato nesta sala — CONFIRMADO contra fotos oficiais dos 7 artefatos do jogo base (ver ARTIFACT_NAMES_BY_VALUE em board.ts). */
+  artifactName?: string;
+  /**
+   * Nomes dos Ídolos de Macaco disponíveis nesta sala (regra oficial: os 3 ficam juntos
+   * na sala "Monkey Shrine", um por vez pode ser pego por entrada na sala). undefined/
+   * lista vazia = sem ídolo aqui.
+   */
+  monkeyIdolNames?: string[];
 }
 
 export interface BoardDefinition {
@@ -154,4 +189,9 @@ export interface PlayerState {
   hasBackpack: boolean;
   /** Já escapou da masmorra pela Entrada (fora de jogo, aguardando o fim da partida). */
   hasLeftDungeon: boolean;
+  /** Nomes dos Ídolos de Macaco carregados (cada um vale MONKEY_IDOL_VALUE pontos, já somados em `points` ao pegar). */
+  monkeyIdolsHeld: string[];
 }
+
+/** Valor em pontos de cada Ídolo de Macaco — CONFIRMADO (3 tokens, 5 pontos cada). */
+export const MONKEY_IDOL_VALUE = 5;

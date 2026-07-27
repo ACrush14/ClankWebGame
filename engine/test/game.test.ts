@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getCard } from "../src/cards.js";
+import { BOARD } from "../src/board.js";
 import { GameEngine } from "../src/game.js";
 
 function twoPlayerGame() {
@@ -337,6 +338,181 @@ describe("movePlayer", () => {
     const player = game.currentPlayer;
     player.resources.boots = 99;
     expect(() => game.movePlayer(player.id, "depths-east")).toThrow(/não há túnel/i);
+  });
+});
+
+describe("cura (heal)", () => {
+  it("Skeleton Priest cura 1 de dano ao ser derrotado, além de +1 Clank", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.damage = 5;
+    player.clank = 0;
+    game.state.dungeonRow.slots[0] = "skeleton-priest";
+    player.resources.swords = 2;
+
+    game.fightMonster(player.id, 0);
+
+    expect(player.damage).toBe(4);
+    expect(player.clank).toBe(1);
+  });
+
+  it("cura nunca deixa o dano negativo", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.damage = 0;
+    game.state.dungeonRow.slots[0] = "skeleton-priest";
+    player.resources.swords = 2;
+
+    game.fightMonster(player.id, 0);
+
+    expect(player.damage).toBe(0);
+  });
+});
+
+describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
+  it("carta com Danger na Dungeon Row soma +1 cubo no ataque, além da posição da trilha", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0, // sempre sorteia o primeiro ticket (cubo do jogador, já que ele tem clank)
+    );
+    const player = game.currentPlayer;
+    player.clank = 1;
+    game.state.dragon.rageTrackPosition = 1; // sozinho sortearia 0 cubos (posição - 1 = 0)
+    game.state.dungeonRow.slots[1] = "the-warden"; // Danger — está na Dungeon Row
+    game.state.dungeonRow.slots[0] = "keymaster";
+    game.state.dungeonRow.drawPile.unshift("skeleton"); // carta de reposição sem símbolo de ataque
+    player.resources.swords = 2;
+
+    game.fightMonster(player.id, 0); // não dispara ataque sozinho (keymaster não tem triggersDragonAttack)
+    expect(player.damage).toBe(0);
+
+    // dispara o ataque diretamente (método privado) pra isolar só o efeito do Danger
+    const triggerAttack = (
+      game as unknown as { triggerDragonAttack: (extra?: number) => void }
+    ).triggerDragonAttack.bind(game);
+    triggerAttack(0); // rageTrackPosition=1 -> 0 base + 0 extra + 1 (Danger) = 1 cubo sorteado
+    expect(player.damage).toBe(1);
+  });
+
+  it("sem carta de Danger na fileira, não soma cubo extra", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0,
+    );
+    const player = game.currentPlayer;
+    player.clank = 1;
+    game.state.dragon.rageTrackPosition = 1;
+    game.state.dungeonRow.slots[0] = "skeleton"; // sem Danger
+
+    const triggerAttack = (
+      game as unknown as { triggerDragonAttack: (extra?: number) => void }
+    ).triggerDragonAttack.bind(game);
+    triggerAttack(0); // 0 base + 0 extra + 0 Danger = 0 cubos sorteados
+
+    expect(player.damage).toBe(0);
+  });
+});
+
+describe("ARRIVE — efeito ao revelar carta pra repor a Dungeon Row", () => {
+  it("Skeleton Priest revelado dá +1 Clank a TODOS os jogadores, antes de qualquer ataque", () => {
+    const game = twoPlayerGame();
+    const [p1, p2] = game.state.players;
+    p1.clank = 0;
+    p2.clank = 0;
+    game.state.dungeonRow.drawPile.unshift("skeleton-priest");
+    game.state.dungeonRow.slots[0] = "keymaster";
+    p1.resources.swords = 2;
+
+    game.fightMonster(p1.id, 0);
+
+    // p1 venceu o Keymaster (sem recompensa), e a reposição revelou o Skeleton Priest
+    expect(p1.clank).toBe(1);
+    expect(p2.clank).toBe(1);
+  });
+});
+
+describe("restrição de sala (Deep / Crystal Cave)", () => {
+  it("Crystal Kobold só pode ser enfrentado numa Caverna de Cristal", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "crystal-kobold";
+    player.resources.swords = 2;
+
+    expect(() => game.fightMonster(player.id, 0)).toThrow(/isCrystalCave/i);
+
+    player.roomId = "crystal-cave";
+    game.fightMonster(player.id, 0);
+    expect(player.resources.swords).toBe(0);
+  });
+
+  it("The Warden só pode ser enfrentado nas Profundezas (Deep)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "the-warden";
+    player.resources.swords = 3;
+
+    expect(() => game.fightMonster(player.id, 0)).toThrow(/isDepths/i);
+
+    player.roomId = "depths-east";
+    game.fightMonster(player.id, 0);
+    expect(player.resources.swords).toBe(0);
+  });
+});
+
+describe("Ídolos de Macaco", () => {
+  it("pega um Ídolo de Macaco no Santuário e ganha 5 pontos", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "monkey-shrine";
+
+    game.takeMonkeyIdol(player.id);
+
+    expect(player.points).toBe(5);
+    expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo"]);
+  });
+
+  it("pega os 3 ídolos um de cada vez (nomes diferentes, sem limite de quantidade)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "monkey-shrine";
+
+    game.takeMonkeyIdol(player.id);
+    game.takeMonkeyIdol(player.id);
+    game.takeMonkeyIdol(player.id);
+
+    expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo", "Macaco Cego", "Macaco Mudo"]);
+    expect(player.points).toBe(15);
+  });
+
+  it("lança erro quando não há mais ídolos disponíveis na sala", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "monkey-shrine";
+    game.takeMonkeyIdol(player.id);
+    game.takeMonkeyIdol(player.id);
+    game.takeMonkeyIdol(player.id);
+
+    expect(() => game.takeMonkeyIdol(player.id)).toThrow(/não tem Ídolo de Macaco disponível/i);
+  });
+
+  it("lança erro se a sala atual não tem Ídolo de Macaco", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    expect(() => game.takeMonkeyIdol(player.id)).toThrow(/não tem Ídolo de Macaco disponível/i);
+  });
+});
+
+describe("nomes dos artefatos", () => {
+  it("as 3 salas de artefato têm nome confirmado (Cruz/Banana/Armadura)", () => {
+    expect(BOARD.rooms["depths-west"].artifactName).toBe("Cruz");
+    expect(BOARD.rooms["depths-east"].artifactName).toBe("Banana");
+    expect(BOARD.rooms["sealed-vault"].artifactName).toBe("Armadura");
   });
 });
 

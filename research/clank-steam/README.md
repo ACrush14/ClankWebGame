@@ -75,29 +75,46 @@ tem planilha pública completa). Depois de comparar com a memória do usuário s
 físico que ele tem em casa — sem prisioneiros/fantasmas, mas com Cavernas de Cristal e
 Ídolos de Macaco — ficou claro que a referência certa é o jogo **base**.
 
-## Regras confirmadas que o motor atual ainda não modela
+## Mecânicas — status (2026-07-24: as 7 pendentes foram implementadas no motor)
 
-1. **Cura (heal)** — várias cartas dão a opção de curar (Apothecary, Shrine, Cleric of
-   the Sun, poções de Segredo Menor/Maior). Motor atual só tem `damage` subindo.
-2. **PERIGO (Danger) ≠ Dragon Attack symbol** — Danger é passivo/persistente (+1 cubo
-   em todo ataque enquanto a carta ficar na fileira); Dragon Attack dispara ataque
-   imediato ao ser revelada. Só o segundo está implementado (`triggersDragonAttack`).
-3. **Efeito de "chegada"/ARRIVE** — Shrine devolve cubos à bolsa; Watcher/Overlord dão
-   +1 Clank a todos ao serem revelados. Não modelado.
-4. **Gemas têm custo de ruído na aquisição** — "+2 Clank!" ao adquirir, separado do
-   efeito de jogar depois. Não modelado como campo próprio.
-5. **Marcadores de localização em monstros** — "Deep" (Cave Troll, The Vault — só nas
-   Profundezas) e "Crystal Cave only" (Crystal Golem). `fightMonster`/aquisição de
-   Device não distinguem localização do jogador hoje.
-6. **Artefatos têm nome e não só valor** — Ring/Cross/Vase/Banana/Shield/Armor/Orb.
-7. **Ídolos de Macaco** — 3 tokens (Macaco Surdo/Cego/Mudo), 5 pontos cada, ficam na
-   sala "Monkey Shrine". Não modelado (bloqueava o item 10 do `PLANNING.md`).
+1. ✅ **Cura (heal)** — `CardEffects.heal` reduz `damage` (nunca abaixo de 0). Aplicado
+   em `applyEffects`. Card de teste: `skeleton-priest` (DEFEAT: ♥, +1 Clank!).
+2. ✅ **PERIGO (Danger) ≠ Dragon Attack symbol** — `CardDefinition.isDanger`; cada carta
+   com Danger na Dungeon Row soma +1 cubo em TODO ataque (`countDangerCards` em
+   `game.ts`), diferente de `triggersDragonAttack` (disparo único ao revelar). Card de
+   teste: `the-warden`.
+3. ✅ **Efeito de "chegada"/ARRIVE** — `CardDefinition.arriveEffects`, aplicado a TODOS
+   os jogadores em `refillDungeonSlot`, ANTES de qualquer Dragon Attack disparado pela
+   mesma reposição (ordem confirmada no manual). Cards de teste: `skeleton-priest`,
+   `archoverlord`. ⚠️ Exceção documentada: o "devolva 3 cubos à bolsa" do Shrine/
+   Thieves' Shrine não foi modelado — o motor não mantém um pool persistente de cubos
+   entre ataques (sorteia direto da contagem de Clank! + uma constante de cubos
+   pretos), então não há estado de onde "devolver" cubos reduziria ameaça futura.
+4. ✅ **Gemas têm custo de ruído na aquisição** — já era suportado pelo campo genérico
+   `acquireEffects.clank`, sem mudança de código necessária (só falta popular os dados
+   reais das Gemas quando `cards.ts` for revertido pro jogo base).
+5. ✅ **Marcadores de localização em monstros/devices** — `CardDefinition.requiresRoomFlag`
+   ("isDepths" | "isCrystalCave"), checado em `acquireCard`/`fightMonster`/
+   `acquireFromReserve` via `checkRoomRequirement`. Cards de teste: `crystal-kobold`
+   (Crystal Cave), `the-warden` (Deep/Profundezas).
+6. ✅ **Artefatos têm nome e não só valor** — `RoomDefinition.artifactName` +
+   `ARTIFACT_NAMES_BY_VALUE` (tabela completa dos 7 valores) em `board.ts`. As 3 salas
+   de artefato existentes já têm nome (Cruz=7, Banana=15, Armadura=25).
+7. ✅ **Ídolos de Macaco** — nova sala `monkey-shrine` (posição no grafo provisória),
+   `GameEngine.takeMonkeyIdol`, `PlayerState.monkeyIdolsHeld`, `MONKEY_IDOL_VALUE=5`.
+   Mensagem `take_monkey_idol` já wireada no `ClankRoom.ts` (servidor) — **falta UI no
+   client** pra chamar essa ação (fora do escopo deste round, é polish de interface).
+
+Testes novos em `engine/test/game.test.ts` (12 casos) cobrindo as 6 mecânicas com
+código (a #4 não precisou de teste novo, já era coberta pelos testes de Gema/acquire
+existentes). Suite completa: 77 testes passando.
 
 ## Próximos passos
 
 1. Revisar a planilha em busca de mais discrepâncias (comparar com
    `cartas-capturadas.md` onde os dois se sobrepõem).
 2. Reescrever `engine/src/cards.ts` e `engine/src/board.ts` pro conteúdo base usando a
-   planilha como fonte primária.
-3. Implementar as 7 mecânicas listadas acima, priorizando as que afetam o MVP definido
-   no `PLANNING.md` (o usuário quer "básico, sem nada muito elaborado").
+   planilha como fonte primária — agora todas as mecânicas de suporte já existem no
+   motor, é "só" trocar os dados.
+3. Adicionar UI no client pra pegar Ídolo de Macaco (`take_monkey_idol` já existe no
+   servidor).

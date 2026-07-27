@@ -652,6 +652,12 @@ export const DUNGEON_DECK: CardDefinition[] = [
     verified: true,
     // Texto oficial (Clank! Catacombs): USE: / $2 -OR- Trash up to two Burgles, each from your play area or discard pile.
     // Ao chegar na Dungeon Row: Put 3 dragon cubes back in the bag.
+    // ⚠️ "Put 3 dragon cubes back in the bag" NÃO modelado de propósito: o motor sorteia o
+    // ataque do dragão direto a partir da contagem de Clank! de cada jogador + uma
+    // constante de cubos pretos (BLACK_CUBE_COUNT em game.ts), sem um "saco" persistente
+    // entre ataques — não há estado nenhum de onde "devolver" cubos reduziria ameaça
+    // futura. Modelar isso direito exigiria reescrever `triggerDragonAttack` pra manter
+    // um pool de cubos entre ataques, fora do escopo deste round de mecânicas.
   },
   {
     id: "black-market",
@@ -688,7 +694,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
     acquireEffects: { skill: 2 },
     verified: true,
     triggersDragonAttack: true,
+    requiresRoomFlag: "isCrystalCave",
     // Texto oficial (Clank! Catacombs): Fight this only in a Crystal Cave or Wayshrine. / DEFEAT: 2 Skill
+    // ⚠️ "ou Wayshrine" não modelado — motor não tem essa flag de sala separada, só isCrystalCave.
   },
   {
     id: "keymaster",
@@ -703,6 +711,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
     name: "Skeleton Priest",
     kind: "monster",
     swordCost: 2,
+    acquireEffects: { heal: 1, clank: 1 },
+    arriveEffects: { clank: 1 },
     verified: true,
     // Texto oficial (Clank! Catacombs): DEFEAT: ♥, +1 Clank!
     // Ao chegar na Dungeon Row: All players get +1 Clank!
@@ -712,8 +722,11 @@ export const DUNGEON_DECK: CardDefinition[] = [
     name: "Archoverlord",
     kind: "monster",
     swordCost: 3,
+    acquireEffects: { drawCards: 2 },
+    arriveEffects: { clank: 1 },
     verified: true,
     // Texto oficial (Clank! Catacombs): DEFEAT: Draw two cards, each other player gets +1 Clank!
+    // ⚠️ "each other player gets +1 Clank!" na derrota não modelado (acquireEffects só afeta quem venceu, não os outros jogadores).
     // Ao chegar na Dungeon Row: All players get +1 Clank!
   },
   {
@@ -751,8 +764,11 @@ export const DUNGEON_DECK: CardDefinition[] = [
     swordCost: 3,
     verified: true,
     triggersDragonAttack: true,
+    requiresRoomFlag: "isDepths",
+    isDanger: true,
     // Texto oficial (Clank! Catacombs): Deep (Fight only in the Depths.) / DEFEAT: Free two Prisoners
-    // Ao chegar na Dungeon Row: DANGER Pull +1 cube for dragon attacks.
+    // ⚠️ "Free two Prisoners" não modelado (sua versão não tinha prisioneiros — ver nota no topo do arquivo).
+    // DANGER Pull +1 cube for dragon attacks. — CONFIRMADO, aplicado via `isDanger`.
   },
   {
     id: "ogre-merchant",
