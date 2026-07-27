@@ -35,7 +35,7 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Corrida Frenética (Dead Run) | Efeito: Boots+2 | Custo 3 | "+2 Clank! Você não precisa parar nas Cavernas de Cristal neste turno."
 - Altar | Dispositivo | Custo 2 | USE: $1 -OU- cura 1 (coração) | Efeito de chegada: "Devolva 3 cubos de dragão à bolsa." | "Um tributo a um deus esquecido, o altar pode acalmar a fúria do dragão. Um pouquinho."
 - Cetro do Senhor dos Macacos (Scepter of the Ape Lord) | Custo 3 | VP 3 | "+3 Clank!" | "Toda a sociedade dos Senhores dos Macacos foi construída ao redor do número 3."
-- Altar do Dragão (Dragon Shrine) | Dispositivo | Custo 4 | USE: 2 Skill -OU- Elimine uma carta em sua área de jogo ou pilha de descarte | **PERIGO**: "Enquanto esta carta permanecer na Fileira da Masmorra, os ataques do dragão compram +1 cubo."
+- Altar do Dragão (Dragon Shrine) | Dispositivo | Custo 4 | USE: **$2** (ouro, não Skill — corrigido via foto oficial) -OU- Elimine uma carta em sua área de jogo ou pilha de descarte | **PERIGO**: "Enquanto esta carta permanecer na Fileira da Masmorra, os ataques do dragão compram +1 cubo."
 - Fofoca (Tattle) | Custo 2 | Efeito: nenhum incondicional | "Todos os outros jogadores recebem +1 Clank!" | "Não há honra entre ladrões... mas há muita roupa suja."
 - Furtividade (Sneak) | Custo 1 | Efeito: Boots+1 | "-2 Clank!" | "A escuridão é uma das maiores armas de um ladrão."
 - Espada Cantante (Singing Sword) | Custo 5 | VP 2 | Efeito: Swords+2 | "+1 Clank!" | "Cuidado! Ela não tem dó."
@@ -63,6 +63,14 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Overlord | Monstro | Custo Swords 2 | ARRIVE: Todos os jogadores recebem +1 Clank! | DERROTA: Compre duas cartas | "Their insidious plots are unknown even to Nictotraxian."
 
 **Todos os 9 tipos de monstro do Dungeon Deck + Goblin da Reserva agora capturados (100%).**
+
+### Dispositivos — confirmados via foto oficial da carta física (BGG)
+
+- The Vault | Dispositivo | Custo 3 | "Deep (Use only in the Depths.)" | USE: $5, +3 Clank! | "So much gold you could swim in it!"
+- Ladder | Dispositivo | Custo 3 | USE: Boots+2 | "You say ominous hole, I say promising shortcut."
+- Teleporter | Dispositivo | Custo 4 | USE: "Teleport to an adjacent room." | "Do not use less than 15 minutes after eating."
+
+**Todos os 5 Dispositivos do jogo agora capturados (100%): Altar/Shrine, Altar do Dragão/Dragon Shrine, The Vault, Ladder, Teleporter.**
 
 ## Cartas ainda faltando (custo/efeito/texto) — lista completa com quantidades
 

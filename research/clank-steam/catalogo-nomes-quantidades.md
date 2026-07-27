@@ -34,11 +34,13 @@ importa.
 
 | Carta | Qtd | Status |
 |---|---|---|
-| Dragon Shrine | 2 | ✅ capturada = "Altar do Dragão" |
+| Dragon Shrine | 2 | ✅ capturada = "Altar do Dragão" (USE corrigido: $2, não Skill) |
 | Shrine | 3 | ✅ capturada = "Altar" (resolve nome genérico "Shrine" = nosso "Altar") |
-| Ladder | 2 | ❌ ainda não vista |
-| Teleporter | 3 | ❌ ainda não vista |
-| Vault, The | 1 | ❌ ainda não vista |
+| Ladder | 2 | ✅ capturada por foto — Custo 3, USE: Boots+2 |
+| Teleporter | 3 | ✅ capturada por foto — Custo 4, USE: Teleporte pra sala adjacente |
+| Vault, The | 1 | ✅ capturada por foto — Custo 3, Deep, USE: $5+3Clank |
+
+**Categoria Devices: 100% completa (5/5 tipos).**
 
 ## Dungeon Deck — Monstros
 
