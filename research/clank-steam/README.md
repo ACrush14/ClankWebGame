@@ -1,132 +1,103 @@
-# Pesquisa: Clank! A Deck-Building Adventure (Steam) → ClankWebGame
+# Pesquisa: Clank! A Deck-Building Adventure (Steam/físico) → ClankWebGame
 
-Esta pasta reúne tudo que foi levantado jogando o **Clank! A Deck-Building Adventure**
-oficial (versão base, sem expansões) no Steam, via automação de tela, com o objetivo de
-corrigir/completar `engine/src/cards.ts` e `engine/src/board.ts` do ClankWebGame — que
-hoje ainda têm conteúdo temporário baseado na expansão **Catacombs** (usada por engano
-numa sessão anterior, antes de perceber que a versão de referência é a base + Steam).
+Esta pasta reúne tudo que foi levantado sobre o **Clank! A Deck-Building Adventure**
+oficial (versão base, sem expansões), com o objetivo de corrigir/completar
+`engine/src/cards.ts` e `engine/src/board.ts` do ClankWebGame — que hoje ainda têm
+conteúdo temporário baseado na expansão **Catacombs** (usada por engano numa sessão
+anterior, antes de perceber que a versão de referência é a base).
+
+## ⭐ Status: catálogo de cartas essencialmente COMPLETO
+
+Depois de várias etapas (automação no Steam, manual oficial em PDF, fotos de cartas
+físicas no BGG), o usuário fechou o trabalho montando **uma planilha própria com o
+catálogo quase completo do jogo base**, cruzando fotos reais das cartas físicas. Ver
+[`planilha-usuario.csv`](./planilha-usuario.csv) — é a fonte mais completa e confiável
+que temos agora, e deve ser tratada como **fonte primária** para a eventual reversão do
+motor pro conteúdo base.
 
 **Arquivos desta pasta:**
-- [`README.md`](./README.md) — este arquivo. Visão geral, progresso e o que falta.
-- [`COMO-JOGAR.md`](./COMO-JOGAR.md) — guia operacional de automação: como navegar os
-  menus, ler uma carta na tela, comprar da fileira, mover o personagem, etc. Ler antes de
-  retomar qualquer sessão de automação.
-- [`cartas-capturadas.md`](./cartas-capturadas.md) — dados brutos de cada carta lida
-  (nome, custo, efeito, texto, VP), no formato como foram sendo capturadas ao vivo.
+- [`README.md`](./README.md) — este arquivo. Visão geral e status.
+- [`planilha-usuario.csv`](./planilha-usuario.csv) — **fonte primária.** Catálogo
+  quase completo (baralho inicial, Reserva, Dungeon Deck inteiro, Artefatos com nome,
+  Ídolos de Macaco, Segredos Maiores/Menores, itens de Mercado, Mastery), com
+  quantidade, custo, efeito (Mana=Skill gerado, Bota=Boots gerado, Ataque=Swords
+  gerado/custo de monstro, Clank, Pontos=VP, Moedas=Gold), nota de texto e link da foto
+  oficial da carta. Ver seção "Como ler a planilha" abaixo.
+- [`cartas-capturadas.md`](./cartas-capturadas.md) — dados capturados manualmente
+  antes da planilha (Steam + fotos BGG avulsas), com anotações extras de mecânica
+  (Danger vs Dragon Attack, túneis com dano, etc.) que a planilha não detalha.
+- [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md) — catálogo de
+  nomes+quantidades (parcialmente superado pela planilha, mas mantido por causa das
+  anotações de progresso incremental).
 - [`regras-oficiais-rulebook.md`](./regras-oficiais-rulebook.md) — regras extraídas do
-  **manual oficial em PDF** (via `WebFetch`/`Read`, texto puro — bem mais barato que
-  automação de tela). Cobre quase todo o regramento com precisão de fonte oficial:
-  Segredos Maiores/Menores, itens de Mercado, glossário de termos (Acquire vs Arrive,
-  Danger, Trash, Teleport), Trilha de Contagem Regressiva em detalhe, e a resolução do
-  mistério dos Ídolos de Macaco.
-- [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md) — catálogo
-  completo das 100 cartas do Dungeon Deck (nome + quantidade de cada, fonte: lista
-  comunitária), cruzado com o que já foi capturado. Não tem custo/efeito/texto, mas
-  fecha de vez a dúvida de quais são as cartas do jogo base e quantas cópias existem.
+  manual oficial em PDF (Segredos, Mercado, glossário de termos, Countdown Track).
+- [`COMO-JOGAR.md`](./COMO-JOGAR.md) — guia operacional de automação de tela (só
+  necessário se for preciso voltar a jogar o Steam pra confirmar algo pontual).
+
+## Como ler a planilha (`planilha-usuario.csv`)
+
+Colunas: `Nome Ingles, Nome Portugues, Quantidade, Tipo, Custo, Mana, Bota, Ataque,
+Clank, Pontos, Moedas, Nota, Imagem`.
+
+- **Custo**: custo em Skill pra adquirir (Devices e cartas amarelas/azuis). Pra
+  monstros (Tipo="Carta Vermelha Monstro"), esse campo é 0 e o custo real em Swords
+  está na coluna **Ataque**.
+- **Mana / Bota / Ataque / Clank / Moedas**: recursos gerados ao JOGAR a carta (Skill /
+  Boots / Swords / Clank! / Gold respectivamente) — exceto pra monstros, onde Ataque =
+  custo em Swords pra derrotar, e os outros números (Moedas/Clank) geralmente
+  representam a recompensa de derrota (ver coluna Nota pra confirmar o texto exato).
+- **Pontos**: VP impresso na carta (pontos no fim de jogo).
+- **Nota**: texto/efeito condicional em português, geralmente mais completo/confiável
+  que os números nas colunas (ex: recompensas de derrota de monstro).
+- **Imagem**: link direto pra foto oficial da carta física (útil pra conferir algo
+  visualmente sem reabrir o Steam).
+- Linhas de **Artefato** (Ring/Banana/Shield/Armor/Vase/Orb/Cross): resolvem os nomes
+  dos 7 artefatos da escala 5/7/10/15/20/25/30 — confirmado: Anel=5, Cruz=7, Vaso=10,
+  Banana=15, Escudo=20, Armadura=25, Orbe=30.
+- Linhas de **Idolo do macaco**: resolvem o mistério dos Ídolos de Macaco — 3 tipos
+  (Macaco Surdo/Cego/Mudo), 1 de cada, cada um vale 5 pontos.
+- Linhas de **Bonus Grande/Bonus Pequeno**: são os Segredos Maiores/Menores do manual
+  oficial, já traduzidos e com quantidades reais.
+
+## ⚠️ Discrepância encontrada — precisa confirmar
+
+- **Tattle (Fofoca)**: nossa captura ao vivo no Steam registrou Custo=2, sem efeito
+  incondicional. A planilha (baseada na foto física) registra **Custo=3, Mana=2**
+  (ou seja, a carta também dá Skill+2 ao jogar, além do "+1 Clank pra todos os outros").
+  Como a planilha vem de foto da carta física (fonte mais confiável que uma dedução ao
+  vivo), tratar `Custo=3, Skill+2` como o valor correto — mas vale conferir de novo se
+  possível.
 
 ## Por que essa pesquisa existe
 
 O motor (`engine/src/`) foi inicialmente escrito com dados da expansão Catacombs (que
 tem planilha pública completa). Depois de comparar com a memória do usuário sobre o jogo
 físico que ele tem em casa — sem prisioneiros/fantasmas, mas com Cavernas de Cristal e
-Ídolos de Macaco — ficou claro que a referência certa é o jogo **base**, confirmado por
-captura de tela do menu "CRIAR PARTIDA" do Steam mostrando **"Clank! A Deck-Building
-Adventure"**. Só que não há uma planilha pronta e confiável do jogo base com
-custo/efeito/texto de cada carta — por isso a estratégia virou "jogar e ler direto da
-tela", usando automação de mouse/teclado (`mcp__computer-use__*`) para abrir partidas,
-ler os popups de carta e ir catalogando.
+Ídolos de Macaco — ficou claro que a referência certa é o jogo **base**.
 
-## Progresso atual
+## Regras confirmadas que o motor atual ainda não modela
 
-| Categoria | Status |
-|---|---|
-| Baralho inicial (4 cartas) | ✅ 100% confirmado (nome, quantidade E efeito) |
-| Reserva (4 pilhas fixas) | ✅ 100% confirmado — bate com o motor atual |
-| Catálogo de nomes+quantidades do Dungeon Deck (100 cartas) | ✅ 100% conhecido (ver [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md)) |
-| Dungeon Row — custo/efeito/texto completo | 🟡 21 tipos capturados de ~51 tipos únicos (~41%) |
-| Regras confirmadas via manual oficial | ✅ Segredos, Mercado, glossário de termos, Countdown Track — todas batem ou já corrigiram o motor |
-| Regras/mecânicas distintas do motor atual (pendentes) | 🟡 5 diferenças confirmadas, ainda não implementadas (ver abaixo) |
-| Reversão de `cards.ts`/`board.ts` pro conteúdo base | ⏸️ Ainda **não iniciada** — aguardando catálogo mais completo antes de reescrever o motor |
-
-## Baralho inicial (100% confirmado)
-
-| Nome (PT, no jogo) | = carta oficial (EN) | Efeito |
-|---|---|---|
-| Roubar | Burgle | Skill +1 |
-| Contornar | Sidestep | Boots +1 |
-| Rastejar | Scramble | Skill +1, Boots +1 |
-| Tropeçar | Stumble | Clank! +1 |
-
-## Reserva — pilhas fixas (100% confirmado, já bate com `engine/src/cards.ts`)
-
-| Nome | Tipo | Qtd | Efeito | VP | Custo |
-|---|---|---|---|---|---|
-| Tomo Secreto (Secret Tome) | — | 12 | nenhum | 7 | 7 |
-| Explorar (Explore) | — | 15 | Skill+2, Boots+1 | — | 3 |
-| Mercenário (Mercenary) | Companheiro | ~14 | Skill+1, Swords+2 | — | 2 |
-| Goblin | Monstro | ∞ (nunca esgota) | DERROTA: $1 (não descarta após o combate) | — | 2 Swords |
-
-## Dungeon Row — capturadas ao vivo (18 tipos)
-
-| Nome (PT) | Tipo | Custo | VP | Efeito ao jogar | Efeito extra |
-|---|---|---|---|---|---|
-| Capitão Rebelde (Rebel Captain) | Companheiro | 3 | 1 | Skill+2 | "Se houver outro companheiro em jogo, compre uma carta." |
-| Boticária (Apothecary) | Companheiro | 3 | 2 | — | Descarte 1 carta → 3 Swords **ou** $2 **ou** cura 1 |
-| Colecionador de Gemas (Gem Collector) | Companheiro | 4 | 2 | Skill+2 | -2 Clank!; gemas custam -2 Skill neste turno |
-| Corrida Frenética (Dead Run) | — | 3 | — | Boots+2 | +2 Clank!; não precisa parar na Caverna de Cristal |
-| Altar | Dispositivo | 2 | — | — | USE: $1 ou cura 1; CHEGADA: devolve 3 cubos de dragão à bolsa |
-| Cetro do Senhor dos Macacos (Scepter of the Ape Lord) | — | 3 | 3 | +3 Clank! | — |
-| Altar do Dragão (Dragon Shrine) | Dispositivo | 4 | — | — | USE: 2 Skill ou elimine 1 carta; **PERIGO**: dragão compra +1 cubo enquanto ficar na fileira |
-| Fofoca (Tattle) | — | 2 | — | — | Todos os outros jogadores recebem +1 Clank! |
-| Furtividade (Sneak) | — | 1 | — | Boots+1 | -2 Clank! |
-| Espada Cantante (Singing Sword) | — | 5 | 2 | Swords+2 | +1 Clank! |
-| Rubi (Ruby) | Gema | 6 | 6 | Compre 1 carta | ADQUIRIR: +2 Clank! |
-| Esmeralda (Emerald) | Gema | 5 | 5 | Compre 1 carta | ADQUIRIR: +2 Clank! |
-| Perspicácia (prov. *Brilliance*) | — | 6 | — | Compre 3 cartas | — |
-| Porta Animada (Animated Door) | Monstro | 1 Sword | — | — | DERROTA: Boots+1; dispara Dragon Attack |
-| Arrotador (Belcher) | Monstro | 2 Swords | — | — | DERROTA: $4, +2 Clank!; dispara Dragon Attack |
-| Troll das Cavernas (Cave Troll) | Monstro, **Subterrâneo** | 4 Swords | — | — | Só combatível nas Profundezas; DERROTA: $3 + compre 2 cartas |
-
-*(Faltam ~47 tipos do catálogo antigo de 68 — lista completa dos nomes ainda não vistos
-em [`cartas-capturadas.md`](./cartas-capturadas.md#cartas-ainda-faltando).)*
-
-## Regras/mecânicas confirmadas que o motor atual ainda não modela
-
-1. **Cura (heal)** — pelo menos 3 cartas vistas até agora dão a opção de curar 1
-   coração (Boticária, Altar, e uma terceira não capturada ainda). O motor
-   (`engine/src/game.ts`) só tem `damage` subindo, nunca descendo.
-2. **PERIGO (Danger) ≠ Dragon Attack symbol** — são duas mecânicas distintas:
-   - *Dragon Attack symbol*: dispara um ataque do dragão IMEDIATO, uma única vez, quando
-     a carta é revelada pra repor a fileira. **Já implementado** (`triggersDragonAttack`).
-   - *Danger*: efeito PASSIVO/PERSISTENTE — enquanto a carta ficar na fileira sem ser
-     comprada, todo ataque do dragão (de qualquer jogador, a qualquer momento) compra +1
-     cubo extra. **Não implementado ainda.**
-3. **Efeito de "chegada" em Dispositivos** — ex: Altar devolve 3 cubos de dragão à
-   bolsa assim que é adquirido (reduz ameaça — o oposto do Danger). Não modelado.
-4. **Gemas têm custo de ruído na aquisição** — "ADQUIRIR: +2 Clank!" é um efeito
-   separado do efeito de jogar depois (que normalmente é "compre uma carta"). Não
-   modelado como campo próprio hoje.
-5. **Marcador "Subterrâneo" em monstros** — alguns monstros (ex: Troll das Cavernas) só
-   podem ser combatidos se o jogador estiver numa sala da zona "Profundezas", não em
-   qualquer sala. `fightMonster` hoje não distingue localização do jogador.
-
-Regras já confirmadas e que **batem** com o motor atual (nenhuma mudança necessária):
-- Dungeon Row com 6 cartas, Reserva com 4 pilhas fixas, Goblin infinito.
-- Regra de "precisa parar na Caverna de Cristal" (bypassada por Corrida Frenética) —
-  existe no jogo base, não é exclusiva do Catacombs.
-- Escala de valores de artefato 5/7/10/15/20/25/30 (confirmada por foto do jogo físico
-  E visualmente no tabuleiro do Steam, que mostrou pelo menos 5/10/15/20/25).
-- Dois tabuleiros oficiais: "Castelo" e "Montículos e Covas", + opção "Aleatório".
+1. **Cura (heal)** — várias cartas dão a opção de curar (Apothecary, Shrine, Cleric of
+   the Sun, poções de Segredo Menor/Maior). Motor atual só tem `damage` subindo.
+2. **PERIGO (Danger) ≠ Dragon Attack symbol** — Danger é passivo/persistente (+1 cubo
+   em todo ataque enquanto a carta ficar na fileira); Dragon Attack dispara ataque
+   imediato ao ser revelada. Só o segundo está implementado (`triggersDragonAttack`).
+3. **Efeito de "chegada"/ARRIVE** — Shrine devolve cubos à bolsa; Watcher/Overlord dão
+   +1 Clank a todos ao serem revelados. Não modelado.
+4. **Gemas têm custo de ruído na aquisição** — "+2 Clank!" ao adquirir, separado do
+   efeito de jogar depois. Não modelado como campo próprio.
+5. **Marcadores de localização em monstros** — "Deep" (Cave Troll, The Vault — só nas
+   Profundezas) e "Crystal Cave only" (Crystal Golem). `fightMonster`/aquisição de
+   Device não distinguem localização do jogador hoje.
+6. **Artefatos têm nome e não só valor** — Ring/Cross/Vase/Banana/Shield/Armor/Orb.
+7. **Ídolos de Macaco** — 3 tokens (Macaco Surdo/Cego/Mudo), 5 pontos cada, ficam na
+   sala "Monkey Shrine". Não modelado (bloqueava o item 10 do `PLANNING.md`).
 
 ## Próximos passos
 
-1. Continuar capturando os ~47 tipos de carta que faltam (jogar mais partidas,
-   priorizando sempre comprar cartas novas — ver checklist de turno em
-   [`COMO-JOGAR.md`](./COMO-JOGAR.md#estratégia-de-jogo-instrução-do-usuário)).
-2. Quando o catálogo estiver "bom o suficiente" (decisão do usuário — não precisa ser
-   100% dos 68 tipos), reescrever `engine/src/cards.ts` e `engine/src/board.ts` pro
-   conteúdo do jogo base, e implementar as 5 mecânicas faltantes listadas acima
-   (ao menos as que o usuário quiser no MVP — combinar com o escopo "básico, sem nada
-   muito elaborado" definido em `PLANNING.md`).
-3. Adicionar prints/capturas de tela reais quando o jogo estiver aberto de novo, pra
-   ilustrar visualmente os esquemas de carta e o tabuleiro (pendente — ver `PLANNING.md`).
+1. Revisar a planilha em busca de mais discrepâncias (comparar com
+   `cartas-capturadas.md` onde os dois se sobrepõem).
+2. Reescrever `engine/src/cards.ts` e `engine/src/board.ts` pro conteúdo base usando a
+   planilha como fonte primária.
+3. Implementar as 7 mecânicas listadas acima, priorizando as que afetam o MVP definido
+   no `PLANNING.md` (o usuário quer "básico, sem nada muito elaborado").
