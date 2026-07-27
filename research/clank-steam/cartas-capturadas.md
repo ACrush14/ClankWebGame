@@ -49,6 +49,21 @@ Formato: Nome | Tipo | Custo | VP | Efeito | Texto
 - Procurar (Search) | Custo 4 | Efeito: Skill+2, Boots+1 | "Toda vez que ganhar ouro neste turno, aumente o valor ganho em 1." | "Não vai sobrar pedra sobre pedra."
 - Soldado Orc = **Orc Grunt** (confirmado! mesmo texto de derrota "$3" e mesma frase de flavor traduzida encontrados no manual oficial em inglês) | Monstro | Custo Swords 2 | Tem símbolo de Dragon Attack | DERROTA: $3 | "Com suas incursões constantes, os Orcs buscam esmagar a rebelião."
 
+### Monstros — confirmados via foto oficial da carta física (BGG, uploader Cvaast)
+
+- Goblin | Monstro | Custo Swords 2 | DERROTA: $1 | "(Don't discard after fighting.)" | "They may be short, but they're not in short supply." (bate 100% com o que já tínhamos)
+- Animated Door (Porta Animada) | Monstro | Custo Swords 1 | DERROTA: Boots+1 | "Sometimes the door knocks on you." (custo confirmado precisamente = 1, batendo com a dedução ao vivo no Steam)
+- Cave Troll (Troll das Cavernas) | Monstro | Custo Swords 4 | "Deep (Fight only in the Depths.)" — nome oficial em inglês do marcador que chamávamos de "Subterrâneo" é **"Deep"** | DERROTA: $3 e compre duas cartas
+- Kobold | Monstro | Custo Swords 1 | **DANGER: "Pull +1 cube for dragon attacks."** | DERROTA: Skill+1 (incomum — reward de monstro não é ouro) | "These physically weak creatures serve as eyes for the dragon."
+- Ogre | Monstro | Custo Swords 3 | DERROTA: $5 | "It crushes what it doesn't understand. Which is a lot."
+- Orc Grunt (Soldado Orc) | Monstro | Custo Swords 2 | DERROTA: $3 | "With their constant raids, the Orcs aim to squash the rebellion." (confirma 100% a carta já vista no Steam)
+- Belcher (Arrotador) | Monstro | Custo Swords 2 | DERROTA: $4, +2 Clank! | "This foul creature is named for its unusual battlecry." (confirma 100% a carta já vista no Steam)
+- Crystal Golem | Monstro | Custo Swords 3 | "Fight this only in a Crystal Cave." (só combatível na Caverna de Cristal — igual ao "Deep" do Cave Troll, mas pra outra zona) | DERROTA: Skill+3 | "It knows you can't run."
+- Watcher | Monstro | Custo Swords 3 | ARRIVE: Todos os jogadores recebem +1 Clank! | DERROTA: $3, todos os OUTROS jogadores recebem +1 Clank! | "I have a funny feeling that I'm being Clanked!"
+- Overlord | Monstro | Custo Swords 2 | ARRIVE: Todos os jogadores recebem +1 Clank! | DERROTA: Compre duas cartas | "Their insidious plots are unknown even to Nictotraxian."
+
+**Todos os 9 tipos de monstro do Dungeon Deck + Goblin da Reserva agora capturados (100%).**
+
 ## Cartas ainda faltando (custo/efeito/texto) — lista completa com quantidades
 
 Ver [`catalogo-nomes-quantidades.md`](./catalogo-nomes-quantidades.md) — catálogo

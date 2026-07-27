@@ -44,15 +44,18 @@ importa.
 
 | Carta | Qtd | Status |
 |---|---|---|
-| Animated Door | 2 | ✅ capturada = "Porta Animada" |
+| Animated Door | 2 | ✅ capturada = "Porta Animada" (custo confirmado por foto: 1 Sword) |
 | Belcher | 2 | ✅ capturada = "Arrotador" |
-| Cave Troll | 2 | ✅ capturada = "Troll das Cavernas" |
+| Cave Troll | 2 | ✅ capturada = "Troll das Cavernas" (foto confirma: "Deep" = nome oficial do marcador Subterrâneo) |
 | Orc Grunt | 3 | ✅ capturada = "Soldado Orc" |
-| Crystal Golem | 2 | ❌ ainda não vista |
-| Kobold | 3 | ❌ ainda não vista |
-| Ogre | 2 | ❌ ainda não vista |
-| Overlord | 2 | ❌ ainda não vista |
-| Watcher | 3 | ❌ ainda não vista |
+| Goblin | — (Reserva) | ✅ confirmado por foto (bate 100%) |
+| Kobold | 3 | ✅ capturada por foto — Custo 1 Sword, Danger, DERROTA: Skill+1 |
+| Ogre | 2 | ✅ capturada por foto — Custo 3 Swords, DERROTA: $5 |
+| Crystal Golem | 2 | ✅ capturada por foto — Custo 3 Swords, só combatível na Caverna de Cristal, DERROTA: Skill+3 |
+| Overlord | 2 | ✅ capturada por foto — Custo 2 Swords, ARRIVE +1 Clank todos, DERROTA: compre 2 cartas |
+| Watcher | 3 | ✅ capturada por foto — Custo 3 Swords, ARRIVE +1 Clank todos, DERROTA: $3 + outros +1 Clank |
+
+**Categoria Monstros: 100% completa (9/9 tipos + Goblin da Reserva).**
 
 ## Dungeon Deck — demais cartas (Companheiros/Itens/Gemas/Eventos)
 
