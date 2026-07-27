@@ -1,46 +1,45 @@
 import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
 
 /**
- * ⚠️ Layout ainda ORIGINAL (não é uma cópia sala-por-sala de nenhum tabuleiro físico) —
- * os `id`s internos das salas não mudaram (são só identificadores técnicos, nunca
- * aparecem pro jogador), mas os NOMES exibidos foram re-temados pro **Clank! Catacombs**
- * (2026-07-21), já que o conteúdo de cartas do projeto vem de lá (ver cards.ts): "Crystal
- * Cave", "Market room", "Wayshrine" e "Depths"/"Deep" são termos reais confirmados no
- * texto oficial de várias cartas (Lie in Wait, Astral Projection, Waystone, Robbery, The
- * Warden etc.); "Prisioneiros" e criptas são um nod temático ao roster de monstros
- * esqueleto e às cartas que libertam prisioneiros (Diversion, Riot, The Warden).
+ * REVERSÃO PRO JOGO BASE (2026-07-24): nomes de sala re-temados do Clank! Catacombs pro
+ * **Clank! A Deck-Building Adventure** (jogo base). ⚠️ Segue sendo um grafo FIXO e
+ * pequeno de salas — decisão consciente de não copiar sala-por-sala o tabuleiro físico
+ * real (que tem ~40 salas, dois lados diferentes — "Castelo" e "Montículos e Covas" — e
+ * túneis com ícones específicos em cada ligação). Os `id`s internos das salas são só
+ * identificadores técnicos (nunca aparecem pro jogador) e não mudaram nesta reversão.
  *
- * O Catacombs de verdade usa um tabuleiro MODULAR (ladrilhos quadrados colocados/
- * rotacionados durante o jogo — ver cartas como Dusty Map, Marble Guardian, Sudden
- * Movement, Animated Wall) — isso NÃO foi implementado aqui, decisão consciente pra não
- * reescrever a arquitetura do motor. Isto continua sendo um grafo fixo de salas, só com
- * nomes/tema do Catacombs.
+ * Termos que SÃO reais do jogo base (confirmados no manual oficial): "Market room",
+ * "Crystal Cave", "Depths"/"Deep", "Monkey Shrine". Os demais nomes de sala são só
+ * flavor genérico (Entrada, Corredor, Encruzilhada etc.), sem correspondência com uma
+ * sala física específica.
  *
- * Regras que continuam confirmadas contra fontes reais (jogo básico, mecânica
- * compartilhada com o Catacombs): ícone de pegada = 2 Boots; caveira num túnel = 1 Sword
- * ou 1 dano ao passar; cadeado = precisa da Chave-mestra do Mercado; Mercado custa 7 Gold
- * por item.
+ * Se/quando o usuário mandar uma foto do tabuleiro físico (frente e verso), dá pra
+ * reconstruir a topologia de verdade — até lá, isto é uma simplificação suficiente pro
+ * MVP (jogo completo, básico, sem elaboração excessiva — ver PLANNING.md).
  *
- * Valores de artefato: CONFIRMADOS contra uma foto real dos tokens físicos de artefato do
- * Clank! Catacombs (2026-07-21) — a escala completa do jogo tem 7 valores: 5, 7, 10, 15,
- * 20, 25 e 30. Os três usados aqui (`depths-west`=7, `depths-east`=15, `sealed-vault`=25)
- * já batiam com essa escala real (eram herdados do manual do jogo básico, que por
- * coincidência usa os mesmos números nessas três posições).
+ * Regras confirmadas contra o manual oficial: ícone de pegada dupla = 2 Boots; ícone de
+ * monstro num túnel = dano igual ao número, reduzível por Sword; cadeado = precisa da
+ * Chave-mestra do Mercado; Mercado custa 7 Gold por item; túneis "wrap-around" custam só
+ * 1 Boot (não modelados aqui como caso especial, já que o grafo não tem bordas).
  *
- * ⚠️ Mecânicas do Catacombs ainda por confirmar/implementar: você jogou uma versão sem
- * prisioneiros/fantasmas (as cartas que citam isso — Diversion, Riot, The Warden, White/
- * Black Tourmaline — ficam sem esse efeito condicional aplicado), mas com "cabines da
- * masmorra" (ainda não sei a que se refere exatamente — não modelado).
+ * Valores de Artefato: CONFIRMADOS via planilha do usuário cruzada com fotos oficiais —
+ * a escala completa do jogo base tem 7 valores E 7 nomes (ver `ARTIFACT_NAMES_BY_VALUE`
+ * abaixo). Só 3 das 7 posições estão de fato colocadas em salas hoje (7/15/25).
  *
- * Ídolos de Macaco: RESOLVIDO (2026-07-24) via planilha do usuário cruzada com fotos
- * oficiais — são 3 tokens (Macaco Surdo/Cego/Mudo, 5 pontos cada) numa única sala
- * "Monkey Shrine". Mecanismo de pegar implementado (`GameEngine.takeMonkeyIdol`,
- * `PlayerState.monkeyIdolsHeld`) — ver room `monkey-shrine` abaixo. A posição/ligação
- * dela no grafo é provisória (só pra deixar testável); a posição real no tabuleiro
- * físico ainda não foi conferida. Cartas que citam "se você tiver um Ídolo de Macaco"
- * (Boots of the Ape Lord, Thirst for Adventure) continuam sem esse bônus condicional
- * ligado — isso é um efeito por carta (como `applyRoomConditionalEffects`), fora do
- * escopo de só "ter o mecanismo de pegar o ídolo".
+ * Ídolos de Macaco: RESOLVIDO (2026-07-24) via planilha do usuário — são 3 tokens
+ * (Macaco Surdo/Cego/Mudo, 5 pontos cada) numa única sala "Monkey Shrine" de verdade no
+ * jogo físico. Mecanismo de pegar implementado (`GameEngine.takeMonkeyIdol`,
+ * `PlayerState.monkeyIdolsHeld`) — a posição/ligação dela no grafo abaixo é provisória
+ * (só pra deixar testável); a posição real no tabuleiro físico ainda não foi conferida.
+ * Cartas que citam "se você tiver um Ídolo de Macaco" (Archaeologist, Dwarven Peddler)
+ * continuam sem esse bônus condicional ligado — é um efeito por carta (como
+ * `applyRoomConditionalEffects` em game.ts), fora do escopo de só "ter o mecanismo de
+ * pegar o ídolo".
+ *
+ * Segredos Maiores/Menores (Field Reference Guide do manual): confirmados em
+ * `MAJOR_SECRETS_REFERENCE`/`MINOR_SECRETS_REFERENCE` em cards.ts, mas SEM mecanismo de
+ * sala implementado ainda (nenhuma sala tem token de Segredo hoje) — próximo passo se o
+ * MVP precisar.
  */
 
 /**
@@ -81,14 +80,14 @@ interface EdgeSpec {
 const ROOM_SPECS: RoomSpec[] = [
   { id: "entrance", name: "Entrada da Masmorra", isEntrance: true },
   { id: "mine-entry", name: "Corredor de Pedra" },
-  { id: "guard-post", name: "Posto dos Esqueletos" },
-  { id: "narrow-passage", name: "Wayshrine Esquecido" },
+  { id: "guard-post", name: "Posto de Vigia" },
+  { id: "narrow-passage", name: "Passagem Estreita" },
   { id: "market-room", name: "Mercado", isMarket: true },
-  { id: "crossroads", name: "Encruzilhada das Criptas" },
-  { id: "deep-tunnel", name: "Túnel dos Prisioneiros" },
+  { id: "crossroads", name: "Encruzilhada" },
+  { id: "deep-tunnel", name: "Túnel Profundo" },
   { id: "crystal-cave", name: "Caverna de Cristal", isCrystalCave: true },
-  { id: "depths-east", name: "Profundezas — Cripta Leste", isDepths: true, artifactValue: 15, artifactName: ARTIFACT_NAMES_BY_VALUE[15] },
-  { id: "depths-west", name: "Profundezas — Cripta Oeste", isDepths: true, artifactValue: 7, artifactName: ARTIFACT_NAMES_BY_VALUE[7] },
+  { id: "depths-east", name: "Profundezas — Câmara Leste", isDepths: true, artifactValue: 15, artifactName: ARTIFACT_NAMES_BY_VALUE[15] },
+  { id: "depths-west", name: "Profundezas — Câmara Oeste", isDepths: true, artifactValue: 7, artifactName: ARTIFACT_NAMES_BY_VALUE[7] },
   { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25, artifactName: ARTIFACT_NAMES_BY_VALUE[25] },
   // Posição provisória (ligada à Encruzilhada) — o jogo físico tem uma única sala
   // "Monkey Shrine" com os 3 Ídolos juntos. Ver EDGE_SPECS abaixo.

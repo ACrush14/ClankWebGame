@@ -456,16 +456,14 @@ export class GameEngine {
 
   /**
    * Bônus condicionais ligados à sala atual do jogador — texto oficial não representável
-   * em `CardEffects` genéricos (ver comentário da carta em cards.ts). Só "Lie in Wait"
-   * (Caverna de Cristal) está implementado por enquanto: é a única condicional de sala
-   * confirmada como jogável na sua versão do Catacombs (sem prisioneiros/fantasmas).
+   * em `CardEffects` genéricos (ver comentários "condicional não modelado" em cards.ts).
+   * ⚠️ Nenhuma carta do jogo base (revertido em 2026-07-24) tem confirmado um bônus
+   * desse tipo ainda (a versão anterior, do Catacombs, tinha "Lie in Wait" — removida
+   * junto com o resto do conteúdo do Catacombs). Método mantido como gancho genérico
+   * pra quando/se alguma carta do jogo base precisar disso.
    */
-  private applyRoomConditionalEffects(player: PlayerState, cardId: string) {
-    const room = BOARD.rooms[player.roomId];
-    if (cardId === "lie-in-wait" && room?.isCrystalCave) {
-      player.clank = Math.max(0, player.clank - 2);
-      this.pushLog(`${player.name} usou Lie in Wait na Caverna de Cristal: -2 Clank!`);
-    }
+  private applyRoomConditionalEffects(_player: PlayerState, _cardId: string) {
+    // Nenhuma condicional de sala confirmada pro jogo base ainda — ver comentário acima.
   }
 
   /**

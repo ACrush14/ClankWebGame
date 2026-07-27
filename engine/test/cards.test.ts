@@ -17,7 +17,7 @@ describe("baralho inicial", () => {
   });
 });
 
-describe("dungeon deck (Clank! Catacombs)", () => {
+describe("dungeon deck (Clank! jogo base)", () => {
   it("constrói um monte não vazio a partir das contagens definidas", () => {
     const deck = buildDungeonDeck();
     expect(deck.length).toBeGreaterThan(0);

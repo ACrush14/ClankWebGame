@@ -109,12 +109,35 @@ Testes novos em `engine/test/game.test.ts` (12 casos) cobrindo as 6 mecânicas c
 código (a #4 não precisou de teste novo, já era coberta pelos testes de Gema/acquire
 existentes). Suite completa: 77 testes passando.
 
+## `cards.ts`/`board.ts` — reversão pro jogo base concluída (2026-07-24)
+
+- `engine/src/cards.ts` reescrito do zero: baralho inicial + Reserva (já estavam
+  corretos) + ~55 tipos de carta da Dungeon Row com custo/efeito/VP/quantidade reais,
+  usando a planilha como fonte primária. Cada carta guarda o texto oficial completo num
+  comentário `// Nota:`, incluindo o que não dá pra modelar ainda (escolhas "-OU-",
+  bônus condicionais a ter artefato/coroa/companheiro/ídolo, teleporte, "trash"
+  específico, bônus escalável, efeito só nos outros jogadores).
+- `engine/src/board.ts`: nomes de sala trocados do tema Catacombs pra flavor genérico
+  (o grafo continua pequeno/fixo, não é cópia do tabuleiro físico — ver aviso abaixo).
+- Suite de testes atualizada (62 testes em `game.test.ts`, todos os ids de carta
+  trocados pros equivalentes do jogo base) — 75 testes passando no total.
+- ⚠️ Discrepância ainda não resolvida: custo de Tattle (Steam ao vivo disse 2, a
+  planilha diz 3 + Skill+2) — usei o valor da planilha.
+
+### ⚠️ Sobre o tabuleiro (`board.ts`) — ainda é uma simplificação
+
+O grafo de salas continua sendo pequeno e fixo (11-12 salas), do jeito que já era antes
+— **não é uma cópia sala-por-sala do tabuleiro físico real**, que tem dois lados
+diferentes ("Castelo" e "Montículos e Covas"), dezenas de salas, e túneis com ícones
+específicos em cada ligação (ver diagrama de exemplo no manual oficial, página 3).
+Reescrever isso direito precisaria de uma foto clara do tabuleiro físico (os dois
+lados, se possível) — ver pergunta feita ao usuário sobre isso.
+
 ## Próximos passos
 
-1. Revisar a planilha em busca de mais discrepâncias (comparar com
-   `cartas-capturadas.md` onde os dois se sobrepõem).
-2. Reescrever `engine/src/cards.ts` e `engine/src/board.ts` pro conteúdo base usando a
-   planilha como fonte primária — agora todas as mecânicas de suporte já existem no
-   motor, é "só" trocar os dados.
-3. Adicionar UI no client pra pegar Ídolo de Macaco (`take_monkey_idol` já existe no
-   servidor).
+1. Se o usuário mandar foto(s) do tabuleiro físico: reconstruir `board.ts` com a
+   topologia real (salas, túneis, ícones, Mercado, Cavernas de Cristal, Profundezas,
+   Monkey Shrine na posição certa).
+2. Adicionar UI no client pra pegar Ídolo de Macaco (`take_monkey_idol` já existe no
+   servidor; a sala `monkey-shrine` já aparece no mapa SVG do client).
+3. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.

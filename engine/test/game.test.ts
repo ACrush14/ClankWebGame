@@ -89,31 +89,8 @@ describe("playCard", () => {
     expect(() => game.playCard(other.id, "burgle")).toThrow(/não é a vez/i);
   });
 
-  it("Lie in Wait dá -2 Clank extra só quando jogada na Caverna de Cristal", () => {
-    const game = twoPlayerGame();
-    const player = game.currentPlayer;
-    player.clank = 3;
-    player.hand = ["lie-in-wait"];
-
-    game.playCard(player.id, "lie-in-wait");
-
-    // fora da Caverna de Cristal: só o efeito base (skill 2 + swords 1), sem o -2 Clank condicional
-    expect(player.clank).toBe(3);
-    expect(player.resources.skill).toBe(2);
-    expect(player.resources.swords).toBe(1);
-  });
-
-  it("Lie in Wait aplica o -2 Clank condicional na Caverna de Cristal", () => {
-    const game = twoPlayerGame();
-    const player = game.currentPlayer;
-    player.roomId = "crystal-cave";
-    player.clank = 3;
-    player.hand = ["lie-in-wait"];
-
-    game.playCard(player.id, "lie-in-wait");
-
-    expect(player.clank).toBe(1);
-  });
+  // Nenhuma carta do jogo base tem confirmado um bônus condicional de sala ainda —
+  // ver `applyRoomConditionalEffects` em game.ts (o hook continua lá, só sem carta pra testar).
 });
 
 describe("acquireCard", () => {
@@ -122,13 +99,13 @@ describe("acquireCard", () => {
     const player = game.currentPlayer;
 
     // garante carta de sobra no monte de compra pra testar o reabastecimento do slot
-    game.state.dungeonRow.drawPile.unshift("bard");
-    game.state.dungeonRow.slots[0] = "expert-guide";
-    player.resources.skill = getCard("expert-guide").skillCost ?? 0;
+    game.state.dungeonRow.drawPile.unshift("sneak");
+    game.state.dungeonRow.slots[0] = "pickaxe";
+    player.resources.skill = getCard("pickaxe").skillCost ?? 0;
 
     game.acquireCard(player.id, 0);
 
-    expect(player.discardPile).toContain("expert-guide");
+    expect(player.discardPile).toContain("pickaxe");
     expect(player.resources.skill).toBe(0);
     expect(game.state.dungeonRow.slots[0]).not.toBeNull();
   });
@@ -137,16 +114,15 @@ describe("acquireCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
 
-    game.state.dungeonRow.drawPile.unshift("bard");
-    game.state.dungeonRow.slots[0] = "darkened-alcove";
-    player.clank = 2;
-    player.resources.skill = getCard("darkened-alcove").skillCost ?? 0;
+    game.state.dungeonRow.drawPile.unshift("sneak");
+    game.state.dungeonRow.slots[0] = "ladder";
+    player.resources.skill = getCard("ladder").skillCost ?? 0;
 
     game.acquireCard(player.id, 0);
 
-    expect(player.discardPile).not.toContain("darkened-alcove");
-    expect(game.state.dungeonRow.discardPile).toContain("darkened-alcove");
-    expect(player.clank).toBe(0); // efeito de USE (-2 Clank!) ainda é aplicado na hora
+    expect(player.discardPile).not.toContain("ladder");
+    expect(game.state.dungeonRow.discardPile).toContain("ladder");
+    expect(player.resources.boots).toBe(2); // efeito de USE (+2 Boots) ainda é aplicado na hora
   });
 
   it("lança erro se skill insuficiente", () => {
@@ -162,7 +138,7 @@ describe("acquireCard", () => {
   it("lança erro ao tentar comprar um monstro com acquireCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "skeleton";
+    game.state.dungeonRow.slots[0] = "animated-door";
     player.resources.skill = 99;
 
     expect(() => game.acquireCard(player.id, 0)).toThrow(/monstro/i);
@@ -173,22 +149,22 @@ describe("fightMonster", () => {
   it("vence o monstro pagando swords, ganha a recompensa, e a carta NÃO vai pro baralho do jogador", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.drawPile.unshift("skeleton");
-    game.state.dungeonRow.slots[0] = "skeleton";
-    player.resources.swords = 1;
+    game.state.dungeonRow.drawPile.unshift("sneak");
+    game.state.dungeonRow.slots[0] = "orc-grunt";
+    player.resources.swords = 2;
 
     game.fightMonster(player.id, 0);
 
     expect(player.resources.swords).toBe(0);
-    expect(player.gold).toBe(2);
-    expect(player.discardPile).not.toContain("skeleton");
-    expect(game.state.dungeonRow.discardPile).toContain("skeleton");
+    expect(player.gold).toBe(3);
+    expect(player.discardPile).not.toContain("orc-grunt");
+    expect(game.state.dungeonRow.discardPile).toContain("orc-grunt");
   });
 
   it("lança erro se swords insuficientes", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "skeleton";
+    game.state.dungeonRow.slots[0] = "orc-grunt";
     player.resources.swords = 0;
 
     expect(() => game.fightMonster(player.id, 0)).toThrow(/swords insuficientes/i);
@@ -342,28 +318,26 @@ describe("movePlayer", () => {
 });
 
 describe("cura (heal)", () => {
-  it("Skeleton Priest cura 1 de dano ao ser derrotado, além de +1 Clank", () => {
+  it("Cleric of the Sun cura 1 de dano ao ser adquirida", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.damage = 5;
-    player.clank = 0;
-    game.state.dungeonRow.slots[0] = "skeleton-priest";
-    player.resources.swords = 2;
+    game.state.dungeonRow.slots[0] = "cleric-of-the-sun";
+    player.resources.skill = 3;
 
-    game.fightMonster(player.id, 0);
+    game.acquireCard(player.id, 0);
 
     expect(player.damage).toBe(4);
-    expect(player.clank).toBe(1);
   });
 
   it("cura nunca deixa o dano negativo", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.damage = 0;
-    game.state.dungeonRow.slots[0] = "skeleton-priest";
-    player.resources.swords = 2;
+    game.state.dungeonRow.slots[0] = "cleric-of-the-sun";
+    player.resources.skill = 3;
 
-    game.fightMonster(player.id, 0);
+    game.acquireCard(player.id, 0);
 
     expect(player.damage).toBe(0);
   });
@@ -381,12 +355,12 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
     const player = game.currentPlayer;
     player.clank = 1;
     game.state.dragon.rageTrackPosition = 1; // sozinho sortearia 0 cubos (posição - 1 = 0)
-    game.state.dungeonRow.slots[1] = "the-warden"; // Danger — está na Dungeon Row
-    game.state.dungeonRow.slots[0] = "keymaster";
-    game.state.dungeonRow.drawPile.unshift("skeleton"); // carta de reposição sem símbolo de ataque
-    player.resources.swords = 2;
+    game.state.dungeonRow.slots[1] = "kobold"; // Danger — está na Dungeon Row
+    game.state.dungeonRow.slots[0] = "animated-door";
+    game.state.dungeonRow.drawPile.unshift("sneak"); // carta de reposição sem símbolo de ataque
+    player.resources.swords = 1;
 
-    game.fightMonster(player.id, 0); // não dispara ataque sozinho (keymaster não tem triggersDragonAttack)
+    game.fightMonster(player.id, 0); // não dispara ataque sozinho (animated-door é revelado por outra carta)
     expect(player.damage).toBe(0);
 
     // dispara o ataque diretamente (método privado) pra isolar só o efeito do Danger
@@ -408,7 +382,7 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
     const player = game.currentPlayer;
     player.clank = 1;
     game.state.dragon.rageTrackPosition = 1;
-    game.state.dungeonRow.slots[0] = "skeleton"; // sem Danger
+    game.state.dungeonRow.slots[0] = "animated-door"; // sem Danger
 
     const triggerAttack = (
       game as unknown as { triggerDragonAttack: (extra?: number) => void }
@@ -420,29 +394,29 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
 });
 
 describe("ARRIVE — efeito ao revelar carta pra repor a Dungeon Row", () => {
-  it("Skeleton Priest revelado dá +1 Clank a TODOS os jogadores, antes de qualquer ataque", () => {
+  it("Watcher revelado dá +1 Clank a TODOS os jogadores, antes de qualquer ataque", () => {
     const game = twoPlayerGame();
     const [p1, p2] = game.state.players;
     p1.clank = 0;
     p2.clank = 0;
-    game.state.dungeonRow.drawPile.unshift("skeleton-priest");
-    game.state.dungeonRow.slots[0] = "keymaster";
-    p1.resources.swords = 2;
+    game.state.dungeonRow.drawPile.unshift("watcher");
+    game.state.dungeonRow.slots[0] = "animated-door";
+    p1.resources.swords = 1;
 
     game.fightMonster(p1.id, 0);
 
-    // p1 venceu o Keymaster (sem recompensa), e a reposição revelou o Skeleton Priest
+    // p1 venceu o Animated Door, e a reposição revelou o Watcher (ARRIVE: +1 Clank pra todos)
     expect(p1.clank).toBe(1);
     expect(p2.clank).toBe(1);
   });
 });
 
 describe("restrição de sala (Deep / Crystal Cave)", () => {
-  it("Crystal Kobold só pode ser enfrentado numa Caverna de Cristal", () => {
+  it("Crystal Golem só pode ser enfrentado numa Caverna de Cristal", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "crystal-kobold";
-    player.resources.swords = 2;
+    game.state.dungeonRow.slots[0] = "crystal-golem";
+    player.resources.swords = 3;
 
     expect(() => game.fightMonster(player.id, 0)).toThrow(/isCrystalCave/i);
 
@@ -451,17 +425,17 @@ describe("restrição de sala (Deep / Crystal Cave)", () => {
     expect(player.resources.swords).toBe(0);
   });
 
-  it("The Warden só pode ser enfrentado nas Profundezas (Deep)", () => {
+  it("The Vault só pode ser adquirida nas Profundezas (Deep)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    game.state.dungeonRow.slots[0] = "the-warden";
-    player.resources.swords = 3;
+    game.state.dungeonRow.slots[0] = "the-vault";
+    player.resources.skill = 3;
 
-    expect(() => game.fightMonster(player.id, 0)).toThrow(/isDepths/i);
+    expect(() => game.acquireCard(player.id, 0)).toThrow(/isDepths/i);
 
     player.roomId = "depths-east";
-    game.fightMonster(player.id, 0);
-    expect(player.resources.swords).toBe(0);
+    game.acquireCard(player.id, 0);
+    expect(player.resources.skill).toBe(0);
   });
 });
 
@@ -601,8 +575,8 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     player.clank = 1;
     player.resources.swords = 2;
     game.state.dragon.rageTrackPosition = 2; // sorteia 1 cubo (posição - 1)
-    game.state.dungeonRow.slots[0] = "keymaster"; // monstro sem recompensa de gold/clank
-    game.state.dungeonRow.drawPile.unshift("crystal-kobold"); // tem o símbolo de ataque do dragão
+    game.state.dungeonRow.slots[0] = "animated-door"; // monstro sem recompensa de gold/clank
+    game.state.dungeonRow.drawPile.unshift("diamond"); // tem o símbolo de ataque do dragão
 
     game.fightMonster(player.id, 0);
 
@@ -615,8 +589,8 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     const player = game.currentPlayer;
     player.clank = 1;
     player.resources.swords = 2;
-    game.state.dungeonRow.slots[0] = "keymaster";
-    game.state.dungeonRow.drawPile.unshift("crystal-kobold");
+    game.state.dungeonRow.slots[0] = "animated-door";
+    game.state.dungeonRow.drawPile.unshift("diamond");
 
     game.fightMonster(player.id, 0);
 
@@ -787,8 +761,8 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(game.currentPlayer.id).toBe(p2.id);
 
     // um ataque de dragão normal (disparado por reposição da Row) NÃO deve mexer na trilha.
-    game.state.dungeonRow.drawPile.unshift("crystal-kobold");
-    game.state.dungeonRow.slots[0] = "crystal-kobold";
+    game.state.dungeonRow.drawPile.unshift("diamond");
+    game.state.dungeonRow.slots[0] = "diamond";
     game.state.dragon.rageTrackPosition = 2;
     const triggerRefill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(
       game,

@@ -18,6 +18,7 @@ const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   "depths-east": { x: 70, y: 490 },
   "sealed-vault": { x: 200, y: 490 },
   "depths-west": { x: 330, y: 490 },
+  "monkey-shrine": { x: 320, y: 340 },
 };
 
 export interface BoardMapPlayer {
