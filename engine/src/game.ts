@@ -2,7 +2,16 @@ import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } 
 import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
-import type { CardDefinition, CardEffects, DragonState, MarketState, PlayerState, ReserveState } from "./types.js";
+import type {
+  CardDefinition,
+  CardEffects,
+  DragonState,
+  EffectChoiceOption,
+  MarketState,
+  PendingChoice,
+  PlayerState,
+  ReserveState,
+} from "./types.js";
 import {
   CROWN_VALUES,
   COUNTDOWN_TRACK_SIZE,
@@ -53,6 +62,12 @@ export interface GameState {
   countdownPlayerId: string | null;
   /** Pontuação final por jogador — só definida quando `phase === "ended"`. */
   finalScores?: Record<string, number>;
+  /**
+   * Escolha "X -OU- Y" pendente do jogador da vez (ex: Shrine "USE: $1 -OU- cura 1").
+   * Enquanto isso não for `null`, nenhuma outra ação do jogador é permitida — ele
+   * precisa chamar `resolveChoice` primeiro (ver `requireCurrentPlayer`).
+   */
+  pendingChoice: PendingChoice | null;
 }
 
 export class GameEngine {
@@ -83,6 +98,7 @@ export class GameEngine {
       log: [],
       countdownTrack: 0,
       countdownPlayerId: null,
+      pendingChoice: null,
     };
   }
 
@@ -104,7 +120,57 @@ export class GameEngine {
     if (player.hasLeftDungeon) {
       throw new Error(`${player.name} já deixou a masmorra.`);
     }
+    if (this.state.pendingChoice) {
+      throw new Error(
+        `${player.name} tem uma escolha pendente ("${this.state.pendingChoice.cardName}") — resolva com resolveChoice antes de continuar.`,
+      );
+    }
     return player;
+  }
+
+  /** Converte uma opção de escolha (ícone+quantidade) no `CardEffects` equivalente, pra reusar `applyEffects`. */
+  private effectsFromChoice(option: EffectChoiceOption): CardEffects {
+    return { [option.icon]: option.amount };
+  }
+
+  /**
+   * Aplica os efeitos normais de uma carta, OU — se ela tiver `choices` (escolha
+   * "X -OU- Y") — cria um `PendingChoice` em vez de aplicar qualquer coisa direto. O
+   * jogador precisa chamar `resolveChoice` antes de fazer qualquer outra ação.
+   */
+  private applyEffectsOrSetChoice(
+    player: PlayerState,
+    card: CardDefinition,
+    effects: CardEffects | undefined,
+    choices: EffectChoiceOption[] | undefined,
+  ) {
+    if (choices && choices.length > 0) {
+      this.state.pendingChoice = { cardId: card.id, cardName: card.name, options: choices };
+      return;
+    }
+    this.applyEffects(player, effects);
+  }
+
+  /**
+   * Resolve uma escolha "X -OU- Y" pendente (ver `PendingChoice`) — só o jogador da vez
+   * pode chamar, e só quando houver uma escolha pendente pra ele. Não passa pelo guard
+   * normal de `requireCurrentPlayer` de propósito (esse guard bloqueia justamente
+   * enquanto há uma escolha pendente).
+   */
+  resolveChoice(playerId: string, optionIndex: number) {
+    if (this.state.phase === "ended") throw new Error("A partida já terminou.");
+    const player = this.currentPlayer;
+    if (player.id !== playerId) {
+      throw new Error(`Não é a vez de ${playerId} — é a vez de ${player.name}.`);
+    }
+    const pending = this.state.pendingChoice;
+    if (!pending) throw new Error("Não há escolha pendente.");
+    const option = pending.options[optionIndex];
+    if (!option) throw new Error(`Opção ${optionIndex} inválida (a carta tem ${pending.options.length} opções).`);
+
+    this.applyEffects(player, this.effectsFromChoice(option));
+    this.pushLog(`${player.name} escolheu "${option.label}" em ${pending.cardName}.`);
+    this.state.pendingChoice = null;
   }
 
   private applyEffects(player: PlayerState, effects: CardEffects | undefined) {
@@ -463,7 +529,7 @@ export class GameEngine {
     const card = getCard(cardId);
     player.hand.splice(handIndex, 1);
     player.playedThisTurn.push(cardId);
-    this.applyEffects(player, card.playEffects);
+    this.applyEffectsOrSetChoice(player, card, card.playEffects, card.playChoices);
     this.applyRoomConditionalEffects(player, cardId);
   }
 
@@ -504,7 +570,7 @@ export class GameEngine {
     } else {
       player.discardPile.push(cardId);
     }
-    this.applyEffects(player, card.acquireEffects);
+    this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.refillDungeonSlot(slotIndex);
   }
 
@@ -524,7 +590,7 @@ export class GameEngine {
 
     player.resources.swords -= cost;
     this.state.dungeonRow.discardPile.push(cardId);
-    this.applyEffects(player, card.acquireEffects);
+    this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.refillDungeonSlot(slotIndex);
   }
 
@@ -547,7 +613,7 @@ export class GameEngine {
         throw new Error(`Swords insuficientes pra vencer ${card.name} (precisa ${cost}, tem ${player.resources.swords}).`);
       }
       player.resources.swords -= cost;
-      this.applyEffects(player, card.acquireEffects);
+      this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
       if (!RESERVE_INFINITE.has(cardId)) {
         this.state.reserve.remaining[cardId] = remaining - 1;
       }
@@ -560,7 +626,7 @@ export class GameEngine {
     }
     player.resources.skill -= cost;
     player.discardPile.push(cardId);
-    this.applyEffects(player, card.acquireEffects);
+    this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.state.reserve.remaining[cardId] = remaining - 1;
   }
 

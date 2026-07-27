@@ -373,11 +373,15 @@ export const DUNGEON_DECK: CardDefinition[] = [
     id: "tattle",
     name: "Tattle",
     kind: "item",
-    skillCost: 3,
-    playEffects: { skill: 2 },
+    skillCost: 2,
+    points: 3,
     verified: true,
-    // Nota: Todos os outros jogadores (menos você) ganham +1 Clank. Efeito "todos os OUTROS" não modelado
-    // (diferente de arriveEffects, que afeta TODOS os jogadores igualmente).
+    // CONFIRMADO por foto da carta física (2026-07-24): Custo 2, VP 3, sem efeito
+    // incondicional de Skill (corrige a planilha, que tinha Custo 3 + Skill+2 — provável
+    // erro de digitação cruzando com outra carta).
+    // Texto: "Each other player gets +1 Clank!" — "There's no honor among thieves...
+    // but lots of dirty laundry." Efeito "todos os OUTROS" não modelado (diferente de
+    // arriveEffects, que afeta TODOS os jogadores igualmente).
   },
   {
     id: "tunnel-guide",
@@ -459,8 +463,15 @@ export const DUNGEON_DECK: CardDefinition[] = [
     kind: "item",
     skillCost: 3,
     points: 2,
+    playChoices: [
+      { icon: "swords", amount: 3, label: "Swords +3" },
+      { icon: "gold", amount: 2, label: "Moedas +2" },
+      { icon: "heal", amount: 1, label: "Cura 1" },
+    ],
     verified: true,
-    // Nota: Descarte uma carta para escolher um dos seguintes: +3 Swords -OU- +2 Moedas -OU- +1 Coração. Escolha não modelada.
+    // Nota: Descarte uma carta para escolher um dos seguintes: +3 Swords -OU- +2 Moedas
+    // -OU- +1 Coração. ⚠️ O requisito de descartar uma carta primeiro NÃO é modelado
+    // (exigiria escolher qual carta da mão descartar) — a escolha do efeito em si já é.
   },
   {
     id: "dwarven-peddler",
@@ -596,10 +607,14 @@ export const DUNGEON_DECK: CardDefinition[] = [
     name: "Shrine",
     kind: "device",
     skillCost: 2,
+    acquireChoices: [
+      { icon: "gold", amount: 1, label: "Moeda +1" },
+      { icon: "heal", amount: 1, label: "Cura 1" },
+    ],
     verified: true,
-    // Nota: Ao revelar, devolva 3 cubos de dragão à bolsa (não modelado — ver comentário
-    // em thieves-shrine-style no histórico do projeto; motor não tem pool de cubos
-    // persistente entre ataques). USE: 1 Moeda -OU- 1 Coração (escolha não modelada).
+    // Nota: Ao revelar, devolva 3 cubos de dragão à bolsa (não modelado — motor não tem
+    // pool de cubos persistente entre ataques, sorteia direto da contagem de Clank! de
+    // cada jogador). USE: 1 Moeda -OU- 1 Coração — modelado como `acquireChoices`.
   },
   {
     id: "dragon-shrine",

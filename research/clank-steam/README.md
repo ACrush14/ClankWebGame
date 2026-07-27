@@ -59,14 +59,12 @@ Clank, Pontos, Moedas, Nota, Imagem`.
 - Linhas de **Bonus Grande/Bonus Pequeno**: são os Segredos Maiores/Menores do manual
   oficial, já traduzidos e com quantidades reais.
 
-## ⚠️ Discrepância encontrada — precisa confirmar
+## ✅ Discrepância da Tattle — RESOLVIDA (2026-07-24)
 
-- **Tattle (Fofoca)**: nossa captura ao vivo no Steam registrou Custo=2, sem efeito
-  incondicional. A planilha (baseada na foto física) registra **Custo=3, Mana=2**
-  (ou seja, a carta também dá Skill+2 ao jogar, além do "+1 Clank pra todos os outros").
-  Como a planilha vem de foto da carta física (fonte mais confiável que uma dedução ao
-  vivo), tratar `Custo=3, Skill+2` como o valor correto — mas vale conferir de novo se
-  possível.
+O usuário mandou foto nítida da carta física: **Custo 2, VP 3, sem Skill incondicional**
+— a planilha estava errada (tinha Custo 3 + Skill+2, provável cruzamento com outra
+linha). Corrigido em `cards.ts` e confirmado ao vivo no client (comprada com sucesso por
+2 Skill, sem crash).
 
 ## Por que essa pesquisa existe
 
@@ -131,9 +129,9 @@ adicionei (de forma ADITIVA — nenhuma sala/id que já existia foi removida ou 
 então nenhum teste antigo quebrou):
 
 - Mais 2 salas de Caverna de Cristal (`crystal-cave-2`, `crystal-cave-3`).
-- Mais 2 salas de Artefato: **20 (Escudo)** e **30 (Orbe)**, nítidos na foto — total
-  agora 5 dos 7 valores confirmados fisicamente colocados em sala (faltam 5 e 10, que
-  não ficaram legíveis nessa foto).
+- Mais 2 salas de Artefato: **20 (Escudo)** e **30 (Orbe)**, nítidos na foto (depois os
+  outros 2 que faltavam — 5 e 10 — foram confirmados por posição, ver seção abaixo:
+  agora são os 7 valores completos).
 - **Fonte de Cura** (`isFountainOfHealing`) — mecânica CONFIRMADA no manual oficial
   ("When you enter a room with a Fountain of Healing, heal 1 damage") que já estava
   documentada desde a leitura do manual mas nunca tinha sido implementada. Duas salas
@@ -153,10 +151,52 @@ individualmente. O lado "Montículos e Covas" (verso do tabuleiro) continua sem
 cobertura — não foi fotografado. 9 testes novos adicionados (Fonte de Cura, esgotamento
 de Boots), suite completa agora com **78 testes passando**.
 
+## ✅ Todos os 7 Artefatos confirmados (2026-07-24)
+
+O usuário confirmou por posição (print anotado do Steam): Artefato de **5** fica perto
+da esquerda, o de **10** fica na parte de baixo à direita, dentro/perto do Mercado. Duas
+novas salas (`depths-ring`, `depths-vase`) fecham a escala completa: 5/7/10/15/20/25/30.
+
+## ✅ Mecânica de escolha "X -OU- Y" implementada (2026-07-24)
+
+Pedido do usuário: representar cartas com efeito "escolha X -OU- Y" mostrando ícone +
+quantidade, clicável. Implementado ponta a ponta:
+- **Motor**: `CardDefinition.playChoices`/`acquireChoices` (lista de `{icon, amount,
+  label}`); ao jogar/adquirir uma carta com escolha, o motor cria um `PendingChoice` em
+  vez de aplicar o efeito na hora — **nenhuma outra ação é permitida** até o jogador
+  chamar `resolveChoice(playerId, optionIndex)`. 7 testes novos, cobrindo criação da
+  escolha, bloqueio de outras ações, resolução correta de cada opção, e erros (índice
+  inválido, sem escolha pendente).
+- **Cartas conectadas**: Shrine (USE: $1 -OU- cura 1) e Apothecary (Swords+3 -OU- $2
+  -OU- cura 1 — ignora o requisito de descartar uma carta antes, que não é modelado).
+  Outras cartas com "-OU-" (Dragon Shrine, Mister Whiskers, Underworld Dealing, Wand of
+  Wind) continuam sem escolha modelada porque pelo menos um dos lados envolve uma
+  mecânica que o motor não tem (trash, disparar ataque do dragão como escolha, compra
+  aninhada, segredo de sala) — forçar só metade da escolha seria enganoso.
+- **Servidor**: `pendingChoiceJson` sincronizado (JSON simples, sem schema aninhado) +
+  mensagem `resolve_choice`.
+- **Client**: modal bloqueante (`ChoiceModal` em `App.tsx`) com um botão por opção,
+  emoji do ícone + quantidade — testado ao vivo no navegador (jogo carrega, todas as
+  salas novas aparecem no mapa, Tattle compra corretamente com o custo certo).
+  ⚠️ Não consegui presenciar o modal abrindo ao vivo por causa da aleatoriedade da
+  Dungeon Row (Shrine/Apothecary não apareceram nas ~3 rodadas testadas) — a lógica em
+  si está coberta por 7 testes de unidade no motor, e o componente segue exatamente o
+  mesmo padrão já comprovado do banner de erro existente.
+- Também aproveitei pra ligar `take_monkey_idol`/`takeMonkeyIdol` no client (server já
+  tinha, faltava só o botão) — testado ao vivo, aparece corretamente quando a sala tem
+  Ídolo disponível.
+
+## Sobre usar a arte real das cartas/tabuleiro como placeholder
+
+O usuário confirmou que tem as artes das cartas e que, por ser projeto pessoal, dá pra
+usar tanto a arte das cartas quanto do tabuleiro como placeholder (em vez dos ícones
+genéricos atuais, que foram uma escolha consciente de segurança de IP quando eu não
+tinha essa confirmação). **Ainda não recebi os arquivos de imagem em si** — quando o
+usuário mandar os arquivos (ou um link pra baixar), dá pra trocar os ícones/placeholders
+do client pelas artes reais.
+
 ## Próximos passos
 
-1. Se quiser fechar os 2 valores de Artefato que faltam (5 e 10) ou o verso do
-   tabuleiro: mandar foto mais próxima/nítida dessas áreas específicas.
-2. Adicionar UI no client pra pegar Ídolo de Macaco (`take_monkey_idol` já existe no
-   servidor; a sala `monkey-shrine` já aparece no mapa SVG do client).
+1. Se o usuário mandar os arquivos de arte das cartas/tabuleiro: integrar no client.
+2. Se quiser fechar o verso do tabuleiro ("Montículos e Covas"): mandar foto de cima.
 3. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.

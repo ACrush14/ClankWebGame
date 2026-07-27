@@ -5,10 +5,10 @@ import type { BoardDefinition, RoomDefinition, Tunnel } from "./types.js";
  * foto de cima do tabuleiro físico de verdade (lado "Castelo", o mesmo recomendado pelo
  * manual pra primeira partida). A partir dela, confirmei e adicionei:
  * - Mais salas de Caverna de Cristal (o tabuleiro real tem bem mais de uma).
- * - 2 Artefatos novos e nítidos na foto: 20 (Escudo) e 30 (Orbe) — além dos 3 que já
- *   existiam (7/15/25). Os valores 5 e 10 devem existir em algum lugar do tabuleiro
- *   também (a escala tem 7 valores no total), mas não ficaram legíveis nessa foto —
- *   se o usuário mandar uma foto mais próxima/nítida dessas áreas, dá pra completar.
+ * - Todos os 7 Artefatos agora têm sala: além dos 3 originais (7/15/25), adicionei
+ *   20 (Escudo) e 30 (Orbe) nítidos na primeira foto, e depois 5 (Anel) e 10 (Vaso)
+ *   confirmados pelo usuário por posição (perto da esquerda / no Mercado, respectivamente)
+ *   num print anotado do jogo no Steam.
  * - **Fonte de Cura** (ícone de coração, ~3 visíveis na foto) — mecânica CONFIRMADA no
  *   manual oficial ("When you enter a room with a Fountain of Healing, heal 1 damage")
  *   que já estava documentada mas nunca tinha sido implementada — ver `isFountainOfHealing`
@@ -114,6 +114,12 @@ const ROOM_SPECS: RoomSpec[] = [
   { id: "healing-spring-2", name: "Fonte de Cura (Profundezas)", isDepths: true, isFountainOfHealing: true },
   { id: "depths-north", name: "Profundezas — Câmara Norte", isDepths: true, artifactValue: 20, artifactName: ARTIFACT_NAMES_BY_VALUE[20] },
   { id: "depths-south", name: "Profundezas — Câmara Sul", isDepths: true, artifactValue: 30, artifactName: ARTIFACT_NAMES_BY_VALUE[30] },
+  // Posições confirmadas pelo usuário (2026-07-24, print anotado do Steam): o Artefato
+  // de 5 fica perto da esquerda (perto das outras Cavernas de Cristal); o de 10 fica na
+  // parte de baixo à direita, dentro/perto do Mercado. Com isso, os 7 valores da escala
+  // (5/7/10/15/20/25/30) agora têm todos uma sala.
+  { id: "depths-ring", name: "Profundezas — Salão do Anel", isDepths: true, artifactValue: 5, artifactName: ARTIFACT_NAMES_BY_VALUE[5] },
+  { id: "depths-vase", name: "Profundezas — Salão do Vaso", isDepths: true, artifactValue: 10, artifactName: ARTIFACT_NAMES_BY_VALUE[10] },
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
@@ -148,6 +154,8 @@ const EDGE_SPECS: EdgeSpec[] = [
   { a: "crystal-cave-3", b: "deep-tunnel" },
   { a: "deep-tunnel", b: "healing-spring-2", icon: { monsterSwordCost: 1 } },
   { a: "sealed-vault", b: "depths-south", icon: { locked: true } },
+  { a: "crystal-cave-3", b: "depths-ring", icon: { monsterSwordCost: 1 } },
+  { a: "market-annex", b: "depths-vase", icon: { locked: true } },
 ];
 
 function buildBoard(): BoardDefinition {

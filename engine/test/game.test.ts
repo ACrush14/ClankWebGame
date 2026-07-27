@@ -355,6 +355,94 @@ describe("movePlayer", () => {
   });
 });
 
+describe("escolha X -OU- Y (PendingChoice / resolveChoice)", () => {
+  it("adquirir Shrine cria uma escolha pendente em vez de aplicar efeito direto", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "shrine";
+    player.resources.skill = 2;
+
+    game.acquireCard(player.id, 0);
+
+    expect(player.gold).toBe(0);
+    expect(player.damage).toBe(0);
+    expect(game.state.pendingChoice).not.toBeNull();
+    expect(game.state.pendingChoice?.cardName).toBe("Shrine");
+    expect(game.state.pendingChoice?.options).toHaveLength(2);
+  });
+
+  it("bloqueia qualquer outra ação enquanto a escolha não for resolvida", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "shrine";
+    player.resources.skill = 2;
+    game.acquireCard(player.id, 0);
+
+    player.hand = ["burgle"];
+    expect(() => game.playCard(player.id, "burgle")).toThrow(/escolha pendente/i);
+    expect(() => game.endTurn(player.id)).toThrow(/escolha pendente/i);
+  });
+
+  it("resolveChoice aplica a opção escolhida (moeda) e libera o jogador", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "shrine";
+    player.resources.skill = 2;
+    game.acquireCard(player.id, 0);
+
+    game.resolveChoice(player.id, 0); // opção 0 = "Moeda +1"
+
+    expect(player.gold).toBe(1);
+    expect(game.state.pendingChoice).toBeNull();
+    // depois de resolver, ações normais voltam a funcionar
+    player.hand = ["burgle"];
+    game.playCard(player.id, "burgle");
+    expect(player.resources.skill).toBe(1);
+  });
+
+  it("resolveChoice aplica a outra opção (cura) corretamente", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.damage = 5;
+    game.state.dungeonRow.slots[0] = "shrine";
+    player.resources.skill = 2;
+    game.acquireCard(player.id, 0);
+
+    game.resolveChoice(player.id, 1); // opção 1 = "Cura 1"
+
+    expect(player.damage).toBe(4);
+    expect(player.gold).toBe(0);
+  });
+
+  it("Apothecary tem 3 opções de escolha ao ser jogada", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["apothecary"];
+
+    game.playCard(player.id, "apothecary");
+
+    expect(game.state.pendingChoice?.options).toHaveLength(3);
+    game.resolveChoice(player.id, 0); // Swords +3
+    expect(player.resources.swords).toBe(3);
+  });
+
+  it("lança erro ao tentar resolver com índice de opção inválido", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    game.state.dungeonRow.slots[0] = "shrine";
+    player.resources.skill = 2;
+    game.acquireCard(player.id, 0);
+
+    expect(() => game.resolveChoice(player.id, 99)).toThrow(/opção 99 inválida/i);
+  });
+
+  it("lança erro ao resolver sem nenhuma escolha pendente", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    expect(() => game.resolveChoice(player.id, 0)).toThrow(/não há escolha pendente/i);
+  });
+});
+
 describe("cura (heal)", () => {
   it("Cleric of the Sun cura 1 de dano ao ser adquirida", () => {
     const game = twoPlayerGame();

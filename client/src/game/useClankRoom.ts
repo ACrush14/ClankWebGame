@@ -21,11 +21,27 @@ export interface PlayerSnapshot {
   roomId: string;
   points: number;
   artifactsCarried: number;
+  monkeyIdolsHeld: number;
   hasMasterKey: boolean;
   hasBackpack: boolean;
   hasLeftDungeon: boolean;
   /** -1 enquanto a partida não terminou. */
   finalScore: number;
+}
+
+/** Ícones possíveis numa opção de escolha "X -OU- Y" (ver `PendingChoiceSnapshot`). */
+export type ChoiceIcon = "skill" | "swords" | "boots" | "gold" | "clank" | "heal" | "drawCards";
+
+export interface PendingChoiceOption {
+  icon: ChoiceIcon;
+  amount: number;
+  label: string;
+}
+
+/** Escolha "X -OU- Y" pendente do jogador da vez (ex: Shrine "USE: $1 -OU- cura 1"). */
+export interface PendingChoiceSnapshot {
+  cardName: string;
+  options: PendingChoiceOption[];
 }
 
 export interface RoomSnapshot {
@@ -40,12 +56,16 @@ export interface RoomSnapshot {
   dragonRageTrack: number;
   /** Ids de sala cujo artefato já foi pego. */
   claimedArtifacts: Record<string, boolean>;
+  /** Nomes de Ídolo de Macaco já pegos (ex: "Macaco Surdo"). */
+  claimedMonkeyIdols: Record<string, boolean>;
   countdownTrack: number;
   /** Id do jogador andando na Trilha de Contagem Regressiva; "" = ninguém ainda. */
   countdownPlayerId: string;
   marketKeyAvailable: boolean;
   marketBackpackAvailable: boolean;
   marketCrownsAvailable: number[];
+  /** null quando não há nenhuma escolha pendente pro jogador da vez. */
+  pendingChoice: PendingChoiceSnapshot | null;
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
@@ -107,11 +127,13 @@ export function useClankRoom() {
       reserveRemaining: Map<string, number>;
       dragonRageTrack: number;
       claimedArtifacts: Map<string, boolean>;
+      claimedMonkeyIdols: Map<string, boolean>;
       countdownTrack: number;
       countdownPlayerId: string;
       marketKeyAvailable: boolean;
       marketBackpackAvailable: boolean;
       marketCrownsAvailable: number[];
+      pendingChoiceJson: string;
     };
     if (!state || !state.players) return;
     const players: PlayerSnapshot[] = [];
@@ -135,12 +157,21 @@ export function useClankRoom() {
         roomId: p.roomId,
         points: p.points,
         artifactsCarried: p.artifactsCarried,
+        monkeyIdolsHeld: p.monkeyIdolsHeld,
         hasMasterKey: p.hasMasterKey,
         hasBackpack: p.hasBackpack,
         hasLeftDungeon: p.hasLeftDungeon,
         finalScore: p.finalScore,
       });
     });
+    let pendingChoice: PendingChoiceSnapshot | null = null;
+    if (state.pendingChoiceJson) {
+      try {
+        pendingChoice = JSON.parse(state.pendingChoiceJson) as PendingChoiceSnapshot;
+      } catch {
+        pendingChoice = null;
+      }
+    }
     const reserveRemaining: Record<string, number> = {};
     state.reserveRemaining?.forEach((count, id: string) => {
       reserveRemaining[id] = count;
@@ -148,6 +179,10 @@ export function useClankRoom() {
     const claimedArtifacts: Record<string, boolean> = {};
     state.claimedArtifacts?.forEach((claimed, id: string) => {
       claimedArtifacts[id] = claimed;
+    });
+    const claimedMonkeyIdols: Record<string, boolean> = {};
+    state.claimedMonkeyIdols?.forEach((claimed, name: string) => {
+      claimedMonkeyIdols[name] = claimed;
     });
     setSnapshot({
       players,
@@ -159,11 +194,13 @@ export function useClankRoom() {
       reserveRemaining,
       dragonRageTrack: state.dragonRageTrack,
       claimedArtifacts,
+      claimedMonkeyIdols,
       countdownTrack: state.countdownTrack,
       countdownPlayerId: state.countdownPlayerId ?? "",
       marketKeyAvailable: state.marketKeyAvailable,
       marketBackpackAvailable: state.marketBackpackAvailable,
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
+      pendingChoice,
     });
   }, []);
 
@@ -293,6 +330,16 @@ export function useClankRoom() {
     roomRef.current?.send("take_artifact");
   }, []);
 
+  const takeMonkeyIdol = useCallback(() => {
+    setActionError(null);
+    roomRef.current?.send("take_monkey_idol");
+  }, []);
+
+  const resolveChoice = useCallback((optionIndex: number) => {
+    setActionError(null);
+    roomRef.current?.send("resolve_choice", optionIndex);
+  }, []);
+
   const leaveDungeon = useCallback(() => {
     setActionError(null);
     roomRef.current?.send("leave_dungeon");
@@ -338,6 +385,8 @@ export function useClankRoom() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
+    takeMonkeyIdol,
+    resolveChoice,
     leaveDungeon,
     buyMarketItem,
     endTurn,

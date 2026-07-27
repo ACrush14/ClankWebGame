@@ -35,6 +35,25 @@ export interface CardEffects {
 /** Flag de sala que algumas cartas exigem pra serem adquiridas/enfrentadas (ver `CardDefinition.requiresRoomFlag`). */
 export type RoomFlag = "isDepths" | "isCrystalCave";
 
+/**
+ * Uma opção de um efeito "escolha X -OU- Y" (ex: Shrine "USE: $1 -OU- cura 1"). O
+ * cliente mostra `icon` (+ `amount`) pra cada opção; o jogador clica na que quiser.
+ */
+export interface EffectChoiceOption {
+  /** Ícone/recurso que a opção representa, pra renderizar no client (ex: "gold", "heal"). */
+  icon: "skill" | "swords" | "boots" | "gold" | "clank" | "heal" | "drawCards";
+  amount: number;
+  /** Texto curto pra acessibilidade/tooltip (ex: "Cura 1"). */
+  label: string;
+}
+
+/** Uma escolha pendente que o jogador precisa resolver antes de fazer qualquer outra ação. */
+export interface PendingChoice {
+  cardId: string;
+  cardName: string;
+  options: EffectChoiceOption[];
+}
+
 export interface CardDefinition {
   id: string;
   name: string;
@@ -82,6 +101,15 @@ export interface CardDefinition {
    * jogador não estiver numa sala com essa flag.
    */
   requiresRoomFlag?: RoomFlag;
+  /**
+   * Escolha "X -OU- Y" ao JOGAR a carta da mão — em vez de aplicar `playEffects`, o
+   * motor cria um `PendingChoice` e espera o jogador chamar `resolveChoice` com o
+   * índice escolhido. Só uma das duas propriedades (`playEffects` ou `playChoices`)
+   * deve existir por carta.
+   */
+  playChoices?: EffectChoiceOption[];
+  /** Igual a `playChoices`, mas ao ADQUIRIR/VENCER a carta (em vez de `acquireEffects`). */
+  acquireChoices?: EffectChoiceOption[];
 }
 
 /** Ícones possíveis num túnel — controlam o custo/risco de passar por ele. */

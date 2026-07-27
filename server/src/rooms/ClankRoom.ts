@@ -47,12 +47,20 @@ export class ClankRoomState extends Schema {
   @type("number") dragonRageTrack = 1;
   /** Ids de sala cujo artefato já foi pego (o tabuleiro em si é estático — vem de @clank/engine no cliente). */
   @type({ map: "boolean" }) claimedArtifacts = new MapSchema<boolean>();
+  /** Nomes de Ídolo de Macaco já pegos (ex: "Macaco Surdo") — únicos no jogo todo. */
+  @type({ map: "boolean" }) claimedMonkeyIdols = new MapSchema<boolean>();
   @type("number") countdownTrack = 0;
   /** Id do jogador que anda na Trilha de Contagem Regressiva (só ele — regra oficial); "" = ninguém ainda. */
   @type("string") countdownPlayerId = "";
   @type("boolean") marketKeyAvailable = true;
   @type("boolean") marketBackpackAvailable = true;
   @type(["number"]) marketCrownsAvailable = new ArraySchema<number>();
+  /**
+   * Escolha "X -OU- Y" pendente do jogador da vez (ex: Shrine "USE: $1 -OU- cura 1"),
+   * serializada como JSON (`{cardName, options:[{icon,amount,label}]}`) — "" quando não
+   * há nenhuma pendente. JSON simples em vez de um schema aninhado pra manter isso leve.
+   */
+  @type("string") pendingChoiceJson = "";
 }
 
 const MAX_PLAYERS = 4;
@@ -118,6 +126,9 @@ export class ClankRoom extends Room<ClankRoomState> {
       this.handleAction(client, () => this.engine!.buyMarketItem(client.sessionId, item)),
     );
     this.onMessage("end_turn", (client) => this.handleAction(client, () => this.engine!.endTurn(client.sessionId)));
+    this.onMessage("resolve_choice", (client, optionIndex: number) =>
+      this.handleAction(client, () => this.engine!.resolveChoice(client.sessionId, optionIndex)),
+    );
 
     console.log(`ClankRoom criada: ${this.roomId}`);
   }
@@ -223,6 +234,7 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.state.marketCrownsAvailable.clear();
     for (const value of state.market.crownsAvailable) this.state.marketCrownsAvailable.push(value);
     if (state.phase === "ended") this.state.phase = "ended";
+    this.state.pendingChoiceJson = state.pendingChoice ? JSON.stringify(state.pendingChoice) : "";
 
     this.state.dungeonRowSlots.clear();
     for (const id of state.dungeonRow.slots) this.state.dungeonRowSlots.push(id ?? "");
@@ -233,6 +245,10 @@ export class ClankRoom extends Room<ClankRoomState> {
 
     for (const [roomId, claimed] of Object.entries(state.claimedArtifacts)) {
       this.state.claimedArtifacts.set(roomId, claimed);
+    }
+
+    for (const [idolName, claimed] of Object.entries(state.claimedMonkeyIdols)) {
+      this.state.claimedMonkeyIdols.set(idolName, claimed);
     }
 
     for (const enginePlayer of state.players) {

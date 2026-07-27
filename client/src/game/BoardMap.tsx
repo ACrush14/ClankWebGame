@@ -29,6 +29,8 @@ const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   "crystal-cave-3": { x: 150, y: 375 },
   "healing-spring-2": { x: 20, y: 450 },
   "depths-south": { x: 200, y: 555 },
+  "depths-ring": { x: 80, y: 400 },
+  "depths-vase": { x: 380, y: 300 },
 };
 
 export interface BoardMapPlayer {

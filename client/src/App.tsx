@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
-import type { RoomSnapshot } from "./game/useClankRoom";
+import type { ChoiceIcon, PendingChoiceSnapshot, RoomSnapshot } from "./game/useClankRoom";
 import { BoardMap } from "./game/BoardMap";
 import { PLAYER_COLORS } from "./game/playerColors";
 
@@ -29,6 +29,62 @@ function Avatar({ name, color, size = "sm" }: { name: string; color: string; siz
   );
 }
 
+const CHOICE_ICON_EMOJI: Record<ChoiceIcon, string> = {
+  skill: "💎",
+  swords: "⚔️",
+  boots: "👢",
+  gold: "💰",
+  clank: "🔔",
+  heal: "❤️",
+  drawCards: "🃏",
+};
+
+/**
+ * Overlay bloqueante pra escolhas "X -OU- Y" (ex: Shrine "USE: $1 -OU- cura 1") — o
+ * jogador precisa escolher uma opção antes de fazer qualquer outra ação (o motor já
+ * bloqueia isso do lado do servidor; este modal só torna a escolha visível/clicável).
+ */
+function ChoiceModal({
+  choice,
+  onChoose,
+}: {
+  choice: PendingChoiceSnapshot;
+  onChoose: (optionIndex: number) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-sm rounded-2xl bg-slate-900 p-5 shadow-2xl ring-1 ring-white/10"
+      >
+        <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">{choice.cardName}</p>
+        <p className="mb-4 text-lg font-bold text-slate-100">Escolha um efeito</p>
+        <div className="flex flex-col gap-2">
+          {choice.options.map((option, i) => (
+            <button
+              key={i}
+              onClick={() => onChoose(i)}
+              className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3 text-left active:scale-[0.98] active:bg-slate-700"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+                <span className="text-xl">{CHOICE_ICON_EMOJI[option.icon]}</span>
+                {option.label}
+              </span>
+              <span className="text-lg font-bold text-amber-400">+{option.amount}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export default function App() {
   const {
     room,
@@ -49,6 +105,8 @@ export default function App() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
+    takeMonkeyIdol,
+    resolveChoice,
     leaveDungeon,
     buyMarketItem,
     endTurn,
@@ -100,6 +158,8 @@ export default function App() {
         onAcquireFromReserve={acquireFromReserve}
         onMovePlayer={movePlayer}
         onTakeArtifact={takeArtifact}
+        onTakeMonkeyIdol={takeMonkeyIdol}
+        onResolveChoice={resolveChoice}
         onLeaveDungeon={leaveDungeon}
         onBuyMarketItem={buyMarketItem}
         onEndTurn={endTurn}
@@ -337,6 +397,8 @@ interface GameScreenProps {
   onAcquireFromReserve: (cardId: string) => void;
   onMovePlayer: (toRoomId: string) => void;
   onTakeArtifact: () => void;
+  onTakeMonkeyIdol: () => void;
+  onResolveChoice: (optionIndex: number) => void;
   onLeaveDungeon: () => void;
   onBuyMarketItem: (item: "key" | "backpack" | "crown") => void;
   onEndTurn: () => void;
@@ -361,6 +423,8 @@ function GameScreen({
   onAcquireFromReserve,
   onMovePlayer,
   onTakeArtifact,
+  onTakeMonkeyIdol,
+  onResolveChoice,
   onLeaveDungeon,
   onBuyMarketItem,
   onEndTurn,
@@ -371,6 +435,7 @@ function GameScreen({
   const currentPlayerName = snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.name ?? "?";
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
+  const unclaimedMonkeyIdol = myRoom?.monkeyIdolNames?.find((n) => !snapshot.claimedMonkeyIdols[n]);
   const canLeaveDungeon = !!myRoom?.isEntrance;
   const artifactLimit = me?.hasBackpack ? 2 : 1;
   const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
@@ -396,6 +461,12 @@ function GameScreen({
             Sair
           </button>
         </header>
+
+        <AnimatePresence>
+          {isMyTurn && snapshot.pendingChoice && (
+            <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {actionError && (
@@ -482,6 +553,15 @@ function GameScreen({
               {atArtifactLimit
                 ? `Máximo de artefatos carregados (${me?.artifactsCarried}/${artifactLimit})`
                 : `Pegar artefato (${myRoom!.artifactValue} pts) — ${me?.artifactsCarried ?? 0}/${artifactLimit}`}
+            </button>
+          )}
+          {unclaimedMonkeyIdol && (
+            <button
+              onClick={onTakeMonkeyIdol}
+              disabled={!isMyTurn}
+              className="mb-2 w-full rounded-xl bg-fuchsia-600 px-3 py-2 text-sm font-semibold text-fuchsia-50 active:scale-[0.98] disabled:opacity-40"
+            >
+              🐒 Pegar {unclaimedMonkeyIdol} (5 pts)
             </button>
           )}
           {canLeaveDungeon && (
