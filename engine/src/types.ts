@@ -106,8 +106,10 @@ export interface RoomDefinition {
   isEntrance?: boolean;
   isMarket?: boolean;
   isDepths?: boolean;
-  /** Caverna de Cristal — algumas cartas do Catacombs têm efeito condicional aqui (ex: Lie in Wait). */
+  /** Caverna de Cristal — CONFIRMADO no manual oficial: ao entrar, esgota os Boots restantes no turno (ver `movePlayer`). */
   isCrystalCave?: boolean;
+  /** Fonte de Cura — CONFIRMADO no manual oficial: ao entrar, cura 1 de dano na hora. */
+  isFountainOfHealing?: boolean;
   /** Valor em pontos do artefato nesta sala, se ainda não foi pego. */
   artifactValue?: number;
   /** Nome do artefato nesta sala — CONFIRMADO contra fotos oficiais dos 7 artefatos do jogo base (ver ARTIFACT_NAMES_BY_VALUE em board.ts). */

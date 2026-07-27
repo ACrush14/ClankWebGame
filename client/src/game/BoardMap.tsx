@@ -19,6 +19,16 @@ const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   "sealed-vault": { x: 200, y: 490 },
   "depths-west": { x: 330, y: 490 },
   "monkey-shrine": { x: 320, y: 340 },
+  // --- Adicionadas a partir da foto do tabuleiro físico (2026-07-24) ---
+  "castle-hall": { x: 320, y: 80 },
+  "tower-passage": { x: 380, y: 150 },
+  "market-annex": { x: 380, y: 220 },
+  "healing-spring-1": { x: 20, y: 260 },
+  "crystal-cave-2": { x: 390, y: 270 },
+  "depths-north": { x: 390, y: 340 },
+  "crystal-cave-3": { x: 150, y: 375 },
+  "healing-spring-2": { x: 20, y: 450 },
+  "depths-south": { x: 200, y: 555 },
 };
 
 export interface BoardMapPlayer {
@@ -43,6 +53,7 @@ function roomFill(room: (typeof BOARD.rooms)[string], isCurrent: boolean) {
   if (isCurrent) return "#f59e0b";
   if (room.isEntrance) return "#10b981";
   if (room.isMarket) return "#eab308";
+  if (room.isFountainOfHealing) return "#f43f5e";
   if (room.isDepths) return "#8b5cf6";
   return "#334155";
 }
@@ -74,7 +85,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
   }
 
   return (
-    <svg viewBox="0 0 400 560" className="w-full select-none" role="img" aria-label="Mapa da masmorra">
+    <svg viewBox="0 0 420 590" className="w-full select-none" role="img" aria-label="Mapa da masmorra">
       {edges.map((edge, i) => {
         const a = ROOM_POSITIONS[edge.from];
         const b = ROOM_POSITIONS[edge.to];

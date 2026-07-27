@@ -169,7 +169,11 @@ export class GameEngine {
    * Move o jogador por um túnel até uma sala vizinha. Túnel com pegada custa 2 Boots
    * em vez de 1. Túnel com monstro: paga Swords automaticamente se o jogador tiver o
    * suficiente; senão, leva 1 de dano (regra oficial: "gaste uma espada ou sofra um
-   * ferimento" — aqui a espada é paga automaticamente quando disponível).
+   * ferimento" — aqui a espada é paga automaticamente quando disponível). Entrar numa
+   * sala com Fonte de Cura (CONFIRMADO no manual oficial) cura 1 de dano na hora.
+   * Entrar numa Caverna de Cristal (CONFIRMADO no manual oficial) esgota os Boots
+   * restantes — não dá mais pra mover de novo neste turno (só via Teleporte, que o
+   * motor ainda não modela).
    */
   movePlayer(playerId: string, toRoomId: string) {
     const player = this.requireCurrentPlayer(playerId);
@@ -199,6 +203,15 @@ export class GameEngine {
     }
 
     player.roomId = toRoomId;
+    const destRoom = BOARD.rooms[toRoomId];
+    if (destRoom?.isFountainOfHealing && player.damage > 0) {
+      player.damage = Math.max(0, player.damage - 1);
+      this.pushLog(`${player.name} entrou numa Fonte de Cura: -1 dano.`);
+    }
+    if (destRoom?.isCrystalCave && player.resources.boots > 0) {
+      player.resources.boots = 0;
+      this.pushLog(`${player.name} entrou numa Caverna de Cristal e ficou exausto — sem mais Boots este turno.`);
+    }
     this.checkGameEnd();
   }
 

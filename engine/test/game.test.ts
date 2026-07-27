@@ -315,6 +315,44 @@ describe("movePlayer", () => {
     player.resources.boots = 99;
     expect(() => game.movePlayer(player.id, "depths-east")).toThrow(/não há túnel/i);
   });
+
+  it("entrar numa Caverna de Cristal esgota os Boots restantes no turno (CONFIRMADO no manual oficial)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "crossroads";
+    player.resources.boots = 5;
+    game.movePlayer(player.id, "crystal-cave");
+    expect(player.roomId).toBe("crystal-cave");
+    expect(player.resources.boots).toBe(0);
+  });
+
+  it("entrar numa Fonte de Cura cura 1 de dano na hora (CONFIRMADO no manual oficial)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "mine-entry";
+    player.damage = 5;
+    player.resources.boots = 1;
+    player.resources.swords = 1; // paga o túnel com monstro entre mine-entry e castle-hall, sem levar dano
+    game.movePlayer(player.id, "castle-hall");
+    // castle-hall não é Fonte de Cura, então nada muda ainda
+    expect(player.damage).toBe(5);
+
+    player.roomId = "guard-post";
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "healing-spring-1");
+    expect(player.roomId).toBe("healing-spring-1");
+    expect(player.damage).toBe(4);
+  });
+
+  it("Fonte de Cura não deixa o dano negativo se já estiver em 0", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.roomId = "guard-post";
+    player.damage = 0;
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "healing-spring-1");
+    expect(player.damage).toBe(0);
+  });
 });
 
 describe("cura (heal)", () => {

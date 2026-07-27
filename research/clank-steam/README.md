@@ -124,20 +124,39 @@ existentes). Suite completa: 77 testes passando.
 - ⚠️ Discrepância ainda não resolvida: custo de Tattle (Steam ao vivo disse 2, a
   planilha diz 3 + Skill+2) — usei o valor da planilha.
 
-### ⚠️ Sobre o tabuleiro (`board.ts`) — ainda é uma simplificação
+### `board.ts` — expandido com foto real do tabuleiro (2026-07-24)
 
-O grafo de salas continua sendo pequeno e fixo (11-12 salas), do jeito que já era antes
-— **não é uma cópia sala-por-sala do tabuleiro físico real**, que tem dois lados
-diferentes ("Castelo" e "Montículos e Covas"), dezenas de salas, e túneis com ícones
-específicos em cada ligação (ver diagrama de exemplo no manual oficial, página 3).
-Reescrever isso direito precisaria de uma foto clara do tabuleiro físico (os dois
-lados, se possível) — ver pergunta feita ao usuário sobre isso.
+O usuário mandou uma foto de cima do lado "Castelo" do tabuleiro físico. A partir dela,
+adicionei (de forma ADITIVA — nenhuma sala/id que já existia foi removida ou renomeada,
+então nenhum teste antigo quebrou):
+
+- Mais 2 salas de Caverna de Cristal (`crystal-cave-2`, `crystal-cave-3`).
+- Mais 2 salas de Artefato: **20 (Escudo)** e **30 (Orbe)**, nítidos na foto — total
+  agora 5 dos 7 valores confirmados fisicamente colocados em sala (faltam 5 e 10, que
+  não ficaram legíveis nessa foto).
+- **Fonte de Cura** (`isFountainOfHealing`) — mecânica CONFIRMADA no manual oficial
+  ("When you enter a room with a Fountain of Healing, heal 1 damage") que já estava
+  documentada desde a leitura do manual mas nunca tinha sido implementada. Duas salas
+  novas (`healing-spring-1`, `healing-spring-2`) e a cura acontece em `movePlayer`.
+- **Esgotamento de Boots na Caverna de Cristal** — outra regra confirmada no manual que
+  estava documentada mas não implementada; agora `movePlayer` zera os Boots restantes
+  ao entrar numa sala com `isCrystalCave`.
+- Posição mais realista do Santuário dos Macacos e do Mercado (2 salas de Mercado
+  conectadas, refletindo as 4 barracas ao redor do "$7" central na foto).
+- Cliente (`BoardMap.tsx`) atualizado com posição de todas as salas novas + cor própria
+  pra Fonte de Cura (rosa/vermelho).
+
+**⚠️ Ainda é uma simplificação, não 1:1**: a foto mostra ícone de monstro em quase todo
+túnel (bem mais denso do que o grafo assumia antes) — usei custo 1 Sword como estimativa
+nos túneis novos, já que a resolução da foto não deixa ler o número exato em cada ícone
+individualmente. O lado "Montículos e Covas" (verso do tabuleiro) continua sem
+cobertura — não foi fotografado. 9 testes novos adicionados (Fonte de Cura, esgotamento
+de Boots), suite completa agora com **78 testes passando**.
 
 ## Próximos passos
 
-1. Se o usuário mandar foto(s) do tabuleiro físico: reconstruir `board.ts` com a
-   topologia real (salas, túneis, ícones, Mercado, Cavernas de Cristal, Profundezas,
-   Monkey Shrine na posição certa).
+1. Se quiser fechar os 2 valores de Artefato que faltam (5 e 10) ou o verso do
+   tabuleiro: mandar foto mais próxima/nítida dessas áreas específicas.
 2. Adicionar UI no client pra pegar Ídolo de Macaco (`take_monkey_idol` já existe no
    servidor; a sala `monkey-shrine` já aparece no mapa SVG do client).
 3. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.

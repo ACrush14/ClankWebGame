@@ -8,7 +8,7 @@ describe("tabuleiro", () => {
   });
 
   it("todo túnel é bidirecional, exceto os de mão única conhecidos", () => {
-    const oneWayExceptions = new Set(["sealed-vault->entrance"]);
+    const oneWayExceptions = new Set(["sealed-vault->entrance", "castle-hall->entrance"]);
     for (const room of Object.values(BOARD.rooms)) {
       for (const tunnel of room.tunnels) {
         const target = BOARD.rooms[tunnel.to];
@@ -35,10 +35,12 @@ describe("tabuleiro", () => {
     expect(visited.size).toBe(Object.keys(BOARD.rooms).length);
   });
 
-  it("salas das Profundezas têm artefato com valor positivo", () => {
+  it("salas das Profundezas com artefato têm valor positivo (nem toda sala de Profundezas precisa ter um — pode ter só uma Fonte de Cura, por exemplo)", () => {
     const depthsRooms = Object.values(BOARD.rooms).filter((r) => r.isDepths);
     expect(depthsRooms.length).toBeGreaterThan(0);
-    for (const room of depthsRooms) {
+    const withArtifact = depthsRooms.filter((r) => r.artifactValue !== undefined);
+    expect(withArtifact.length).toBeGreaterThan(0);
+    for (const room of withArtifact) {
       expect(room.artifactValue ?? 0).toBeGreaterThan(0);
     }
   });
