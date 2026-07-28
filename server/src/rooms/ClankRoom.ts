@@ -177,9 +177,6 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.onMessage("take_artifact", (client) =>
       this.handleAction(client, () => this.engine!.takeArtifact(client.sessionId)),
     );
-    this.onMessage("take_monkey_idol", (client) =>
-      this.handleAction(client, () => this.engine!.takeMonkeyIdol(client.sessionId)),
-    );
     this.onMessage("leave_dungeon", (client) =>
       this.handleAction(client, () => this.engine!.leaveDungeon(client.sessionId)),
     );
@@ -439,11 +436,8 @@ export class ClankRoom extends Room<ClankRoomState> {
       } catch {
         // sem artefato disponível na sala, ou já no limite — sem-op
       }
-      try {
-        engine.takeMonkeyIdol(botId);
-      } catch {
-        // sem ídolo disponível na sala — sem-op
-      }
+      // Ídolo de Macaco agora é automático dentro de movePlayer (ver game.ts) — não
+      // precisa de nenhuma chamada manual aqui.
 
       // Boots: anda por túneis que consiga pagar (pula os trancados sem chave-mestra).
       for (let guard = 0; guard < 10; guard++) {

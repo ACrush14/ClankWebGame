@@ -125,7 +125,6 @@ export default function App() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
-    takeMonkeyIdol,
     resolveChoice,
     leaveDungeon,
     buyMarketItem,
@@ -178,7 +177,6 @@ export default function App() {
         onAcquireFromReserve={acquireFromReserve}
         onMovePlayer={movePlayer}
         onTakeArtifact={takeArtifact}
-        onTakeMonkeyIdol={takeMonkeyIdol}
         onResolveChoice={resolveChoice}
         onLeaveDungeon={leaveDungeon}
         onBuyMarketItem={buyMarketItem}

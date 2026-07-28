@@ -11,6 +11,7 @@ import type {
   PendingChoice,
   PlayerState,
   ReserveState,
+  RoomDefinition,
 } from "./types.js";
 import {
   CROWN_VALUES,
@@ -31,7 +32,7 @@ const MAX_LOG_LINES = 30;
  * Substituiu a fórmula antiga (`posição - 1`), que só batia por coincidência na casa 5
  * — o único ponto que eu tinha confirmado antes ("5ª casa sorteia 4 cubos").
  */
-const RAGE_TRACK_CUBES = [2, 2, 3, 3, 4, 4, 5];
+export const RAGE_TRACK_CUBES = [2, 2, 3, 3, 4, 4, 5];
 const RAGE_TRACK_SIZE = RAGE_TRACK_CUBES.length;
 
 /**
@@ -299,7 +300,25 @@ export class GameEngine {
       player.resources.boots = 0;
       this.pushLog(`${player.name} entrou numa Caverna de Cristal e ficou exausto — sem mais Boots este turno.`);
     }
+    this.tryAutoClaimMonkeyIdol(player, destRoom);
     this.checkGameEnd();
+  }
+
+  /**
+   * Ídolo de Macaco — CONFIRMADO pelo usuário via playtest do jogo físico (2026-07-28):
+   * é automático ao entrar na sala (não uma ação manual separada), e só 1 por entrada
+   * mesmo que a sala tenha mais de um ídolo ainda disponível (regra genérica confirmada
+   * no manual pra qualquer token de sala: "só 1 por entrada, precisa sair e reentrar pra
+   * pegar outro"). Antes disso era um botão manual sem esse limite — dava pra clicar
+   * repetidamente na mesma visita e pegar os 3 de uma vez.
+   */
+  private tryAutoClaimMonkeyIdol(player: PlayerState, room: RoomDefinition | undefined) {
+    const available = (room?.monkeyIdolNames ?? []).find((name) => !this.state.claimedMonkeyIdols[name]);
+    if (!available) return;
+    this.state.claimedMonkeyIdols[available] = true;
+    player.monkeyIdolsHeld.push(available);
+    player.points += MONKEY_IDOL_VALUE;
+    this.pushLog(`${player.name} pegou o Ídolo de Macaco "${available}" (${MONKEY_IDOL_VALUE} pontos) ao entrar na sala!`);
   }
 
   /**
@@ -412,26 +431,6 @@ export class GameEngine {
    */
   private countDangerCards(): number {
     return this.state.dungeonRow.slots.filter((id) => id && getCard(id).isDanger).length;
-  }
-
-  /**
-   * Pega um Ídolo de Macaco da sala atual (RESOLVIDO 2026-07-24 — ver nota no topo do
-   * board.ts). São 3 tokens únicos no jogo todo (Macaco Surdo/Cego/Mudo), cada um vale
-   * `MONKEY_IDOL_VALUE` pontos, banked na hora igual artefato/coroa. Sem limite de
-   * quantidade carregada (regra oficial não menciona limite, diferente de Artefato).
-   */
-  takeMonkeyIdol(playerId: string) {
-    const player = this.requireCurrentPlayer(playerId);
-    const room = BOARD.rooms[player.roomId];
-    const available = (room?.monkeyIdolNames ?? []).find((name) => !this.state.claimedMonkeyIdols[name]);
-    if (!available) {
-      throw new Error(`${room?.name ?? player.roomId} não tem Ídolo de Macaco disponível.`);
-    }
-
-    this.state.claimedMonkeyIdols[available] = true;
-    player.monkeyIdolsHeld.push(available);
-    player.points += MONKEY_IDOL_VALUE;
-    this.pushLog(`${player.name} pegou o Ídolo de Macaco "${available}" (${MONKEY_IDOL_VALUE} pontos)!`);
   }
 
   /**

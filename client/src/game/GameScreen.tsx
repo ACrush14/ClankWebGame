@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
+import { BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
 import type { RoomSnapshot } from "./useClankRoom";
 import { cardImageUrl } from "./cardImages";
-import {
-  artifactImageUrl,
-  backpackImageUrl,
-  crownImageUrl,
-  masterKeyImageUrl,
-  monkeyIdolImageUrl,
-} from "./tokenImages";
+import { artifactImageUrl, backpackImageUrl, crownImageUrl, masterKeyImageUrl } from "./tokenImages";
 import { BoardMap } from "./BoardMap";
 import { Avatar, ChoiceModal } from "../App";
 
@@ -25,7 +19,6 @@ export interface GameScreenProps {
   onAcquireFromReserve: (cardId: string) => void;
   onMovePlayer: (toRoomId: string) => void;
   onTakeArtifact: () => void;
-  onTakeMonkeyIdol: () => void;
   onResolveChoice: (optionIndex: number) => void;
   onLeaveDungeon: () => void;
   onBuyMarketItem: (item: "key" | "backpack" | "crown") => void;
@@ -167,7 +160,6 @@ export function GameScreen({
   onAcquireFromReserve,
   onMovePlayer,
   onTakeArtifact,
-  onTakeMonkeyIdol,
   onResolveChoice,
   onLeaveDungeon,
   onBuyMarketItem,
@@ -183,7 +175,6 @@ export function GameScreen({
   const me = snapshot.players.find((p) => p.id === mySessionId);
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
-  const unclaimedMonkeyIdol = myRoom?.monkeyIdolNames?.find((n) => !snapshot.claimedMonkeyIdols[n]);
   const canLeaveDungeon = !!myRoom?.isEntrance;
   const artifactLimit = me?.hasBackpack ? 2 : 1;
   const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
@@ -205,7 +196,9 @@ export function GameScreen({
           <p className="text-xs uppercase tracking-wider text-slate-400">Fúria do Dragão</p>
           <div className="mt-1 flex items-center gap-2 font-mono text-2xl font-bold text-amber-500">
             {snapshot.dragonRageTrack}
-            <span className="text-sm text-slate-500">(sorteia {Math.max(0, snapshot.dragonRageTrack - 1)})</span>
+            <span className="text-sm text-slate-500">
+              (sorteia {RAGE_TRACK_CUBES[Math.min(RAGE_TRACK_CUBES.length, Math.max(1, snapshot.dragonRageTrack)) - 1] ?? 0})
+            </span>
           </div>
         </div>
 
@@ -233,6 +226,11 @@ export function GameScreen({
                 <span className="flex items-center gap-1 text-slate-300" title="Clank (Cubos)">
                   🔔 {p.clank}
                 </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                <span title="Cartas na mão">✋ {p.handCount}</span>
+                <span title="Cartas no monte de compra">🂠 {p.drawPileCount}</span>
+                <span title="Cartas na pilha de descarte">🗑 {p.discardPileCount}</span>
               </div>
             </div>
           ))}
@@ -298,18 +296,6 @@ export function GameScreen({
                 Pegar Artefato ({myRoom!.artifactValue})
               </button>
             )}
-            {unclaimedMonkeyIdol && (
-              <button
-                onClick={onTakeMonkeyIdol}
-                disabled={!isMyTurn}
-                className="flex items-center gap-2 rounded-xl bg-fuchsia-600/90 px-4 py-2 text-sm font-bold text-fuchsia-50 shadow-lg backdrop-blur hover:bg-fuchsia-500 active:scale-95 disabled:opacity-40 transition-all"
-              >
-                {monkeyIdolImageUrl(unclaimedMonkeyIdol) ? (
-                  <img src={monkeyIdolImageUrl(unclaimedMonkeyIdol)} alt="" className="h-6 w-6 object-contain drop-shadow" />
-                ) : "🐒"}
-                Pegar {unclaimedMonkeyIdol}
-              </button>
-            )}
             {canLeaveDungeon && (
               <button
                 onClick={onLeaveDungeon}
@@ -345,6 +331,10 @@ export function GameScreen({
                         onClick={() => isMyTurn && onPlayCard(cardId)}
                         onKeyDown={(e) => {
                           if (isMyTurn && (e.key === "Enter" || e.key === " ")) onPlayCard(cardId);
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setDetailCardId(cardId);
                         }}
                         onMouseEnter={showHover(cardId)}
                         onMouseLeave={hideHover}
@@ -393,13 +383,25 @@ export function GameScreen({
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={onEndTurn}
-                  disabled={!isMyTurn}
-                  className="shrink-0 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-3 text-sm font-bold text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:shadow-[0_0_25px_rgba(251,191,36,0.5)] hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:opacity-30 disabled:from-slate-600 disabled:to-slate-700 disabled:text-slate-400 disabled:shadow-none transition-all uppercase tracking-widest sm:mt-3 sm:w-full"
-                >
-                  Terminar Turno
-                </button>
+                <div className="flex shrink-0 gap-2 sm:mt-3 sm:flex-col">
+                  {hand.length > 1 && (
+                    <button
+                      onClick={() => hand.forEach((cardId) => onPlayCard(cardId))}
+                      disabled={!isMyTurn}
+                      title="Joga todas as cartas da mão, na ordem"
+                      className="rounded-xl bg-slate-700 px-3 py-3 text-xs font-bold text-slate-200 active:scale-95 disabled:opacity-30 sm:w-full"
+                    >
+                      Jogar Todas
+                    </button>
+                  )}
+                  <button
+                    onClick={onEndTurn}
+                    disabled={!isMyTurn}
+                    className="flex-1 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-3 text-sm font-bold text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:shadow-[0_0_25px_rgba(251,191,36,0.5)] hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:opacity-30 disabled:from-slate-600 disabled:to-slate-700 disabled:text-slate-400 disabled:shadow-none transition-all uppercase tracking-widest sm:w-full"
+                  >
+                    Terminar Turno
+                  </button>
+                </div>
              </div>
            )}
 
@@ -480,6 +482,10 @@ export function GameScreen({
                         if (!isMyTurn || (e.key !== "Enter" && e.key !== " ")) return;
                         isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex);
                       }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setDetailCardId(cardId);
+                      }}
                       onMouseEnter={showHover(cardId)}
                       onMouseLeave={hideHover}
                       className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 hover:shadow-[0_0_15px_rgba(251,191,36,0.3)] transition-all active:scale-95 flex flex-col ${isMyTurn ? "cursor-pointer" : "opacity-60 cursor-default"}`}
@@ -527,6 +533,10 @@ export function GameScreen({
                     onClick={() => canAct && onAcquireFromReserve(cardId)}
                     onKeyDown={(e) => {
                       if (canAct && (e.key === "Enter" || e.key === " ")) onAcquireFromReserve(cardId);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setDetailCardId(cardId);
                     }}
                     onMouseEnter={showHover(cardId)}
                     onMouseLeave={hideHover}

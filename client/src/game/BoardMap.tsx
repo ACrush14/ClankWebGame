@@ -324,17 +324,33 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
             <text x={pos.x} y={pos.y + 38} textAnchor="middle" fontSize={9} fill="#cbd5e1">
               {room.name}
             </text>
-            {occupants.map((p, idx) => (
-              <circle
-                key={p.id}
-                cx={pos.x - 14 + idx * 12}
-                cy={pos.y - 22}
-                r={6}
-                fill={p.knockedOut ? "#7f1d1d" : p.color}
-                stroke="#0f172a"
-                strokeWidth={1.5}
-              />
-            ))}
+            {occupants.map((p, idx) => {
+              const cx = pos.x - 16 + idx * 15;
+              const cy = pos.y - 24;
+              const initial = p.name.trim().charAt(0).toUpperCase() || "?";
+              return (
+                <g key={p.id}>
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={9}
+                    fill={p.knockedOut ? "#7f1d1d" : p.color}
+                    stroke="#0f172a"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={cx}
+                    y={cy + 3.5}
+                    textAnchor="middle"
+                    fontSize={10}
+                    fontWeight="bold"
+                    fill="#0f172a"
+                  >
+                    {initial}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         );
       })}

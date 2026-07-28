@@ -569,46 +569,56 @@ describe("restrição de sala (Deep / Crystal Cave)", () => {
   });
 });
 
-describe("Ídolos de Macaco", () => {
-  it("pega um Ídolo de Macaco no Santuário e ganha 5 pontos", () => {
+describe("Ídolos de Macaco (automático ao entrar na sala — CONFIRMADO no playtest do jogo físico)", () => {
+  it("pega um Ídolo de Macaco automaticamente ao entrar no Santuário, e ganha 5 pontos", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "room-48";
+    player.roomId = "room-36";
+    player.resources.boots = 1;
+    player.resources.swords = 1; // evita dano no túnel com monstro (room-36 -> room-48)
 
-    game.takeMonkeyIdol(player.id);
+    game.movePlayer(player.id, "room-48");
 
     expect(player.points).toBe(5);
     expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo"]);
   });
 
-  it("pega os 3 ídolos um de cada vez (nomes diferentes, sem limite de quantidade)", () => {
+  it("só pega 1 ídolo por entrada — precisa sair e reentrar pra pegar o próximo", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "room-48";
+    player.roomId = "room-36";
+    player.resources.boots = 1;
+    player.resources.swords = 1;
+    game.movePlayer(player.id, "room-48"); // 1ª entrada: só o Macaco Surdo
+    expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo"]);
 
-    game.takeMonkeyIdol(player.id);
-    game.takeMonkeyIdol(player.id);
-    game.takeMonkeyIdol(player.id);
+    // sai (room-48 -> room-47, túnel de mão única) e reentra por outro caminho
+    // (room-50 -> room-48, túnel de pegada) pra simular uma segunda visita de verdade
+    player.roomId = "room-50";
+    player.resources.boots = 2;
+    game.movePlayer(player.id, "room-48"); // 2ª entrada: Macaco Cego
+    expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo", "Macaco Cego"]);
 
+    player.roomId = "room-36";
+    player.resources.boots = 1;
+    player.resources.swords = 1;
+    game.movePlayer(player.id, "room-48"); // 3ª entrada: Macaco Mudo (último)
     expect(player.monkeyIdolsHeld).toEqual(["Macaco Surdo", "Macaco Cego", "Macaco Mudo"]);
     expect(player.points).toBe(15);
+
+    // 4ª entrada: não sobra ídolo -- automático, então é um sem-op silencioso (sem erro)
+    player.roomId = "room-50";
+    player.resources.boots = 2;
+    game.movePlayer(player.id, "room-48");
+    expect(player.monkeyIdolsHeld).toHaveLength(3);
   });
 
-  it("lança erro quando não há mais ídolos disponíveis na sala", () => {
+  it("entrar numa sala sem Ídolo de Macaco não faz nada (sem-op silencioso)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "room-48";
-    game.takeMonkeyIdol(player.id);
-    game.takeMonkeyIdol(player.id);
-    game.takeMonkeyIdol(player.id);
-
-    expect(() => game.takeMonkeyIdol(player.id)).toThrow(/não tem Ídolo de Macaco disponível/i);
-  });
-
-  it("lança erro se a sala atual não tem Ídolo de Macaco", () => {
-    const game = twoPlayerGame();
-    const player = game.currentPlayer;
-    expect(() => game.takeMonkeyIdol(player.id)).toThrow(/não tem Ídolo de Macaco disponível/i);
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "room-25"); // sala comum, sem monkeyIdolNames
+    expect(player.monkeyIdolsHeld).toEqual([]);
   });
 });
 

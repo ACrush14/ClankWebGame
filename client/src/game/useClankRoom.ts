@@ -349,11 +349,6 @@ export function useClankRoom() {
     roomRef.current?.send("take_artifact");
   }, []);
 
-  const takeMonkeyIdol = useCallback(() => {
-    setActionError(null);
-    roomRef.current?.send("take_monkey_idol");
-  }, []);
-
   const resolveChoice = useCallback((optionIndex: number) => {
     setActionError(null);
     roomRef.current?.send("resolve_choice", optionIndex);
@@ -406,7 +401,6 @@ export function useClankRoom() {
     acquireFromReserve,
     movePlayer,
     takeArtifact,
-    takeMonkeyIdol,
     resolveChoice,
     leaveDungeon,
     buyMarketItem,
