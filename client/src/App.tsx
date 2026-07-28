@@ -206,7 +206,7 @@ export default function App() {
 
   return (
     <LobbyScreen
-      roomId={room.roomId}
+      roomCode={snapshot.roomCode}
       mySessionId={room.sessionId}
       snapshot={snapshot}
       onToggleReady={toggleReady}
@@ -275,9 +275,12 @@ function HomeScreen({
           <div className="flex gap-2">
             <input
               value={joinCode}
-              onChange={(e) => onJoinCodeChange(e.target.value)}
+              onChange={(e) => onJoinCodeChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
               placeholder="Código da sala"
-              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-base text-slate-100 outline-none focus:border-amber-400"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
+              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-base tracking-widest text-slate-100 outline-none focus:border-amber-400"
             />
             <button
               onClick={onJoin}
@@ -296,7 +299,7 @@ function HomeScreen({
 }
 
 interface LobbyScreenProps {
-  roomId: string;
+  roomCode: string;
   mySessionId: string;
   snapshot: RoomSnapshot;
   onToggleReady: () => void;
@@ -305,13 +308,13 @@ interface LobbyScreenProps {
   onLeave: () => void;
 }
 
-function LobbyScreen({ roomId, mySessionId, snapshot, onToggleReady, onSetColor, onStartGame, onLeave }: LobbyScreenProps) {
+function LobbyScreen({ roomCode, mySessionId, snapshot, onToggleReady, onSetColor, onStartGame, onLeave }: LobbyScreenProps) {
   const [copied, setCopied] = useState(false);
   const me = snapshot.players.find((p) => p.id === mySessionId);
 
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(roomId);
+      await navigator.clipboard.writeText(roomCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -331,7 +334,7 @@ function LobbyScreen({ roomId, mySessionId, snapshot, onToggleReady, onSetColor,
               onClick={copyCode}
               className="font-mono text-lg font-bold tracking-widest text-amber-400"
             >
-              {roomId} {copied ? "✓" : "⧉"}
+              {roomCode} {copied ? "✓" : "⧉"}
             </button>
           </div>
           <button onClick={onLeave} className="rounded-lg px-3 py-2 text-sm text-slate-400 active:bg-slate-800">

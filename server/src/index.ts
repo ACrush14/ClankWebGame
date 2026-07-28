@@ -6,7 +6,7 @@ import express from "express";
 import cors from "cors";
 import { Server } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
-import { ClankRoom } from "./rooms/ClankRoom.js";
+import { ClankRoom, resolveRoomCode } from "./rooms/ClankRoom.js";
 
 const port = Number(process.env.PORT ?? 2567);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,6 +17,16 @@ app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+/** Resolve o código amigável de 4 dígitos pro roomId real do Colyseus (ver ClankRoom.ts). */
+app.get("/room-code/:code", (req, res) => {
+  const roomId = resolveRoomCode(req.params.code);
+  if (!roomId) {
+    res.status(404).json({ error: "Sala não encontrada." });
+    return;
+  }
+  res.json({ roomId });
 });
 
 /**

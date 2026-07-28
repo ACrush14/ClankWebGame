@@ -5,6 +5,38 @@ import { GameEngine } from "@clank/engine";
 /** Paleta fixa de cores por jogador — sem arte oficial, só blocos de cor + inicial. */
 const PLAYER_COLORS = ["#38bdf8", "#f472b6", "#a3e635", "#fb923c", "#a78bfa", "#2dd4bf"];
 
+/**
+ * Código de sala amigável (4 dígitos, sem repetir, sem zero à esquerda — ex: "4827") em
+ * vez do id interno do Colyseus (ex: "5dBQV-Z9T"), pedido pelo usuário por ser mais fácil
+ * de ditar/digitar entre amigos. Mapeado pra o roomId real do Colyseus nesse registro em
+ * memória — só existe enquanto o processo do servidor está de pé, populado em `onCreate`
+ * e limpo em `onDispose`. `resolveRoomCode` é usado pela rota HTTP em `index.ts` que o
+ * client chama antes de `joinById`.
+ */
+const roomCodeToRoomId = new Map<string, string>();
+
+export function resolveRoomCode(code: string): string | undefined {
+  return roomCodeToRoomId.get(code.trim());
+}
+
+function generateUniqueRoomCode(): string {
+  let code: string;
+  do {
+    const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    for (let i = digits.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [digits[i], digits[j]] = [digits[j], digits[i]];
+    }
+    // primeiro dígito não pode ser 0 (senão o código "perderia" um dígito na prática)
+    if (digits[0] === "0") {
+      const swapIndex = digits.slice(1, 4).findIndex((d) => d !== "0") + 1;
+      [digits[0], digits[swapIndex]] = [digits[swapIndex], digits[0]];
+    }
+    code = digits.slice(0, 4).join("");
+  } while (roomCodeToRoomId.has(code));
+  return code;
+}
+
 export class Player extends Schema {
   @type("string") name = "Jogador";
   @type("string") color = PLAYER_COLORS[0];
@@ -61,6 +93,8 @@ export class ClankRoomState extends Schema {
    * há nenhuma pendente. JSON simples em vez de um schema aninhado pra manter isso leve.
    */
   @type("string") pendingChoiceJson = "";
+  /** Código amigável de 4 dígitos (ver `generateUniqueRoomCode`) — o que o jogador digita/vê, não o id interno do Colyseus. */
+  @type("string") roomCode = "";
 }
 
 const MAX_PLAYERS = 4;
@@ -73,6 +107,8 @@ export class ClankRoom extends Room<ClankRoomState> {
 
   onCreate() {
     this.setState(new ClankRoomState());
+    this.state.roomCode = generateUniqueRoomCode();
+    roomCodeToRoomId.set(this.state.roomCode, this.roomId);
 
     this.onMessage("set_name", (client, name: string) => {
       const player = this.state.players.get(client.sessionId);
@@ -171,6 +207,7 @@ export class ClankRoom extends Room<ClankRoomState> {
   }
 
   onDispose() {
+    roomCodeToRoomId.delete(this.state.roomCode);
     console.log(`ClankRoom encerrada: ${this.roomId}`);
   }
 

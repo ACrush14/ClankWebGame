@@ -66,9 +66,13 @@ export interface RoomSnapshot {
   marketCrownsAvailable: number[];
   /** null quando não há nenhuma escolha pendente pro jogador da vez. */
   pendingChoice: PendingChoiceSnapshot | null;
+  /** Código amigável de 4 dígitos (o que aparece pro jogador) — não é o id interno do Colyseus. */
+  roomCode: string;
 }
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? "ws://localhost:2567";
+/** Mesma origem do servidor, mas em http(s):// em vez de ws(s):// — usado só pra resolver código de sala → roomId real (ver /room-code/:code no server). */
+const SERVER_HTTP_URL = SERVER_URL.replace(/^ws/, "http");
 
 /** Guarda o token de reconexão da sala atual — sobrevive a refresh de página/fechar aba sem querer. */
 const RECONNECT_KEY = "clank_reconnect";
@@ -134,6 +138,7 @@ export function useClankRoom() {
       marketBackpackAvailable: boolean;
       marketCrownsAvailable: number[];
       pendingChoiceJson: string;
+      roomCode: string;
     };
     if (!state || !state.players) return;
     const players: PlayerSnapshot[] = [];
@@ -201,6 +206,7 @@ export function useClankRoom() {
       marketBackpackAvailable: state.marketBackpackAvailable,
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
       pendingChoice,
+      roomCode: state.roomCode ?? "",
     });
   }, []);
 
@@ -272,11 +278,14 @@ export function useClankRoom() {
   );
 
   const joinRoom = useCallback(
-    async (roomId: string, name: string) => {
+    async (code: string, name: string) => {
       setConnecting(true);
       setError(null);
       try {
-        const r = await clientRef.current!.joinById(roomId.trim(), {});
+        const res = await fetch(`${SERVER_HTTP_URL}/room-code/${encodeURIComponent(code.trim())}`);
+        if (!res.ok) throw new Error("Sala não encontrada.");
+        const { roomId } = (await res.json()) as { roomId: string };
+        const r = await clientRef.current!.joinById(roomId, {});
         bindRoom(r);
         r.send("set_name", name);
       } catch (err) {
