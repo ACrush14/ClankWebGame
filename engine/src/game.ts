@@ -51,7 +51,7 @@ function startingRageTrackPosition(playerCount: number): number {
  * ⚠️ Estimativa baseada na contagem de componentes ("24 dragon cubes") — não confirmei
  * se essa é exatamente a mecânica de reposição do saco entre ataques.
  */
-const BLACK_CUBE_COUNT = 24;
+export const BLACK_CUBE_COUNT = 24;
 
 export interface DungeonRowState {
   /** 5 posições visíveis; null enquanto o monte de compra estiver vazio. */

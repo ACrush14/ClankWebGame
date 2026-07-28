@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
+import { BLACK_CUBE_COUNT, BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
 import type { RoomSnapshot } from "./useClankRoom";
 import { cardImageUrl } from "./cardImages";
 import { artifactImageUrl, backpackImageUrl, crownImageUrl, masterKeyImageUrl } from "./tokenImages";
@@ -148,6 +148,43 @@ function HoverCardTooltip({ hover }: { hover: HoverInfo | null }) {
   );
 }
 
+/**
+ * Trilha de vida em pips (pedido de playtest: "colocar cubos coloridos... vida em
+ * pips") — em vez de só o número, mostra os HEALTH_TRACK_SIZE espaços da trilha real,
+ * preenchidos (vida restante) ou vazios/escuros (dano já sofrido).
+ */
+function LifeTrack({ damage }: { damage: number }) {
+  return (
+    <div className="flex items-center gap-[2px]" title={`Vida: ${HEALTH_TRACK_SIZE - damage}/${HEALTH_TRACK_SIZE}`}>
+      {Array.from({ length: HEALTH_TRACK_SIZE }, (_, i) => (
+        <span
+          key={i}
+          className={`h-2.5 w-1.5 rounded-sm ${i < HEALTH_TRACK_SIZE - damage ? "bg-emerald-400" : "bg-slate-700"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Cubos de Clank! do jogador, coloridos com a cor dele — pedido de playtest ("cubos
+ * coloridos" pra visualizar o que cada jogador tem no saco do dragão). Limita a
+ * exibição pra não estourar o layout com muitos cubos (ex: alguém com Clank alto).
+ */
+const MAX_VISIBLE_CLANK_CUBES = 10;
+function ClankCubes({ count, color }: { count: number; color: string }) {
+  const visible = Math.min(count, MAX_VISIBLE_CLANK_CUBES);
+  const overflow = count - visible;
+  return (
+    <div className="flex flex-wrap items-center gap-[2px]" title={`Clank!: ${count}`}>
+      {Array.from({ length: visible }, (_, i) => (
+        <span key={i} className="h-2.5 w-2.5 rounded-sm ring-1 ring-black/30" style={{ backgroundColor: color }} />
+      ))}
+      {overflow > 0 && <span className="text-[10px] font-bold text-slate-400">+{overflow}</span>}
+    </div>
+  );
+}
+
 export function GameScreen({
   mySessionId,
   snapshot,
@@ -174,6 +211,8 @@ export function GameScreen({
   const isMyTurn = snapshot.currentPlayerId === mySessionId;
   const me = snapshot.players.find((p) => p.id === mySessionId);
   const currentPlayer = snapshot.players.find((p) => p.id === snapshot.currentPlayerId);
+  const totalPlayerClank = snapshot.players.reduce((sum, p) => sum + p.clank, 0);
+  const bagCubeCount = totalPlayerClank + BLACK_CUBE_COUNT;
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
   const canLeaveDungeon = !!myRoom?.isEntrance;
@@ -252,6 +291,12 @@ export function GameScreen({
               (sorteia {RAGE_TRACK_CUBES[Math.min(RAGE_TRACK_CUBES.length, Math.max(1, snapshot.dragonRageTrack)) - 1] ?? 0})
             </span>
           </div>
+          <div
+            className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400"
+            title={`Cubos no saco agora: ${bagCubeCount} (${totalPlayerClank} de jogadores + ${BLACK_CUBE_COUNT} pretos)`}
+          >
+            🎒 <span className="font-mono font-semibold text-slate-300">{bagCubeCount}</span> no saco
+          </div>
         </div>
 
         <div className="flex max-h-40 flex-1 overflow-y-auto p-3 md:max-h-none space-x-3 md:space-x-0 md:space-y-3 flex md:block">
@@ -268,16 +313,20 @@ export function GameScreen({
               </div>
 
               {/* Status */}
-              <div className="flex items-center justify-between text-xs font-mono font-semibold bg-slate-950/50 rounded-lg p-1.5 border border-slate-700/50">
-                <span className="flex items-center gap-1 text-emerald-400" title="Vida">
-                  ❤ {HEALTH_TRACK_SIZE - p.damage}
-                </span>
-                <span className="flex items-center gap-1 text-amber-300" title="Pontos">
-                  ★ {p.points}
-                </span>
-                <span className="flex items-center gap-1 text-slate-300" title="Clank (Cubos)">
-                  🔔 {p.clank}
-                </span>
+              <div className="flex flex-col gap-1.5 rounded-lg border border-slate-700/50 bg-slate-950/50 p-1.5">
+                <div className="flex items-center justify-between text-xs font-mono font-semibold">
+                  <span className="flex items-center gap-1 text-emerald-400" title="Vida">
+                    ❤ {HEALTH_TRACK_SIZE - p.damage}
+                  </span>
+                  <span className="flex items-center gap-1 text-amber-300" title="Pontos">
+                    ★ {p.points}
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-300" title="Clank (Cubos)">
+                    🔔 {p.clank}
+                  </span>
+                </div>
+                <LifeTrack damage={p.damage} />
+                {p.clank > 0 && <ClankCubes count={p.clank} color={p.color} />}
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
                 <span title="Cartas na mão">✋ {p.handCount}</span>
