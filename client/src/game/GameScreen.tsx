@@ -185,6 +185,77 @@ function ClankCubes({ count, color }: { count: number; color: string }) {
   );
 }
 
+const TUTORIAL_SEEN_KEY = "clank_tutorial_seen";
+
+/**
+ * Modal de boas-vindas / tutorial — pedido de playtest ("precisa de historinha o
+ * jogo... um tutorialzinho"). Mostra uma vez (guardado em localStorage) na primeira
+ * partida, e pode ser reaberto a qualquer momento pelo botão "?" no topo.
+ */
+function WelcomeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 px-4"
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[85vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-slate-900 p-5 shadow-2xl ring-1 ring-white/10"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xl font-bold text-slate-100">🐉 Fuja da Masmorra!</p>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 rounded-full bg-slate-800 px-2.5 py-1 text-sm text-slate-400 active:bg-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+        <p className="text-sm leading-relaxed text-slate-300">
+          Explore a masmorra, junte um <strong className="text-amber-400">Artefato</strong> e volte
+          pra Entrada antes que o Dragão acorde. Quanto mais fundo, mais valioso — mas também mais
+          perigoso.
+        </p>
+        <div className="rounded-xl bg-slate-800/60 p-3">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-400">No seu turno</p>
+          <ul className="space-y-1 text-sm text-slate-300">
+            <li>🃏 Jogue cartas da mão pra ganhar Skill/Swords/Boots/Gold.</li>
+            <li>🛒 Use Skill pra comprar cartas da Masmorra ou Reserva.</li>
+            <li>⚔️ Use Swords pra derrotar monstros.</li>
+            <li>👣 Use Boots pra se mover pelos túneis do mapa.</li>
+          </ul>
+        </div>
+        <div className="rounded-xl bg-red-950/40 p-3 ring-1 ring-red-500/20">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-red-300/80">Cuidado com o Clank!</p>
+          <p className="text-sm text-slate-300">
+            Várias cartas geram Clank! (barulho) — os cubos coloridos que aparecem no seu perfil.
+            De vez em quando o Dragão ataca e sorteia cubos de um saco; se sair o SEU cubo, você
+            leva dano. Quanto mais Clank! você tiver, mais chance de ser atingido.
+          </p>
+        </div>
+        <div className="rounded-xl bg-emerald-950/30 p-3 ring-1 ring-emerald-500/20">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-emerald-300/80">Fim de jogo</p>
+          <p className="text-sm text-slate-300">
+            Volte pra Entrada carregando um Artefato pra escapar (e ganhar um bônus de pontos). Se
+            todo mundo escapar ou ser nocauteado, a partida acaba — quem tiver mais pontos vence.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-1 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-amber-950 active:scale-[0.98]"
+        >
+          Entendi, vamos lá!
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function GameScreen({
   mySessionId,
   snapshot,
@@ -205,6 +276,21 @@ export function GameScreen({
 }: GameScreenProps) {
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    try {
+      return !localStorage.getItem(TUTORIAL_SEEN_KEY);
+    } catch {
+      return false;
+    }
+  });
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    try {
+      localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+    } catch {
+      // localStorage indisponível -- sem-op, só reaparece toda vez
+    }
+  };
   const showHover = (cardId: string) => (e: React.MouseEvent<HTMLElement>) =>
     setHover({ cardId, rect: e.currentTarget.getBoundingClientRect() });
   const hideHover = () => setHover(null);
@@ -275,6 +361,7 @@ export function GameScreen({
           na mão) — aqui seria pior que fantasma, travaria a tela inteira (modal em tela cheia
           que nunca some ao fechar). Sem exit, fecha instantâneo; entrada continua animada. */}
       {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
+      {showTutorial && <WelcomeModal onClose={closeTutorial} />}
       <HoverCardTooltip hover={hover} />
 
       {/* LEFT SIDEBAR: Dragon + Players */}
@@ -348,9 +435,17 @@ export function GameScreen({
           </ul>
         </div>
 
-        <div className="hidden border-t border-slate-800 bg-slate-950/50 p-3 md:block">
-          <button onClick={onLeave} className="w-full rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 active:bg-slate-700 transition-colors">
+        <div className="hidden border-t border-slate-800 bg-slate-950/50 p-3 md:flex md:gap-2">
+          <button onClick={onLeave} className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 active:bg-slate-700 transition-colors">
             Abandonar Partida
+          </button>
+          <button
+            onClick={() => setShowTutorial(true)}
+            aria-label="Ajuda / tutorial"
+            title="Como jogar"
+            className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 active:bg-slate-700 transition-colors"
+          >
+            ?
           </button>
         </div>
       </aside>
@@ -722,9 +817,19 @@ export function GameScreen({
             </div>
           </div>
 
-          <button onClick={onLeave} className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-400 active:bg-slate-700 md:hidden">
-            Abandonar Partida
-          </button>
+          <div className="mt-1 flex gap-2 md:hidden">
+            <button onClick={onLeave} className="flex-1 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-400 active:bg-slate-700">
+              Abandonar Partida
+            </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              aria-label="Ajuda / tutorial"
+              title="Como jogar"
+              className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-slate-400 active:bg-slate-700"
+            >
+              ?
+            </button>
+          </div>
         </div>
       </aside>
     </main>
