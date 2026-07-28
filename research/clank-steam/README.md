@@ -186,17 +186,94 @@ quantidade, clicável. Implementado ponta a ponta:
   tinha, faltava só o botão) — testado ao vivo, aparece corretamente quando a sala tem
   Ídolo disponível.
 
-## Sobre usar a arte real das cartas/tabuleiro como placeholder
+## ✅ Arte real integrada no client (2026-07-27)
 
-O usuário confirmou que tem as artes das cartas e que, por ser projeto pessoal, dá pra
-usar tanto a arte das cartas quanto do tabuleiro como placeholder (em vez dos ícones
-genéricos atuais, que foram uma escolha consciente de segurança de IP quando eu não
-tinha essa confirmação). **Ainda não recebi os arquivos de imagem em si** — quando o
-usuário mandar os arquivos (ou um link pra baixar), dá pra trocar os ícones/placeholders
-do client pelas artes reais.
+O usuário confirmou (2026-07-24) que podia usar a arte real das cartas/tabuleiro como
+placeholder (projeto pessoal, sem restrição de IP — ver nota atualizada em
+[PLANNING.md](../../PLANNING.md)) e depois mandou os arquivos de imagem em si
+(2026-07-27), salvos em `D:\UNIFOR\Clones Github\ClankWebGame\images\`:
+
+- **Cartas**: pasta `images/Cards/` com as 71 cartas do jogo base já recortadas
+  individualmente em alta qualidade pelo próprio usuário (nomes em PascalCase com 2
+  variações — `BolcherMonster.png` → `belcher`, `WizardCompanion].png` → `wizard`).
+  Copiadas/renomeadas 1:1 pros `id`s de `cards.ts` (verificado por script: 71/71, zero
+  faltando, zero sobrando) pra `client/src/assets/cards/<id>.png`.
+  `client/src/game/cardImages.ts` usa `import.meta.glob("../assets/cards/*.png", {eager:
+  true})` do Vite pra montar um mapa `id → URL` em build time; `cardImageUrl(id)` retorna
+  `undefined` se não achar (fallback gracioso). Usado em `App.tsx` via componente
+  `CardThumb` (bloco cinza com a inicial do nome quando não há imagem) nas 3 listas de
+  carta: Dungeon Row, Reserva e mão do jogador.
+  - *(Nota histórica: antes de receber esse recorte pronto, uma primeira rodada tentou
+    recortar cartas de 15 fotos em lote via Python/Pillow/numpy/scipy — projeção de
+    linha/coluna com fallback de divisão igual. Funcionou (`crop_cards2.py`, guardado só
+    como referência técnica no scratchpad da sessão, não faz parte do repo) mas ficou
+    obsoleto assim que o usuário mandou os recortes individuais de melhor qualidade.)*
+- **Tabuleiro**: `images/ClankBoardCastle.jpg` (1500×1497px, foto do lado "Castelo" do
+  tabuleiro físico) copiada pra `client/src/assets/board/ClankBoardCastle.jpg`. Em
+  `client/src/game/BoardMap.tsx`, entra como `<img>` de fundo (opacidade 40%) com um véu
+  escuro por cima (`bg-slate-950/45`), atrás do SVG do grafo esquemático de salas —
+  **puramente atmosférico, sem alinhamento pixel-a-pixel** com as posições reais das
+  salas na foto (o grafo continua sendo o layout próprio documentado nas seções acima).
+- **Tokens/artefatos**: ~26 PNGs avulsos em `images/` (Crown8/9/10, MasterKey, Backpack,
+  MasteryToken, MonkeyNoEars/Eyes/Mouth, 7 artefatos nomeados — Ring/Cross/Vase/Banana/
+  Shield/Armor/Orb —, EggDragon, Chalice, e ~10 tokens de efeito secreto tipo
+  `1Boot`/`2Coin`/`5Mana`/`3Cards`) copiados pra `client/src/assets/tokens/`.
+  `client/src/game/tokenImages.ts` expõe:
+  - `artifactImageUrl(value)` — mapeia os 7 valores (5/7/10/15/20/25/30) pro artefato
+    certo, usando a tabela `ARTIFACT_NAMES_BY_VALUE` de `board.ts` como referência
+    (Anel=5, Cruz=7, Vaso=10, Banana=15, Escudo=20, Armadura=25, Orbe=30). Usado nos
+    círculos de sala com artefato em `BoardMap.tsx` (imagem 28×28 + valor numérico com
+    contorno escuro por cima, pra continuar legível) e no botão "Pegar artefato".
+  - `monkeyIdolImageUrl(name)` — mapeia os 3 nomes (`Macaco Surdo/Cego/Mudo`) pros PNGs
+    `MonkeyNoEars/Eyes/Mouth`. Usado no botão "Pegar Ídolo de Macaco".
+  - `crownImageUrl(value)` — mapeia 8/9/10 (== `CROWN_VALUES` de `types.ts`) pros PNGs
+    `Crown8/9/10`. Usado na linha "Coroa" do Mercado.
+  - `masterKeyImageUrl`/`backpackImageUrl` — exports diretos, usados nas linhas
+    correspondentes do Mercado.
+  - `choiceTokenImageUrl(icon, amount)` — só cobre as combinações ícone+quantidade que
+    têm arte exata (`boots-1`, `gold-1/2/5`, `heal-1/2`, `skill-2/5`, `swords-2`,
+    `drawCards-3`); qualquer outra combinação (ex: `swords-3` do Apothecary, ou
+    `clank-*`, que não tem token físico nenhum) cai no fallback de emoji que já existia
+    no `ChoiceModal`.
+  - **3 imagens copiadas mas SEM uso ainda** (nenhuma mecânica implementada pra elas no
+    motor): `Chalice.png`, `EggDragon.png`, `MasteryToken.png`. Ficam disponíveis em
+    `client/src/assets/tokens/` pro dia que essas mecânicas forem implementadas.
+- **Verificação feita:** `npx tsc --noEmit -p .` limpo em `client/` depois de cada etapa.
+  Card art e tabuleiro confirmados ao vivo (client+server rodando local, sala criada,
+  partida iniciada): `read_network_requests` mostrou todos os PNGs/JPG voltando `200
+  OK`, e um `javascript_tool` checou `naturalWidth`/`naturalHeight`/`complete` de cada
+  `<img>` renderizado (a ferramenta de screenshot do browser pane não funciona neste
+  ambiente — "Browser pane is not displayed" — então a verificação visual foi feita por
+  essas checagens indiretas em vez de olhar a tela de fato).
+  ⚠️ **A verificação ao vivo dos tokens (artefatos no mapa, Mercado, Ídolo de Macaco,
+  ChoiceModal) ficou pendente** — ver bloqueio abaixo.
+- **Bloqueio de teste ao vivo (2026-07-27), não resolvido nesta sessão:** depois de
+  reiniciar o client dev server (precisou trocar de porta, 5173→3002 --strictPort,
+  porque outro projeto — VortexFullStack — já tinha um Vite ocupando 5173) e limpar
+  `localStorage`/`sessionStorage` pra sair de um estado de reconexão travado ("seat
+  reservation expired"), a tela de lobby parou de responder aos comandos de
+  clique/digitação da ferramenta de automação (`mcp__Claude_Browser__*`): o campo de
+  nome ficava com valor vazio mesmo depois do `type`/`form_input`, o botão "Criar sala
+  nova" não disparava nenhuma requisição nova pro servidor Colyseus
+  (`localhost:2567/matchmake/create/clank`), e não havia erro novo no console depois de
+  um reload limpo. Ao mesmo tempo, `curl`/`tsc` confirmam que o client e o server
+  continuam subindo e servindo normalmente — então **o mais provável é um problema da
+  própria ferramenta de automação** (refs desatualizadas, timing entre `navigate` e o
+  React montar, etc.), não um bug real do app. Não deu tempo de isolar a causa raiz.
+  **Sugestão pra próxima sessão:** abrir uma aba nova (`tabs_create`) em vez de reusar a
+  mesma aba entre reloads; sempre re-`read_page`/`find` logo antes de cada clique em vez
+  de reusar refs de uma leitura antiga; se persistir, validar via
+  `read_network_requests`/`javascript_tool` em vez de tentar de novo às cegas.
 
 ## Próximos passos
 
-1. Se o usuário mandar os arquivos de arte das cartas/tabuleiro: integrar no client.
-2. Se quiser fechar o verso do tabuleiro ("Montículos e Covas"): mandar foto de cima.
-3. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.
+1. ~~Se o usuário mandar os arquivos de arte das cartas/tabuleiro: integrar no
+   client~~ ✅ (2026-07-27, ver seção acima).
+2. Terminar a verificação ao vivo dos tokens (artefatos, coroas, chave, mochila, ídolos,
+   ChoiceModal) — resolver o bloqueio de automação de navegador acima primeiro.
+3. Commit + push do trabalho de arte/tokens, e deploy real (ver item 16 do
+   [PLANNING.md](../../PLANNING.md)) — próximo pedido explícito do usuário.
+4. Decidir com o usuário se `images/` (pasta de fotos brutas, hoje fora do
+   `.gitignore`) deve ser versionada ou ignorada antes desse commit.
+5. Se quiser fechar o verso do tabuleiro ("Montículos e Covas"): mandar foto de cima.
+6. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.

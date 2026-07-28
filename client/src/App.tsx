@@ -3,6 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
 import type { ChoiceIcon, PendingChoiceSnapshot, RoomSnapshot } from "./game/useClankRoom";
+import { cardImageUrl } from "./game/cardImages";
+import {
+  artifactImageUrl,
+  backpackImageUrl,
+  choiceTokenImageUrl,
+  crownImageUrl,
+  masterKeyImageUrl,
+  monkeyIdolImageUrl,
+} from "./game/tokenImages";
 import { BoardMap } from "./game/BoardMap";
 import { PLAYER_COLORS } from "./game/playerColors";
 
@@ -25,6 +34,25 @@ function Avatar({ name, color, size = "sm" }: { name: string; color: string; siz
       style={{ backgroundColor: color }}
     >
       {initial}
+    </span>
+  );
+}
+
+/** Miniatura da carta — usa a arte real se tiver (ver `game/cardImages.ts`), senão um bloco cinza com a inicial. */
+function CardThumb({ cardId, name }: { cardId: string; name: string }) {
+  const url = cardImageUrl(cardId);
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        className="h-14 w-10 shrink-0 rounded-md object-cover ring-1 ring-black/40"
+      />
+    );
+  }
+  return (
+    <span className="flex h-14 w-10 shrink-0 items-center justify-center rounded-md bg-slate-700 text-xs font-bold text-slate-400 ring-1 ring-black/40">
+      {name.charAt(0)}
     </span>
   );
 }
@@ -73,7 +101,15 @@ function ChoiceModal({
               className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3 text-left active:scale-[0.98] active:bg-slate-700"
             >
               <span className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-                <span className="text-xl">{CHOICE_ICON_EMOJI[option.icon]}</span>
+                {choiceTokenImageUrl(option.icon, option.amount) ? (
+                  <img
+                    src={choiceTokenImageUrl(option.icon, option.amount)}
+                    alt=""
+                    className="h-8 w-8 shrink-0 object-contain"
+                  />
+                ) : (
+                  <span className="text-xl">{CHOICE_ICON_EMOJI[option.icon]}</span>
+                )}
                 {option.label}
               </span>
               <span className="text-lg font-bold text-amber-400">+{option.amount}</span>
@@ -548,8 +584,15 @@ function GameScreen({
               onClick={onTakeArtifact}
               disabled={!isMyTurn || atArtifactLimit}
               title={atArtifactLimit ? `Você já carrega o máximo de artefatos (${artifactLimit})` : undefined}
-              className="mb-2 w-full rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
+              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
             >
+              {artifactImageUrl(myRoom!.artifactValue!) && (
+                <img
+                  src={artifactImageUrl(myRoom!.artifactValue!)}
+                  alt=""
+                  className="h-8 w-8 shrink-0 object-contain"
+                />
+              )}
               {atArtifactLimit
                 ? `Máximo de artefatos carregados (${me?.artifactsCarried}/${artifactLimit})`
                 : `Pegar artefato (${myRoom!.artifactValue} pts) — ${me?.artifactsCarried ?? 0}/${artifactLimit}`}
@@ -559,9 +602,18 @@ function GameScreen({
             <button
               onClick={onTakeMonkeyIdol}
               disabled={!isMyTurn}
-              className="mb-2 w-full rounded-xl bg-fuchsia-600 px-3 py-2 text-sm font-semibold text-fuchsia-50 active:scale-[0.98] disabled:opacity-40"
+              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-fuchsia-600 px-3 py-2 text-sm font-semibold text-fuchsia-50 active:scale-[0.98] disabled:opacity-40"
             >
-              🐒 Pegar {unclaimedMonkeyIdol} (5 pts)
+              {monkeyIdolImageUrl(unclaimedMonkeyIdol) ? (
+                <img
+                  src={monkeyIdolImageUrl(unclaimedMonkeyIdol)}
+                  alt=""
+                  className="h-8 w-8 shrink-0 object-contain"
+                />
+              ) : (
+                "🐒"
+              )}
+              Pegar {unclaimedMonkeyIdol} (5 pts)
             </button>
           )}
           {canLeaveDungeon && (
@@ -607,7 +659,10 @@ function GameScreen({
             <h2 className="mb-2 text-sm font-semibold text-slate-300">Mercado (7💰 cada item)</h2>
             <ul className="grid grid-cols-1 gap-2">
               <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="text-sm">Chave-mestra {me?.hasMasterKey && "✓"}</span>
+                <span className="flex items-center gap-2 text-sm">
+                  <img src={masterKeyImageUrl} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                  Chave-mestra {me?.hasMasterKey && "✓"}
+                </span>
                 <button
                   onClick={() => onBuyMarketItem("key")}
                   disabled={!isMyTurn || !snapshot.marketKeyAvailable || !!me?.hasMasterKey}
@@ -617,7 +672,10 @@ function GameScreen({
                 </button>
               </li>
               <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="text-sm">Mochila {me?.hasBackpack && "✓"}</span>
+                <span className="flex items-center gap-2 text-sm">
+                  <img src={backpackImageUrl} alt="" className="h-8 w-8 shrink-0 object-contain" />
+                  Mochila {me?.hasBackpack && "✓"}
+                </span>
                 <button
                   onClick={() => onBuyMarketItem("backpack")}
                   disabled={!isMyTurn || !snapshot.marketBackpackAvailable || !!me?.hasBackpack}
@@ -627,7 +685,14 @@ function GameScreen({
                 </button>
               </li>
               <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="text-sm">
+                <span className="flex items-center gap-2 text-sm">
+                  {snapshot.marketCrownsAvailable[0] !== undefined && (
+                    <img
+                      src={crownImageUrl(snapshot.marketCrownsAvailable[0])}
+                      alt=""
+                      className="h-8 w-8 shrink-0 object-contain"
+                    />
+                  )}
                   Coroa {snapshot.marketCrownsAvailable[0] !== undefined && `(${snapshot.marketCrownsAvailable[0]} pts)`}
                 </span>
                 <button
@@ -660,7 +725,10 @@ function GameScreen({
                   key={slotIndex}
                   className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
                 >
-                  <span className="text-sm">{card.name}</span>
+                  <span className="flex min-w-0 items-center gap-2 text-sm">
+                    <CardThumb cardId={cardId} name={card.name} />
+                    {card.name}
+                  </span>
                   <button
                     onClick={() => (isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex))}
                     disabled={!isMyTurn}
@@ -685,7 +753,8 @@ function GameScreen({
                   key={cardId}
                   className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
                 >
-                  <span className="text-sm">
+                  <span className="flex min-w-0 items-center gap-2 text-sm">
+                    <CardThumb cardId={cardId} name={card.name} />
                     {card.name} <span className="text-slate-500">×{remaining}</span>
                   </span>
                   <button
@@ -706,7 +775,10 @@ function GameScreen({
           <ul className="grid grid-cols-1 gap-2">
             {hand.map((cardId, i) => (
               <li key={`${cardId}-${i}`} className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="text-sm">{cardName(cardId)}</span>
+                <span className="flex min-w-0 items-center gap-2 text-sm">
+                  <CardThumb cardId={cardId} name={cardName(cardId)} />
+                  {cardName(cardId)}
+                </span>
                 <button
                   onClick={() => onPlayCard(cardId)}
                   disabled={!isMyTurn}

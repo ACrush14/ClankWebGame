@@ -10,3 +10,8 @@ dist
 # extraidos pra engine/src/cards.ts.
 *.pdf
 *.xlsx
+
+# Fotos brutas (cartas/tabuleiro/tokens) tiradas pelo usuario do jogo fisico - so uso
+# local como fonte, nao versionar. As versoes ja recortadas/processadas que o client de
+# fato usa ficam em client/src/assets/ (essas sim sao versionadas - ver CREDITS.md).
+/images/

@@ -1,10 +1,14 @@
 import { BOARD } from "@clank/engine";
+import boardPhoto from "../assets/board/ClankBoardCastle.jpg";
+import { artifactImageUrl } from "./tokenImages";
 
 /**
  * Layout manual (x, y em coordenadas do viewBox) — o layout do BOARD (engine/src/board.ts)
  * ainda não é uma cópia sala-por-sala do tabuleiro físico, então este mapa segue a mesma
  * topologia em camadas (entrada no topo, profundezas embaixo) em vez de tentar recriar o
- * layout exato impresso no tabuleiro oficial.
+ * layout exato impresso no tabuleiro oficial. A foto do tabuleiro físico (placeholder
+ * autorizado pelo usuário) entra só como pano de fundo atmosférico atrás do grafo
+ * esquemático — não há alinhamento pixel-a-pixel entre os círculos e as salas da foto.
  */
 const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
   entrance: { x: 200, y: 40 },
@@ -87,7 +91,20 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
   }
 
   return (
-    <svg viewBox="0 0 420 590" className="w-full select-none" role="img" aria-label="Mapa da masmorra">
+    <div className="relative overflow-hidden rounded-lg" style={{ aspectRatio: "420 / 590" }}>
+      <img
+        src={boardPhoto}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover opacity-40"
+      />
+      <div className="absolute inset-0 bg-slate-950/45" />
+      <svg
+        viewBox="0 0 420 590"
+        className="absolute inset-0 h-full w-full select-none"
+        role="img"
+        aria-label="Mapa da masmorra"
+      >
       {edges.map((edge, i) => {
         const a = ROOM_POSITIONS[edge.from];
         const b = ROOM_POSITIONS[edge.to];
@@ -147,8 +164,18 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
               strokeWidth={isReachable ? 2 : 0}
               opacity={isCurrent ? 1 : 0.9}
             />
+            {hasArtifact && artifactImageUrl(room.artifactValue!) && (
+              <image
+                href={artifactImageUrl(room.artifactValue!)}
+                x={pos.x - 14}
+                y={pos.y - 14}
+                width={28}
+                height={28}
+                preserveAspectRatio="xMidYMid meet"
+              />
+            )}
             {hasArtifact && (
-              <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#fef3c7">
+              <text x={pos.x} y={pos.y + 4} textAnchor="middle" fontSize={11} fontWeight="bold" fill="#fef3c7" stroke="#0f172a" strokeWidth={3} paintOrder="stroke">
                 {room.artifactValue}
               </text>
             )}
@@ -179,6 +206,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
           </g>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }
