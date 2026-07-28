@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getCard } from "../src/cards.js";
 import { BOARD } from "../src/board.js";
-import { GameEngine } from "../src/game.js";
+import { BLACK_CUBE_COUNT, GameEngine } from "../src/game.js";
 
 function twoPlayerGame() {
   return new GameEngine([
@@ -833,6 +833,50 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
 
     expect(player.damage).toBe(1);
     expect(player.clank).toBe(0);
+  });
+});
+
+describe("saco de cubos pretos (persistente — CONFIRMADO pelo usuário via playtest físico, 2026-07-28)", () => {
+  it("cubo preto sorteado sai do saco pra sempre -- não recarrega no próximo ataque", () => {
+    const game = twoPlayerGame(); // rng não importa aqui: sem clank de jogador, todo sorteio cai em cubo preto
+    const player = game.currentPlayer;
+    player.clank = 0;
+    game.state.dragon.rageTrackPosition = 1; // 2 cubos por ataque (RAGE_TRACK_CUBES[0])
+    // zera a Dungeon Row inicial (sorteada aleatoriamente por twoPlayerGame) pra garantir
+    // que nenhuma carta de PERIGO ali dentro some +1 cubo extra e quebre a contagem exata.
+    game.state.dungeonRow.slots = [null, null, null, null, null, null];
+
+    const triggerAttack = (
+      game as unknown as { triggerDragonAttack: (extra?: number) => void }
+    ).triggerDragonAttack.bind(game);
+
+    expect(game.state.dragon.blackCubesInBag).toBe(BLACK_CUBE_COUNT);
+    triggerAttack(0);
+    expect(game.state.dragon.blackCubesInBag).toBe(BLACK_CUBE_COUNT - 2);
+    triggerAttack(0);
+    expect(game.state.dragon.blackCubesInBag).toBe(BLACK_CUBE_COUNT - 4);
+  });
+
+  it("Shrine devolve 3 cubos pretos ao saco ao ser revelada", () => {
+    const game = twoPlayerGame();
+    game.state.dragon.blackCubesInBag = 5; // simula alguns cubos já sorteados em ataques anteriores
+    game.state.dungeonRow.drawPile.unshift("shrine");
+
+    const refill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(game);
+    refill(0);
+
+    expect(game.state.dragon.blackCubesInBag).toBe(8);
+  });
+
+  it("Shrine não deixa o saco passar do teto de BLACK_CUBE_COUNT", () => {
+    const game = twoPlayerGame();
+    game.state.dragon.blackCubesInBag = BLACK_CUBE_COUNT - 1;
+    game.state.dungeonRow.drawPile.unshift("shrine");
+
+    const refill = (game as unknown as { refillDungeonSlot: (i: number) => void }).refillDungeonSlot.bind(game);
+    refill(0);
+
+    expect(game.state.dragon.blackCubesInBag).toBe(BLACK_CUBE_COUNT);
   });
 });
 

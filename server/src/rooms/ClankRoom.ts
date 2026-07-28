@@ -79,6 +79,8 @@ export class ClankRoomState extends Schema {
   @type(["string"]) dungeonRowSlots = new ArraySchema<string>();
   @type({ map: "number" }) reserveRemaining = new MapSchema<number>();
   @type("number") dragonRageTrack = 1;
+  /** Cubos pretos ainda disponíveis no saco — CONFIRMADO pelo usuário: pool persistente, não recriado a cada ataque (ver `DragonState.blackCubesInBag`). */
+  @type("number") blackCubesInBag = 0;
   /** Ids de sala cujo artefato já foi pego (o tabuleiro em si é estático — vem de @clank/engine no cliente). */
   @type({ map: "boolean" }) claimedArtifacts = new MapSchema<boolean>();
   /** Nomes de Ídolo de Macaco já pegos (ex: "Macaco Surdo") — únicos no jogo todo. */
@@ -510,6 +512,7 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.state.turnNumber = state.turnNumber;
     this.state.currentPlayerId = state.players[state.currentPlayerIndex]?.id ?? "";
     this.state.dragonRageTrack = state.dragon.rageTrackPosition;
+    this.state.blackCubesInBag = state.dragon.blackCubesInBag;
     this.state.countdownTrack = state.countdownTrack;
     this.state.countdownPlayerId = state.countdownPlayerId ?? "";
     this.state.marketKeyAvailable = state.market.masterKeyAvailable;

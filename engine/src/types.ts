@@ -160,6 +160,13 @@ export interface CardDefinition {
    * tiver um artefato") são tratados à parte em `maybeGrantTeleport`, não por aqui.
    */
   grantsTeleport?: boolean;
+  /**
+   * Devolve esse tanto de cubos PRETOS ao saco (até o teto de `BLACK_CUBE_COUNT`) ao
+   * ser revelada pra repor a Dungeon Row — CONFIRMADO pelo usuário (2026-07-28): é a
+   * exceção explícita à regra de "cubo preto sorteado não volta" (ex: Shrine, "devolva
+   * 3 cubos de dragão à bolsa"). Aplicado junto com `arriveEffects` em `applyArriveEffects`.
+   */
+  returnsDragonCubes?: number;
 }
 
 /** Ícones possíveis num túnel — controlam o custo/risco de passar por ele. */
@@ -208,6 +215,15 @@ export interface BoardDefinition {
 /** Trilha de Fúria do dragão — a posição controla quantos cubos são sorteados num ataque. */
 export interface DragonState {
   rageTrackPosition: number;
+  /**
+   * Cubos pretos (neutros) ainda disponíveis no saco — CONFIRMADO pelo usuário
+   * (2026-07-28): diferente dos cubos de jogador (que voltam a ficar disponíveis assim
+   * que o jogador gera mais Clank!), um cubo PRETO sorteado NÃO volta pro saco a não
+   * ser que uma carta diga isso explicitamente (ex: Shrine, "devolva 3 cubos de dragão
+   * à bolsa" — ver `CardDefinition.returnsDragonCubes`). Começa em `BLACK_CUBE_COUNT` e
+   * só diminui (ou sobe até esse teto de novo, nunca além) ao longo da partida.
+   */
+  blackCubesInBag: number;
 }
 
 /**

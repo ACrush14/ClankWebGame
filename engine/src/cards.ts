@@ -736,14 +736,14 @@ export const DUNGEON_DECK: CardDefinition[] = [
     descriptionPt: "Ao ser revelada, devolva 3 cubos de dragão à bolsa. USE: escolha 1 Moeda -OU- cure 1 de dano.",
     kind: "device",
     skillCost: 2,
+    returnsDragonCubes: 3,
     acquireChoices: [
       { icon: "gold", amount: 1, label: "Moeda +1" },
       { icon: "heal", amount: 1, label: "Cura 1" },
     ],
     verified: true,
-    // Nota: Ao revelar, devolva 3 cubos de dragão à bolsa (não modelado — motor não tem
-    // pool de cubos persistente entre ataques, sorteia direto da contagem de Clank! de
-    // cada jogador). USE: 1 Moeda -OU- 1 Coração — modelado como `acquireChoices`.
+    // Nota: Ao revelar, devolva 3 cubos de dragão à bolsa — MODELADO via `returnsDragonCubes`.
+    // USE: 1 Moeda -OU- 1 Coração — modelado como `acquireChoices`.
   },
   {
     id: "dragon-shrine",

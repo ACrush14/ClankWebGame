@@ -61,6 +61,8 @@ export interface RoomSnapshot {
   dungeonRowSlots: string[];
   reserveRemaining: Record<string, number>;
   dragonRageTrack: number;
+  /** Cubos pretos ainda disponíveis no saco — pool persistente, não recriado a cada ataque. */
+  blackCubesInBag: number;
   /** Ids de sala cujo artefato já foi pego. */
   claimedArtifacts: Record<string, boolean>;
   /** Nomes de Ídolo de Macaco já pegos (ex: "Macaco Surdo"). */
@@ -139,6 +141,7 @@ export function useClankRoom() {
       dungeonRowSlots: string[];
       reserveRemaining: Map<string, number>;
       dragonRageTrack: number;
+      blackCubesInBag: number;
       claimedArtifacts: Map<string, boolean>;
       claimedMonkeyIdols: Map<string, boolean>;
       countdownTrack: number;
@@ -217,6 +220,7 @@ export function useClankRoom() {
       dungeonRowSlots: Array.from(state.dungeonRowSlots ?? []),
       reserveRemaining,
       dragonRageTrack: state.dragonRageTrack,
+      blackCubesInBag: state.blackCubesInBag,
       claimedArtifacts,
       claimedMonkeyIdols,
       countdownTrack: state.countdownTrack,

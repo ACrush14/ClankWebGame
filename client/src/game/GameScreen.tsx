@@ -300,7 +300,7 @@ export function GameScreen({
   const me = snapshot.players.find((p) => p.id === mySessionId);
   const currentPlayer = snapshot.players.find((p) => p.id === snapshot.currentPlayerId);
   const totalPlayerClank = snapshot.players.reduce((sum, p) => sum + p.clank, 0);
-  const bagCubeCount = totalPlayerClank + BLACK_CUBE_COUNT;
+  const bagCubeCount = totalPlayerClank + snapshot.blackCubesInBag;
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
   const canLeaveDungeon = !!myRoom?.isEntrance;
@@ -382,9 +382,10 @@ export function GameScreen({
           </div>
           <div
             className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-400"
-            title={`Cubos no saco agora: ${bagCubeCount} (${totalPlayerClank} de jogadores + ${BLACK_CUBE_COUNT} pretos)`}
+            title={`Cubos no saco agora: ${bagCubeCount} (${totalPlayerClank} de jogadores + ${snapshot.blackCubesInBag}/${BLACK_CUBE_COUNT} pretos restantes)`}
           >
             🎒 <span className="font-mono font-semibold text-slate-300">{bagCubeCount}</span> no saco
+            <span className="text-slate-600">({snapshot.blackCubesInBag}/{BLACK_CUBE_COUNT} pretos)</span>
           </div>
         </div>
 

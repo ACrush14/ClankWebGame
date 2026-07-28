@@ -131,7 +131,7 @@ export class GameEngine {
       currentPlayerIndex: 0,
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
       reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
-      dragon: { rageTrackPosition: startingRageTrackPosition(playerInfos.length) },
+      dragon: { rageTrackPosition: startingRageTrackPosition(playerInfos.length), blackCubesInBag: BLACK_CUBE_COUNT },
       market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
       claimedArtifacts: {},
       claimedMonkeyIdols: {},
@@ -551,6 +551,14 @@ export class GameEngine {
    * casa 5). Soma `extraCubes` (usado pela Trilha de Contagem Regressiva — ver
    * `processCountdownStep`) e +1 por carta com PERIGO atualmente na Dungeon Row. Cubo
    * de um jogador = 1 dano.
+   *
+   * Cubos pretos — CONFIRMADO pelo usuário (2026-07-28): vêm de um saco PERSISTENTE
+   * (`dragon.blackCubesInBag`), não recriado a cada ataque. Um cubo preto sorteado sai
+   * do saco de vez (só volta via `CardDefinition.returnsDragonCubes`, ex: Shrine) — a
+   * partida fica mais perigosa com o tempo conforme esse número cai. Cubo de JOGADOR
+   * sorteado, por outro lado, volta a ficar disponível assim que ele gerar mais Clank!
+   * de novo (por isso não precisa de um pool separado pra eles — `player.clank` já É
+   * a contagem "disponível pro saco" a cada ataque).
    */
   private triggerDragonAttack(extraCubes = 0) {
     const position = this.state.dragon.rageTrackPosition;
@@ -562,7 +570,7 @@ export class GameEngine {
     for (const player of this.state.players) {
       for (let i = 0; i < player.clank; i++) tickets.push(player.id);
     }
-    for (let i = 0; i < BLACK_CUBE_COUNT; i++) tickets.push(null);
+    for (let i = 0; i < this.state.dragon.blackCubesInBag; i++) tickets.push(null);
 
     let blackDrawn = 0;
     const damagedNames: string[] = [];
@@ -571,6 +579,7 @@ export class GameEngine {
       const [drawnId] = tickets.splice(idx, 1);
       if (drawnId === null) {
         blackDrawn++;
+        this.state.dragon.blackCubesInBag -= 1;
         continue;
       }
       const player = this.state.players.find((p) => p.id === drawnId);
@@ -804,11 +813,20 @@ export class GameEngine {
    * Archoverlord dão "+1 Clank!" a todos ao serem revelados.
    */
   private applyArriveEffects(card: CardDefinition) {
-    if (!card.arriveEffects) return;
-    for (const player of this.state.players) {
-      this.applyEffects(player, card.arriveEffects);
+    if (card.arriveEffects) {
+      for (const player of this.state.players) {
+        this.applyEffects(player, card.arriveEffects);
+      }
+      this.pushLog(`${card.nomePt} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
     }
-    this.pushLog(`${card.nomePt} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
+    if (card.returnsDragonCubes) {
+      const before = this.state.dragon.blackCubesInBag;
+      this.state.dragon.blackCubesInBag = Math.min(BLACK_CUBE_COUNT, before + card.returnsDragonCubes);
+      const returned = this.state.dragon.blackCubesInBag - before;
+      if (returned > 0) {
+        this.pushLog(`${card.nomePt} foi revelada — ${returned} cubo(s) preto(s) volta(m) pro saco.`);
+      }
+    }
   }
 
   private refillDungeonSlot(slotIndex: number) {
