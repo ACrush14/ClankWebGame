@@ -162,6 +162,9 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.onMessage("play_card", (client, cardId: string) =>
       this.handleAction(client, () => this.engine!.playCard(client.sessionId, cardId)),
     );
+    this.onMessage("play_all_cards", (client) =>
+      this.handleAction(client, () => this.engine!.playAllCards(client.sessionId)),
+    );
     this.onMessage("acquire_card", (client, slotIndex: number) =>
       this.handleAction(client, () => this.engine!.acquireCard(client.sessionId, slotIndex)),
     );

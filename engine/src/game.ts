@@ -567,6 +567,23 @@ export class GameEngine {
   }
 
   /**
+   * Joga TODAS as cartas da mão, na ordem, numa única operação atômica — pedido do
+   * usuário via playtest (2026-07-28), "botão pra usar todas as cartas de uma vez".
+   * UMA chamada só em vez do client mandar `playCard` várias vezes em sequência evita
+   * N round-trips desnecessários pro servidor (a causa raiz do bug de "cartas fantasma"
+   * era outra — ver comentário no client em `GameScreen.tsx` sobre o AnimatePresence —
+   * mas continuar atômico aqui ainda é a escolha certa por simplicidade e performance).
+   * Para automaticamente (sem erro) se alguma carta gerar uma escolha pendente — não dá
+   * pra continuar jogando até ela ser resolvida.
+   */
+  playAllCards(playerId: string) {
+    const player = this.requireCurrentPlayer(playerId);
+    while (player.hand.length > 0 && !this.state.pendingChoice) {
+      this.playCard(playerId, player.hand[0]);
+    }
+  }
+
+  /**
    * Bônus condicionais ligados à sala atual do jogador — texto oficial não representável
    * em `CardEffects` genéricos (ver comentários "condicional não modelado" em cards.ts).
    * ⚠️ Nenhuma carta do jogo base (revertido em 2026-07-24) tem confirmado um bônus
@@ -603,6 +620,7 @@ export class GameEngine {
     } else {
       player.discardPile.push(cardId);
     }
+    this.pushLog(`${player.name} comprou ${card.nomePt} da Dungeon Row.`);
     this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.refillDungeonSlot(slotIndex);
   }
@@ -623,6 +641,7 @@ export class GameEngine {
 
     player.resources.swords -= cost;
     this.state.dungeonRow.discardPile.push(cardId);
+    this.pushLog(`${player.name} derrotou ${card.nomePt} na Dungeon Row.`);
     this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.refillDungeonSlot(slotIndex);
   }
@@ -646,6 +665,7 @@ export class GameEngine {
         throw new Error(`Swords insuficientes pra vencer ${card.nomePt} (precisa ${cost}, tem ${player.resources.swords}).`);
       }
       player.resources.swords -= cost;
+      this.pushLog(`${player.name} derrotou ${card.nomePt} na Reserva.`);
       this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
       if (!RESERVE_INFINITE.has(cardId)) {
         this.state.reserve.remaining[cardId] = remaining - 1;
@@ -659,6 +679,7 @@ export class GameEngine {
     }
     player.resources.skill -= cost;
     player.discardPile.push(cardId);
+    this.pushLog(`${player.name} comprou ${card.nomePt} da Reserva.`);
     this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
     this.state.reserve.remaining[cardId] = remaining - 1;
   }

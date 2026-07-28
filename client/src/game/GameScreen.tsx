@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
@@ -14,6 +14,7 @@ export interface GameScreenProps {
   hand: string[];
   actionError: string | null;
   onPlayCard: (cardId: string) => void;
+  onPlayAllCards: () => void;
   onAcquireCard: (slotIndex: number) => void;
   onFightMonster: (slotIndex: number) => void;
   onAcquireFromReserve: (cardId: string) => void;
@@ -155,6 +156,7 @@ export function GameScreen({
   hand,
   actionError,
   onPlayCard,
+  onPlayAllCards,
   onAcquireCard,
   onFightMonster,
   onAcquireFromReserve,
@@ -173,11 +175,62 @@ export function GameScreen({
   const hideHover = () => setHover(null);
   const isMyTurn = snapshot.currentPlayerId === mySessionId;
   const me = snapshot.players.find((p) => p.id === mySessionId);
+  const currentPlayer = snapshot.players.find((p) => p.id === snapshot.currentPlayerId);
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
   const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
   const canLeaveDungeon = !!myRoom?.isEntrance;
   const artifactLimit = me?.hasBackpack ? 2 : 1;
+
+  // Flash de "comprado"/"derrotado" na Masmorra: compara o snapshot anterior dos slots
+  // com o atual — qualquer slot cujo cardId mudou teve sua carta anterior comprada
+  // (se não era monstro) ou derrotada (se era), então acende um flash rápido nele.
+  const prevSlotsRef = useRef<string[]>([]);
+  const [dungeonFlashes, setDungeonFlashes] = useState<Record<number, "bought" | "defeated">>({});
+  useEffect(() => {
+    const prev = prevSlotsRef.current;
+    const curr = snapshot.dungeonRowSlots;
+    const next: Record<number, "bought" | "defeated"> = {};
+    curr.forEach((cardId, i) => {
+      const prevId = prev[i];
+      if (prevId && cardId !== prevId) {
+        try {
+          next[i] = getCard(prevId).kind === "monster" ? "defeated" : "bought";
+        } catch {
+          // carta antiga desconhecida -- ignora o flash pra esse slot
+        }
+      }
+    });
+    prevSlotsRef.current = curr;
+    if (Object.keys(next).length === 0) return;
+    setDungeonFlashes(next);
+    const timer = setTimeout(() => setDungeonFlashes({}), 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot.dungeonRowSlots.join(",")]);
   const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
+
+  // Chave estável por carta na mão: usar `${cardId}-${index}` quebra o AnimatePresence
+  // quando uma carta no meio da mão é jogada — todo card DEPOIS dela muda de índice e
+  // vira "remove+add" em vez de continuar sendo o mesmo card, gerando fantasmas na tela.
+  // Aqui cada slot da mão recebe uma chave estável entre renders (casada por cardId,
+  // na ordem em que já apareciam), então só a carta realmente jogada sai da lista.
+  const handKeysRef = useRef<{ cardId: string; key: string }[]>([]);
+  const nextHandKeyRef = useRef(0);
+  const keyedHand = useMemo(() => {
+    const available = new Map<string, string[]>();
+    for (const { cardId, key } of handKeysRef.current) {
+      const list = available.get(cardId) ?? [];
+      list.push(key);
+      available.set(cardId, list);
+    }
+    const next = hand.map((cardId) => {
+      const list = available.get(cardId);
+      const key = list && list.length > 0 ? list.shift()! : `hand-${nextHandKeyRef.current++}`;
+      return { cardId, key };
+    });
+    handKeysRef.current = next;
+    return next;
+  }, [hand]);
 
   return (
     <main className="flex h-dvh w-dvw flex-col overflow-y-auto bg-slate-950 font-sans text-slate-100 select-none md:flex-row md:overflow-hidden">
@@ -236,6 +289,17 @@ export function GameScreen({
           ))}
         </div>
 
+        {/* Eventos ao vivo — antes só aparecia no lobby/fim de jogo, não durante a partida */}
+        <div className="hidden max-h-40 flex-col border-t border-slate-800 bg-slate-950/50 p-3 md:flex">
+          <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Eventos</h3>
+          <ul className="flex-1 space-y-1 overflow-y-auto text-[11px] leading-tight text-slate-400">
+            {snapshot.log.length === 0 && <li className="italic text-slate-600">Nenhum evento ainda.</li>}
+            {[...snapshot.log].reverse().slice(0, 20).map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+
         <div className="hidden border-t border-slate-800 bg-slate-950/50 p-3 md:block">
           <button onClick={onLeave} className="w-full rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 active:bg-slate-700 transition-colors">
             Abandonar Partida
@@ -250,6 +314,31 @@ export function GameScreen({
           {isMyTurn && snapshot.pendingChoice && (
             <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
           )}
+        </AnimatePresence>
+
+        {/* Banner de turno — bem visível quem está jogando agora, pedido explícito de playtest */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={snapshot.currentPlayerId}
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="absolute inset-x-0 top-0 z-30 flex justify-center pt-2"
+          >
+            {isMyTurn ? (
+              <span className="animate-pulse rounded-full bg-amber-500 px-5 py-1.5 text-sm font-black uppercase tracking-widest text-amber-950 shadow-[0_0_20px_rgba(251,191,36,0.5)]">
+                Sua vez!
+              </span>
+            ) : (
+              <span
+                className="flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-1.5 text-sm font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur"
+                style={{ boxShadow: currentPlayer ? `0 0 16px ${currentPlayer.color}55` : undefined }}
+              >
+                {currentPlayer && <Avatar name={currentPlayer.name} color={currentPlayer.color} />}
+                Vez de {currentPlayer?.name ?? "?"}
+              </span>
+            )}
+          </motion.div>
         </AnimatePresence>
 
         {/* Board Area */}
@@ -314,20 +403,26 @@ export function GameScreen({
            {/* Cards Hand */}
            <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 sm:px-8 flex items-end pb-2" style={{ scrollbarWidth: 'none' }}>
              <div className="flex items-end h-full pt-4">
-                <AnimatePresence initial={false}>
-                  {hand.map((cardId, i) => {
+                {/*
+                  Sem AnimatePresence aqui de propósito: descobri ao vivo (playtest 2026-07-28)
+                  que o exit tracking dela nunca completa nessa combinação de React 19 +
+                  framer-motion 12 — cartas jogadas ficam "fantasmas" na tela pra sempre
+                  (visíveis e clicáveis, mesmo com handCount/hand já zerados). Sem exit, a
+                  carta só some instantaneamente ao ser jogada; a entrada (initial/animate)
+                  e o hover continuam normais.
+                */}
+                <>
+                  {keyedHand.map(({ cardId, key }, i) => {
                     const url = cardImageUrl(cardId);
                     return (
                       <motion.div
-                        key={`${cardId}-${i}`}
-                        layout
+                        key={key}
                         role="button"
                         tabIndex={isMyTurn ? 0 : -1}
                         aria-disabled={!isMyTurn}
                         aria-label={`Jogar ${cardName(cardId)}`}
                         initial={{ opacity: 0, y: 40, scale: 0.8 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -60, scale: 0.7, transition: { duration: 0.25 } }}
                         onClick={() => isMyTurn && onPlayCard(cardId)}
                         onKeyDown={(e) => {
                           if (isMyTurn && (e.key === "Enter" || e.key === " ")) onPlayCard(cardId);
@@ -338,7 +433,7 @@ export function GameScreen({
                         }}
                         onMouseEnter={showHover(cardId)}
                         onMouseLeave={hideHover}
-                        whileHover={isMyTurn ? { y: -20, rotate: -2, zIndex: 30 } : undefined}
+                        whileHover={{ y: -30, scale: 1.35, rotate: -2, zIndex: 30 }}
                         whileTap={isMyTurn ? { scale: 0.95 } : undefined}
                         className={`group relative -ml-8 first:ml-0 sm:-ml-12 rounded-lg shadow-2xl transition-shadow ${isMyTurn ? "cursor-pointer" : "opacity-80 cursor-default"}`}
                         style={{
@@ -361,7 +456,7 @@ export function GameScreen({
                       </motion.div>
                     );
                   })}
-                </AnimatePresence>
+                </>
              </div>
            </div>
 
@@ -386,7 +481,7 @@ export function GameScreen({
                 <div className="flex shrink-0 gap-2 sm:mt-3 sm:flex-col">
                   {hand.length > 1 && (
                     <button
-                      onClick={() => hand.forEach((cardId) => onPlayCard(cardId))}
+                      onClick={onPlayAllCards}
                       disabled={!isMyTurn}
                       title="Joga todas as cartas da mão, na ordem"
                       className="rounded-xl bg-slate-700 px-3 py-3 text-xs font-bold text-slate-200 active:scale-95 disabled:opacity-30 sm:w-full"
@@ -488,7 +583,8 @@ export function GameScreen({
                       }}
                       onMouseEnter={showHover(cardId)}
                       onMouseLeave={hideHover}
-                      className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 hover:shadow-[0_0_15px_rgba(251,191,36,0.3)] transition-all active:scale-95 flex flex-col ${isMyTurn ? "cursor-pointer" : "opacity-60 cursor-default"}`}
+                      whileHover={{ scale: 1.18, zIndex: 40 }}
+                      className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 hover:shadow-[0_0_20px_rgba(251,191,36,0.4)] transition-[border-color,box-shadow] active:scale-95 flex flex-col ${isMyTurn ? "cursor-pointer" : "opacity-60 cursor-default"}`}
                     >
                       <InfoButton onClick={() => setDetailCardId(cardId)} />
                       {url ? (
@@ -506,6 +602,22 @@ export function GameScreen({
                           {isMonster ? 'Atacar' : 'Comprar'}
                         </span>
                       </div>
+                      {/* Flash de "comprada"/"derrotado" -- acende quando ESSE slot acabou de trocar de carta */}
+                      <AnimatePresence>
+                        {dungeonFlashes[slotIndex] && (
+                          <motion.div
+                            initial={{ opacity: 0.95 }}
+                            animate={{ opacity: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.75 }}
+                            className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg text-center text-xs font-black uppercase leading-tight tracking-wide ${
+                              dungeonFlashes[slotIndex] === "bought" ? "bg-amber-400/60 text-amber-950" : "bg-red-500/60 text-red-950"
+                            }`}
+                          >
+                            {dungeonFlashes[slotIndex] === "bought" ? "Comprada!" : "Derrotado!"}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   );
                 })}
@@ -540,7 +652,7 @@ export function GameScreen({
                     }}
                     onMouseEnter={showHover(cardId)}
                     onMouseLeave={hideHover}
-                    className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 transition-all active:scale-95 ${canAct ? "cursor-pointer" : "opacity-40 cursor-default"}`}
+                    className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:z-40 hover:scale-125 hover:border-amber-400 hover:shadow-[0_0_20px_rgba(251,191,36,0.4)] transition-transform active:scale-95 ${canAct ? "cursor-pointer" : "opacity-40 cursor-default"}`}
                   >
                     <InfoButton onClick={() => setDetailCardId(cardId)} />
                     {url ? (

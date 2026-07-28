@@ -120,6 +120,7 @@ export default function App() {
     setColor,
     startGame,
     playCard,
+    playAllCards,
     acquireCard,
     fightMonster,
     acquireFromReserve,
@@ -172,6 +173,7 @@ export default function App() {
         hand={hand}
         actionError={actionError}
         onPlayCard={playCard}
+        onPlayAllCards={playAllCards}
         onAcquireCard={acquireCard}
         onFightMonster={fightMonster}
         onAcquireFromReserve={acquireFromReserve}

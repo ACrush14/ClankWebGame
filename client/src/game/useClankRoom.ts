@@ -324,6 +324,12 @@ export function useClankRoom() {
     roomRef.current?.send("play_card", cardId);
   }, []);
 
+  /** Joga toda a mão numa mensagem só — ver `GameEngine.playAllCards` pro motivo de ser atômico. */
+  const playAllCards = useCallback(() => {
+    setActionError(null);
+    roomRef.current?.send("play_all_cards");
+  }, []);
+
   const acquireCard = useCallback((slotIndex: number) => {
     setActionError(null);
     roomRef.current?.send("acquire_card", slotIndex);
@@ -396,6 +402,7 @@ export function useClankRoom() {
     setColor,
     startGame,
     playCard,
+    playAllCards,
     acquireCard,
     fightMonster,
     acquireFromReserve,
