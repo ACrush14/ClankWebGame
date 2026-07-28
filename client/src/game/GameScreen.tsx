@@ -61,7 +61,7 @@ function InfoButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
         onClick(e);
       }}
       aria-label="Ver detalhes da carta"
-      className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-slate-950/80 text-[11px] font-bold text-amber-300 ring-1 ring-amber-400/40 active:scale-90"
+      className="absolute right-0.5 top-0.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-slate-950/80 text-xs font-bold text-amber-300 ring-1 ring-amber-400/40 active:scale-90 sm:right-1 sm:top-1 sm:h-5 sm:w-5 sm:text-[11px]"
     >
       i
     </button>
@@ -427,8 +427,11 @@ export function GameScreen({
           ))}
         </div>
 
-        {/* Eventos ao vivo — antes só aparecia no lobby/fim de jogo, não durante a partida */}
-        <div className="hidden max-h-40 flex-col border-t border-slate-800 bg-slate-950/50 p-3 md:flex">
+        {/* Eventos ao vivo — antes só aparecia no lobby/fim de jogo, não durante a partida.
+            Também precisa aparecer no mobile (estava "hidden md:flex" por engano, escondendo
+            justamente de quem mais joga pelo celular) — só com altura menor pra não tomar
+            espaço demais da tela pequena. */}
+        <div className="flex max-h-24 flex-col border-t border-slate-800 bg-slate-950/50 p-3 md:max-h-40">
           <h3 className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Eventos</h3>
           <ul className="flex-1 space-y-1 overflow-y-auto text-[11px] leading-tight text-slate-400">
             {snapshot.log.length === 0 && <li className="italic text-slate-600">Nenhum evento ainda.</li>}

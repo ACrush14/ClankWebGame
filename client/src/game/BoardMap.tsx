@@ -446,7 +446,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
           onClick={() => zoomBy(1.4)}
           disabled={scale >= MAX_ZOOM}
           aria-label="Aumentar zoom"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30 sm:h-9 sm:w-9"
         >
           +
         </button>
@@ -455,7 +455,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
           onClick={() => zoomBy(1 / 1.4)}
           disabled={scale <= MIN_ZOOM}
           aria-label="Diminuir zoom"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30 sm:h-9 sm:w-9"
         >
           −
         </button>
@@ -464,7 +464,7 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
           onClick={resetView}
           disabled={scale === MIN_ZOOM && pan.x === 0 && pan.y === 0}
           aria-label="Resetar zoom"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-xs font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-900/80 text-xs font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30 sm:h-9 sm:w-9"
         >
           ⤾
         </button>
