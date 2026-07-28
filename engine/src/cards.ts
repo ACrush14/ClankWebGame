@@ -434,7 +434,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
     playEffects: { skill: 2 },
     points: 1,
     verified: true,
-    // Nota: Se você possui um artefato, teleporte para uma câmara adjacente. Teleporte não modelado.
+    // Nota: Se você possui um artefato, teleporte para uma câmara adjacente — MODELADO
+    // como caso especial em `GameEngine.maybeGrantTeleport` (checa `artifactsCarried > 0`
+    // na hora), já que `grantsTeleport` genérico não representa condicional.
   },
   {
     id: "wand-of-wind",
@@ -495,9 +497,10 @@ export const DUNGEON_DECK: CardDefinition[] = [
     kind: "item",
     skillCost: 4,
     playEffects: { clank: 1 },
+    grantsTeleport: true,
     points: 1,
     verified: true,
-    // Nota: Teleporte para uma câmara adjacente. Teleporte não modelado.
+    // Nota: Teleporte para uma câmara adjacente — MODELADO via `grantsTeleport`.
   },
   {
     id: "kobold-merchant",
@@ -777,8 +780,11 @@ export const DUNGEON_DECK: CardDefinition[] = [
     descriptionPt: "USE: teleporte para uma câmara adjacente.",
     kind: "device",
     skillCost: 4,
+    grantsTeleport: true,
     verified: true,
-    // Nota: USE: Teleporte para uma câmara adjacente. Teleporte não modelado.
+    // Nota: USE: Teleporte para uma câmara adjacente — MODELADO via `grantsTeleport`,
+    // disparado ao ADQUIRIR (mesmo padrão já usado pelos outros devices do jogo, que
+    // aplicam o efeito de "USE:" uma vez, no momento da compra, em vez de repetível).
   },
   // --- Monstros ---
   {

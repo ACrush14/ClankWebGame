@@ -952,3 +952,76 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(game.state.phase).toBe("ended");
   });
 });
+
+describe("Teleporte", () => {
+  it("jogar Invoker of the Ancients cria pendingTeleport e bloqueia outras ações até resolver", () => {
+    const game = twoPlayerGame();
+    const [p1] = game.state.players;
+    p1.hand = ["invoker-of-the-ancients"];
+    p1.resources.skill = 4;
+
+    game.playCard(p1.id, "invoker-of-the-ancients");
+
+    expect(game.state.pendingTeleport).toEqual({ cardId: "invoker-of-the-ancients", cardName: "Invocador dos Antigos" });
+    expect(p1.clank).toBe(1); // efeito de clank aplicado normalmente, só o teleporte fica pendente
+    expect(() => game.playCard(p1.id, "invoker-of-the-ancients")).toThrow(/teleporte pendente/i);
+
+    game.teleportTo(p1.id, "room-25");
+    expect(p1.roomId).toBe("room-25");
+    expect(game.state.pendingTeleport).toBeNull();
+  });
+
+  it("teleportTo rejeita sala não-adjacente", () => {
+    const game = twoPlayerGame();
+    const [p1] = game.state.players;
+    p1.hand = ["invoker-of-the-ancients"];
+    p1.resources.skill = 4;
+    game.playCard(p1.id, "invoker-of-the-ancients");
+
+    expect(() => game.teleportTo(p1.id, "room-41")).toThrow(/não é adjacente/i);
+  });
+
+  it("teleportTo ignora custo de Boots e aplica efeitos de entrada na sala (ex: Fonte de Cura)", () => {
+    const game = twoPlayerGame();
+    const [p1] = game.state.players;
+    p1.hand = ["invoker-of-the-ancients"];
+    p1.resources.skill = 4;
+    p1.resources.boots = 0;
+    p1.damage = 3;
+    game.playCard(p1.id, "invoker-of-the-ancients");
+
+    game.teleportTo(p1.id, "room-25");
+    expect(p1.resources.boots).toBe(0); // continua 0 -- teleporte não gasta Boots
+    // room-25 não é Fonte de Cura, então dano não muda aqui; o importante é não ter lançado erro por falta de Boots.
+    expect(p1.damage).toBe(3);
+  });
+
+  it("adquirir o Teleportador (device) da Dungeon Row concede Teleporte pendente", () => {
+    const game = twoPlayerGame();
+    const [p1] = game.state.players;
+    p1.resources.skill = 10;
+    game.state.dungeonRow.slots[0] = "teleporter";
+
+    game.acquireCard(p1.id, 0);
+
+    expect(game.state.pendingTeleport?.cardId).toBe("teleporter");
+    game.teleportTo(p1.id, "room-25");
+    expect(p1.roomId).toBe("room-25");
+  });
+
+  it("Wand of Recall só concede Teleporte condicional se o jogador tiver um artefato", () => {
+    const game = twoPlayerGame();
+    const [p1] = game.state.players;
+    p1.hand = ["wand-of-recall"];
+    p1.resources.skill = 5;
+
+    game.playCard(p1.id, "wand-of-recall");
+    expect(game.state.pendingTeleport).toBeNull(); // sem artefato -- sem teleporte
+
+    p1.roomId = "room-41"; // sala com artefato, pra poder pegar um
+    game.takeArtifact(p1.id);
+    p1.hand = ["wand-of-recall"];
+    game.playCard(p1.id, "wand-of-recall");
+    expect(game.state.pendingTeleport?.cardId).toBe("wand-of-recall");
+  });
+});

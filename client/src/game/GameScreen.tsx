@@ -19,6 +19,7 @@ export interface GameScreenProps {
   onFightMonster: (slotIndex: number) => void;
   onAcquireFromReserve: (cardId: string) => void;
   onMovePlayer: (toRoomId: string) => void;
+  onTeleportTo: (toRoomId: string) => void;
   onTakeArtifact: () => void;
   onResolveChoice: (optionIndex: number) => void;
   onLeaveDungeon: () => void;
@@ -267,6 +268,7 @@ export function GameScreen({
   onFightMonster,
   onAcquireFromReserve,
   onMovePlayer,
+  onTeleportTo,
   onTakeArtifact,
   onResolveChoice,
   onLeaveDungeon,
@@ -496,7 +498,7 @@ export function GameScreen({
             claimedArtifacts={snapshot.claimedArtifacts}
             currentRoomId={myRoom?.id}
             reachableRoomIds={new Set(myRoom?.tunnels.map((t) => t.to) ?? [])}
-            onRoomClick={isMyTurn ? onMovePlayer : undefined}
+            onRoomClick={isMyTurn ? (snapshot.pendingTeleport ? onTeleportTo : onMovePlayer) : undefined}
           />
 
           {actionError && (
@@ -506,6 +508,16 @@ export function GameScreen({
               className="absolute top-6 left-1/2 z-50 rounded-xl bg-red-950/90 px-6 py-3 text-sm font-semibold text-red-200 shadow-2xl ring-1 ring-red-500/50 backdrop-blur-sm pointer-events-none"
             >
               {actionError}
+            </motion.div>
+          )}
+
+          {isMyTurn && snapshot.pendingTeleport && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              className="absolute top-6 left-1/2 z-40 rounded-xl bg-indigo-950/90 px-6 py-3 text-center text-sm font-semibold text-indigo-200 shadow-2xl ring-1 ring-indigo-400/50 backdrop-blur-sm"
+            >
+              ✨ {snapshot.pendingTeleport.cardName}: escolha uma câmara adjacente no mapa pra teleportar.
             </motion.div>
           )}
 

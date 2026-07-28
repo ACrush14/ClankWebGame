@@ -54,6 +54,16 @@ export interface PendingChoice {
   options: EffectChoiceOption[];
 }
 
+/**
+ * Teleporte pendente (ex: Teleporter, Invoker of the Ancients) — o jogador precisa
+ * escolher uma câmara ADJACENTE (ignorando custo/túnel) antes de fazer qualquer outra
+ * ação, igual ao `PendingChoice`. Ver `GameEngine.teleportTo`.
+ */
+export interface PendingTeleport {
+  cardId: string;
+  cardName: string;
+}
+
 export interface CardDefinition {
   id: string;
   name: string;
@@ -121,6 +131,14 @@ export interface CardDefinition {
   playChoices?: EffectChoiceOption[];
   /** Igual a `playChoices`, mas ao ADQUIRIR/VENCER a carta (em vez de `acquireEffects`). */
   acquireChoices?: EffectChoiceOption[];
+  /**
+   * Teleporte incondicional (mover pra uma câmara adjacente ignorando custo/túnel) ao
+   * jogar/adquirir a carta — CONFIRMADO no texto oficial de Teleporter e Invoker of the
+   * Ancients. Cria um `PendingTeleport` (ver `GameEngine.teleportTo`), igual ao padrão
+   * de `PendingChoice`. Efeitos condicionais de teleporte (ex: Wand of Recall, "se você
+   * tiver um artefato") são tratados à parte em `maybeGrantTeleport`, não por aqui.
+   */
+  grantsTeleport?: boolean;
 }
 
 /** Ícones possíveis num túnel — controlam o custo/risco de passar por ele. */

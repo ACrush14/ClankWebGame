@@ -124,6 +124,7 @@ export default function App() {
     fightMonster,
     acquireFromReserve,
     movePlayer,
+    teleportTo,
     takeArtifact,
     resolveChoice,
     leaveDungeon,
@@ -177,6 +178,7 @@ export default function App() {
         onFightMonster={fightMonster}
         onAcquireFromReserve={acquireFromReserve}
         onMovePlayer={movePlayer}
+        onTeleportTo={teleportTo}
         onTakeArtifact={takeArtifact}
         onResolveChoice={resolveChoice}
         onLeaveDungeon={leaveDungeon}

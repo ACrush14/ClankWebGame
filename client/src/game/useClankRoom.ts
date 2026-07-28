@@ -45,6 +45,12 @@ export interface PendingChoiceSnapshot {
   options: PendingChoiceOption[];
 }
 
+/** Teleporte pendente (ex: Teleporter, Invoker of the Ancients) — ver `PendingChoiceSnapshot`. */
+export interface PendingTeleportSnapshot {
+  cardId: string;
+  cardName: string;
+}
+
 export interface RoomSnapshot {
   players: PlayerSnapshot[];
   phase: "lobby" | "playing" | "ended";
@@ -67,6 +73,8 @@ export interface RoomSnapshot {
   marketCrownsAvailable: number[];
   /** null quando não há nenhuma escolha pendente pro jogador da vez. */
   pendingChoice: PendingChoiceSnapshot | null;
+  /** null quando não há nenhum Teleporte pendente pro jogador da vez. */
+  pendingTeleport: PendingTeleportSnapshot | null;
   /** Código amigável de 4 dígitos (o que aparece pro jogador) — não é o id interno do Colyseus. */
   roomCode: string;
 }
@@ -139,6 +147,7 @@ export function useClankRoom() {
       marketBackpackAvailable: boolean;
       marketCrownsAvailable: number[];
       pendingChoiceJson: string;
+      pendingTeleportJson: string;
       roomCode: string;
     };
     if (!state || !state.players) return;
@@ -179,6 +188,14 @@ export function useClankRoom() {
         pendingChoice = null;
       }
     }
+    let pendingTeleport: PendingTeleportSnapshot | null = null;
+    if (state.pendingTeleportJson) {
+      try {
+        pendingTeleport = JSON.parse(state.pendingTeleportJson) as PendingTeleportSnapshot;
+      } catch {
+        pendingTeleport = null;
+      }
+    }
     const reserveRemaining: Record<string, number> = {};
     state.reserveRemaining?.forEach((count, id: string) => {
       reserveRemaining[id] = count;
@@ -208,6 +225,7 @@ export function useClankRoom() {
       marketBackpackAvailable: state.marketBackpackAvailable,
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
       pendingChoice,
+      pendingTeleport,
       roomCode: state.roomCode ?? "",
     });
   }, []);
@@ -350,6 +368,11 @@ export function useClankRoom() {
     roomRef.current?.send("move_player", toRoomId);
   }, []);
 
+  const teleportTo = useCallback((toRoomId: string) => {
+    setActionError(null);
+    roomRef.current?.send("teleport_to", toRoomId);
+  }, []);
+
   const takeArtifact = useCallback(() => {
     setActionError(null);
     roomRef.current?.send("take_artifact");
@@ -407,6 +430,7 @@ export function useClankRoom() {
     fightMonster,
     acquireFromReserve,
     movePlayer,
+    teleportTo,
     takeArtifact,
     resolveChoice,
     leaveDungeon,

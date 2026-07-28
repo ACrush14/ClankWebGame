@@ -9,6 +9,7 @@ import type {
   EffectChoiceOption,
   MarketState,
   PendingChoice,
+  PendingTeleport,
   PlayerState,
   ReserveState,
   RoomDefinition,
@@ -90,6 +91,11 @@ export interface GameState {
    * precisa chamar `resolveChoice` primeiro (ver `requireCurrentPlayer`).
    */
   pendingChoice: PendingChoice | null;
+  /**
+   * Teleporte pendente (ex: Teleporter, Invoker of the Ancients) — igual ao
+   * `pendingChoice`, bloqueia qualquer outra ação até o jogador chamar `teleportTo`.
+   */
+  pendingTeleport: PendingTeleport | null;
 }
 
 export class GameEngine {
@@ -121,6 +127,7 @@ export class GameEngine {
       countdownTrack: 0,
       countdownPlayerId: null,
       pendingChoice: null,
+      pendingTeleport: null,
     };
   }
 
@@ -145,6 +152,11 @@ export class GameEngine {
     if (this.state.pendingChoice) {
       throw new Error(
         `${player.name} tem uma escolha pendente ("${this.state.pendingChoice.cardName}") — resolva com resolveChoice antes de continuar.`,
+      );
+    }
+    if (this.state.pendingTeleport) {
+      throw new Error(
+        `${player.name} tem um teleporte pendente ("${this.state.pendingTeleport.cardName}") — resolva com teleportTo antes de continuar.`,
       );
     }
     return player;
@@ -193,6 +205,50 @@ export class GameEngine {
     this.applyEffects(player, this.effectsFromChoice(option));
     this.pushLog(`${player.name} escolheu "${option.label}" em ${pending.cardName}.`);
     this.state.pendingChoice = null;
+  }
+
+  /**
+   * Chamado logo depois de aplicar os efeitos normais de uma carta (jogar/adquirir/
+   * vencer) — se ela conceder Teleporte (ver `CardDefinition.grantsTeleport`), cria um
+   * `PendingTeleport` em vez de mover na hora (o jogador escolhe a sala com
+   * `teleportTo`). Também cobre o caso condicional de Wand of Recall ("se você possuir
+   * um artefato, teleporte") como caso especial, já que não é um `grantsTeleport`
+   * incondicional genérico.
+   */
+  private maybeGrantTeleport(player: PlayerState, card: CardDefinition) {
+    if (this.state.pendingChoice) return;
+    const grants = card.grantsTeleport || (card.id === "wand-of-recall" && player.artifactsCarried > 0);
+    if (!grants) return;
+    this.state.pendingTeleport = { cardId: card.id, cardName: card.nomePt };
+  }
+
+  /**
+   * Resolve um Teleporte pendente (ver `PendingTeleport`) — move o jogador pra uma sala
+   * ADJACENTE (mesmo grafo de túneis de `movePlayer`), mas ignorando custo de Boots/
+   * monstro/cadeado (CONFIRMADO no texto oficial de todas as cartas de Teleporte:
+   * "teleport to an adjacent room", sem nenhuma menção a pagar custo de túnel). Aplica
+   * os mesmos efeitos de ENTRAR na sala de destino que `movePlayer` (ver
+   * `applyRoomEntryEffects`). Não passa pelo guard normal de `requireCurrentPlayer` de
+   * propósito, igual a `resolveChoice`.
+   */
+  teleportTo(playerId: string, toRoomId: string) {
+    if (this.state.phase === "ended") throw new Error("A partida já terminou.");
+    const player = this.currentPlayer;
+    if (player.id !== playerId) {
+      throw new Error(`Não é a vez de ${playerId} — é a vez de ${player.name}.`);
+    }
+    const pending = this.state.pendingTeleport;
+    if (!pending) throw new Error("Não há teleporte pendente.");
+    const room = BOARD.rooms[player.roomId];
+    const tunnel = room?.tunnels.find((t) => t.to === toRoomId);
+    if (!tunnel) throw new Error(`${toRoomId} não é adjacente a ${room?.name ?? player.roomId}.`);
+
+    player.roomId = toRoomId;
+    const destRoom = BOARD.rooms[toRoomId];
+    this.applyRoomEntryEffects(player, destRoom);
+    this.pushLog(`${player.name} teleportou para ${destRoom?.name ?? toRoomId} usando ${pending.cardName}.`);
+    this.state.pendingTeleport = null;
+    this.checkGameEnd();
   }
 
   private applyEffects(player: PlayerState, effects: CardEffects | undefined) {
@@ -260,8 +316,8 @@ export class GameEngine {
    * ferimento" — aqui a espada é paga automaticamente quando disponível). Entrar numa
    * sala com Fonte de Cura (CONFIRMADO no manual oficial) cura 1 de dano na hora.
    * Entrar numa Caverna de Cristal (CONFIRMADO no manual oficial) esgota os Boots
-   * restantes — não dá mais pra mover de novo neste turno (só via Teleporte, que o
-   * motor ainda não modela).
+   * restantes — não dá mais pra mover de novo neste turno (só via Teleporte, que
+   * ignora custo de Boots — ver `teleportTo`).
    */
   movePlayer(playerId: string, toRoomId: string) {
     const player = this.requireCurrentPlayer(playerId);
@@ -291,7 +347,18 @@ export class GameEngine {
     }
 
     player.roomId = toRoomId;
-    const destRoom = BOARD.rooms[toRoomId];
+    this.applyRoomEntryEffects(player, BOARD.rooms[toRoomId]);
+    this.checkGameEnd();
+  }
+
+  /**
+   * Efeitos de ENTRAR numa sala — compartilhado entre `movePlayer` (andando por túnel)
+   * e `teleportTo` (Teleporte), já que ambos colocam o jogador numa sala nova e os
+   * efeitos de chegada (Fonte de Cura, Caverna de Cristal, Ídolo de Macaco) valem nos
+   * dois casos igualmente (CONFIRMADO no manual oficial — nenhum efeito de sala menciona
+   * "só ao andar", são sempre "ao entrar").
+   */
+  private applyRoomEntryEffects(player: PlayerState, destRoom: RoomDefinition | undefined) {
     if (destRoom?.isFountainOfHealing && player.damage > 0) {
       player.damage = Math.max(0, player.damage - 1);
       this.pushLog(`${player.name} entrou numa Fonte de Cura: -1 dano.`);
@@ -301,7 +368,6 @@ export class GameEngine {
       this.pushLog(`${player.name} entrou numa Caverna de Cristal e ficou exausto — sem mais Boots este turno.`);
     }
     this.tryAutoClaimMonkeyIdol(player, destRoom);
-    this.checkGameEnd();
   }
 
   /**
@@ -563,6 +629,7 @@ export class GameEngine {
     player.hand.splice(handIndex, 1);
     player.playedThisTurn.push(cardId);
     this.applyEffectsOrSetChoice(player, card, card.playEffects, card.playChoices);
+    this.maybeGrantTeleport(player, card);
     this.applyRoomConditionalEffects(player, cardId);
   }
 
@@ -573,12 +640,12 @@ export class GameEngine {
    * N round-trips desnecessários pro servidor (a causa raiz do bug de "cartas fantasma"
    * era outra — ver comentário no client em `GameScreen.tsx` sobre o AnimatePresence —
    * mas continuar atômico aqui ainda é a escolha certa por simplicidade e performance).
-   * Para automaticamente (sem erro) se alguma carta gerar uma escolha pendente — não dá
-   * pra continuar jogando até ela ser resolvida.
+   * Para automaticamente (sem erro) se alguma carta gerar uma escolha pendente ou um
+   * Teleporte pendente — não dá pra continuar jogando até isso ser resolvido.
    */
   playAllCards(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
-    while (player.hand.length > 0 && !this.state.pendingChoice) {
+    while (player.hand.length > 0 && !this.state.pendingChoice && !this.state.pendingTeleport) {
       this.playCard(playerId, player.hand[0]);
     }
   }
@@ -622,6 +689,7 @@ export class GameEngine {
     }
     this.pushLog(`${player.name} comprou ${card.nomePt} da Dungeon Row.`);
     this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
+    this.maybeGrantTeleport(player, card);
     this.refillDungeonSlot(slotIndex);
   }
 
@@ -681,6 +749,7 @@ export class GameEngine {
     player.discardPile.push(cardId);
     this.pushLog(`${player.name} comprou ${card.nomePt} da Reserva.`);
     this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
+    this.maybeGrantTeleport(player, card);
     this.state.reserve.remaining[cardId] = remaining - 1;
   }
 
