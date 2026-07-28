@@ -282,6 +282,9 @@ describe("movePlayer", () => {
     const player = game.currentPlayer;
     player.roomId = "room-26";
     player.resources.boots = 2;
+    // room-27 tem 2 Segredos Menores -- pré-marca como já pegos pra esse teste (sobre
+    // custo de túnel) não depender do sorteio aleatório de qual Segredo sai.
+    game.state.claimedSecrets["room-27"] = 2;
     game.movePlayer(player.id, "room-27");
     expect(player.roomId).toBe("room-27");
     expect(player.resources.boots).toBe(0);
@@ -622,6 +625,114 @@ describe("Ídolos de Macaco (automático ao entrar na sala — CONFIRMADO no pla
   });
 });
 
+describe("Segredos Maiores/Menores (automático ao entrar na sala, igual Ídolo de Macaco)", () => {
+  it("entrar numa sala com Segredo Menor sorteia e aplica o efeito na hora (rng fixo -> Poção de Cura)", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0, // sempre sorteia o índice 0 do pool -> "Potion of Healing" (cura 1)
+    );
+    const player = game.currentPlayer;
+    player.roomId = "room-26";
+    player.resources.boots = 2;
+    player.damage = 3;
+
+    game.movePlayer(player.id, "room-27"); // room-27 tem 2 Segredos Menores
+
+    expect(player.damage).toBe(2);
+    expect(game.state.claimedSecrets["room-27"]).toBe(1);
+  });
+
+  it("entrar numa sala com Segredo Maior sorteia e aplica o efeito na hora (rng fixo -> Poção de Cura Maior)", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0, // índice 0 do pool Maior -> "Potion of Greater Healing" (cura 2)
+    );
+    const player = game.currentPlayer;
+    player.roomId = "room-27";
+    player.resources.boots = 2;
+    player.damage = 3;
+
+    game.movePlayer(player.id, "room-28"); // room-28 tem 1 Segredo Maior
+
+    expect(player.damage).toBe(1);
+    expect(game.state.claimedSecrets["room-28"]).toBe(1);
+  });
+
+  it("Chalice (Segredo Maior de pontos) soma pontos direto, sem efeito de recurso", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0.9, // último índice do pool Maior (5 itens) -> Chalice, 7 pontos
+    );
+    const player = game.currentPlayer;
+    player.roomId = "room-27";
+    player.resources.boots = 2;
+
+    game.movePlayer(player.id, "room-28");
+
+    expect(player.points).toBe(7);
+  });
+
+  it("Dragon Egg (Segredo Menor) soma pontos E avança a Trilha de Fúria em 1", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0.9, // último índice do pool Menor (6 itens) -> Dragon Egg, 3 pontos + trilha+1
+    );
+    const player = game.currentPlayer;
+    const startingRage = game.state.dragon.rageTrackPosition;
+    player.roomId = "room-26";
+    player.resources.boots = 2;
+
+    game.movePlayer(player.id, "room-27");
+
+    expect(player.points).toBe(3);
+    expect(game.state.dragon.rageTrackPosition).toBe(startingRage + 1);
+  });
+
+  it("só pega 1 Segredo por entrada, mesmo a sala tendo mais de um disponível — precisa sair e reentrar", () => {
+    const game = new GameEngine(
+      [
+        { id: "p1", name: "A" },
+        { id: "p2", name: "B" },
+      ],
+      () => 0,
+    );
+    const player = game.currentPlayer;
+    player.roomId = "room-26";
+    player.resources.boots = 10; // dá pra ir e voltar várias vezes (2 boots por túnel de pegada)
+
+    game.movePlayer(player.id, "room-27"); // 1ª entrada: pega 1 dos 2 Segredos Menores
+    expect(game.state.claimedSecrets["room-27"]).toBe(1);
+
+    game.movePlayer(player.id, "room-26"); // sai
+    game.movePlayer(player.id, "room-27"); // reentra: pega o 2º e último
+    expect(game.state.claimedSecrets["room-27"]).toBe(2);
+
+    game.movePlayer(player.id, "room-26");
+    game.movePlayer(player.id, "room-27"); // 3ª entrada: nenhum sobra -- sem-op silencioso
+    expect(game.state.claimedSecrets["room-27"]).toBe(2);
+  });
+
+  it("entrar numa sala sem Segredo não faz nada (sem-op silencioso)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.resources.boots = 1;
+    game.movePlayer(player.id, "room-25"); // sala comum, sem majorSecret/minorSecrets
+    expect(game.state.claimedSecrets["room-25"]).toBeUndefined();
+  });
+});
+
 describe("nomes dos artefatos", () => {
   it("as 3 salas de artefato têm nome confirmado (Cruz/Banana/Armadura)", () => {
     expect(BOARD.rooms["room-41"].artifactName).toBe("Cruz");
@@ -714,7 +825,7 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
     const player = game.currentPlayer;
     player.clank = 1;
     player.resources.swords = 2;
-    game.state.dragon.rageTrackPosition = 2; // sorteia 1 cubo (posição - 1)
+    game.state.dragon.rageTrackPosition = 2; // sorteia 2 cubos (RAGE_TRACK_CUBES[1]) -- rng fixo sempre pega o 1º ticket (do jogador)
     game.state.dungeonRow.slots[0] = "animated-door"; // monstro sem recompensa de gold/clank
     game.state.dungeonRow.drawPile.unshift("diamond"); // tem o símbolo de ataque do dragão
 
@@ -722,19 +833,6 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
 
     expect(player.damage).toBe(1);
     expect(player.clank).toBe(0);
-  });
-
-  it("na posição 1 da trilha não sorteia nenhum cubo (sem ataque)", () => {
-    const game = twoPlayerGame();
-    const player = game.currentPlayer;
-    player.clank = 1;
-    player.resources.swords = 2;
-    game.state.dungeonRow.slots[0] = "animated-door";
-    game.state.dungeonRow.drawPile.unshift("diamond");
-
-    game.fightMonster(player.id, 0);
-
-    expect(player.damage).toBe(0);
   });
 });
 

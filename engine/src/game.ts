@@ -1,4 +1,11 @@
-import { buildDungeonDeck, getCard, RESERVE_INFINITE, RESERVE_STARTING_COUNTS } from "./cards.js";
+import {
+  buildDungeonDeck,
+  getCard,
+  MAJOR_SECRETS_REFERENCE,
+  MINOR_SECRETS_REFERENCE,
+  RESERVE_INFINITE,
+  RESERVE_STARTING_COUNTS,
+} from "./cards.js";
 import { BOARD } from "./board.js";
 import { drawCards, shuffle, type Rng } from "./deck.js";
 import { createPlayer, drawHand, HAND_SIZE } from "./player.js";
@@ -72,6 +79,13 @@ export interface GameState {
   claimedArtifacts: Record<string, boolean>;
   /** Ídolos de Macaco já pegos, por nome (ex: "Macaco Surdo") — únicos no jogo todo. */
   claimedMonkeyIdols: Record<string, boolean>;
+  /**
+   * Quantos Segredos já foram pegos em cada sala (por id de sala) — comparado contra
+   * `room.majorSecret` (1) ou `room.minorSecrets` (N) pra saber se ainda sobra algum
+   * (ver `tryAutoClaimSecret`). Ao contrário de Ídolo de Macaco, Segredos não têm nome
+   * único global — cada sala tem sua própria contagem independente.
+   */
+  claimedSecrets: Record<string, number>;
   turnNumber: number;
   phase: "playing" | "ended";
   log: string[];
@@ -121,6 +135,7 @@ export class GameEngine {
       market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
       claimedArtifacts: {},
       claimedMonkeyIdols: {},
+      claimedSecrets: {},
       turnNumber: 1,
       phase: "playing",
       log: [],
@@ -368,6 +383,7 @@ export class GameEngine {
       this.pushLog(`${player.name} entrou numa Caverna de Cristal e ficou exausto — sem mais Boots este turno.`);
     }
     this.tryAutoClaimMonkeyIdol(player, destRoom);
+    this.tryAutoClaimSecret(player, destRoom);
   }
 
   /**
@@ -385,6 +401,34 @@ export class GameEngine {
     player.monkeyIdolsHeld.push(available);
     player.points += MONKEY_IDOL_VALUE;
     this.pushLog(`${player.name} pegou o Ídolo de Macaco "${available}" (${MONKEY_IDOL_VALUE} pontos) ao entrar na sala!`);
+  }
+
+  /**
+   * Segredo (Maior ou Menor) — mesmo padrão de "1 por entrada" do Ídolo de Macaco (ver
+   * `tryAutoClaimMonkeyIdol`): `room.majorSecret`/`room.minorSecrets` definem quantos
+   * Segredos aquela sala tem no total; `claimedSecrets[room.id]` conta quantos já
+   * saíram dali. Sorteia aleatoriamente do pool certo (Maior ou Menor) e aplica o
+   * efeito na hora — ver `SecretDefinition` pro porquê dos efeitos "guarda até usar"
+   * terem sido simplificados pra imediato.
+   */
+  private tryAutoClaimSecret(player: PlayerState, room: RoomDefinition | undefined) {
+    if (!room) return;
+    const total = room.majorSecret ? 1 : room.minorSecrets ?? 0;
+    if (total <= 0) return;
+    const claimedSoFar = this.state.claimedSecrets[room.id] ?? 0;
+    if (claimedSoFar >= total) return;
+    this.state.claimedSecrets[room.id] = claimedSoFar + 1;
+
+    const pool = room.majorSecret ? MAJOR_SECRETS_REFERENCE : MINOR_SECRETS_REFERENCE;
+    const secret = pool[Math.floor(this.rng() * pool.length)];
+    if (secret.cardEffects) this.applyEffects(player, secret.cardEffects);
+    if (secret.points) player.points += secret.points;
+    if (secret.advancesRageTrack) {
+      this.state.dragon.rageTrackPosition = Math.min(RAGE_TRACK_SIZE, this.state.dragon.rageTrackPosition + 1);
+    }
+    this.pushLog(
+      `${player.name} encontrou um Segredo ${room.majorSecret ? "Maior" : "Menor"} (${secret.nomePt}): ${secret.effect}`,
+    );
   }
 
   /**

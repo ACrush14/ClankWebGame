@@ -32,6 +32,27 @@ export interface CardEffects {
   heal?: number;
 }
 
+/**
+ * Um Segredo (Maior ou Menor) do manual oficial (Field Reference Guide) — token de
+ * sala pego automaticamente ao entrar (mesmo padrão de Artefato/Ídolo de Macaco), não
+ * uma carta (não passa pela mão/baralho). Efeitos "guarda até usar" das poções
+ * (Potion of Healing/Swiftness/Strength/Greater Healing) foram SIMPLIFICADOS pra
+ * imediato (`cardEffects.heal`/`boots`/`swords`) em vez de um item guardado pra usar
+ * depois — motor não tem conceito de inventário de itens ainda, só de cartas.
+ */
+export interface SecretDefinition {
+  name: string;
+  nomePt: string;
+  /** Texto oficial completo do efeito, pro log/tooltip (mesma convenção de `descriptionPt`). */
+  effect: string;
+  /** Efeito imediato aplicável via `applyEffects` (reusa o mesmo tipo das cartas). */
+  cardEffects?: CardEffects;
+  /** Pontos de vitória no fim de jogo (ex: Chalice, Dragon Egg). */
+  points?: number;
+  /** Ovo de Dragão avança a Trilha de Fúria em 1 além dos pontos. */
+  advancesRageTrack?: boolean;
+}
+
 /** Flag de sala que algumas cartas exigem pra serem adquiridas/enfrentadas (ver `CardDefinition.requiresRoomFlag`). */
 export type RoomFlag = "isDepths" | "isCrystalCave";
 

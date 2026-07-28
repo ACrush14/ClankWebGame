@@ -1,4 +1,4 @@
-import type { CardDefinition } from "./types.js";
+import type { CardDefinition, SecretDefinition } from "./types.js";
 
 /**
  * REVERSÃO PRO JOGO BASE (2026-07-24): este arquivo agora usa o conteúdo real do
@@ -1047,25 +1047,28 @@ export function getCard(id: string): CardDefinition {
 
 /**
  * Segredos Maiores/Menores do manual oficial (Field Reference Guide) — CONFIRMADO,
- * inclusive nomes em português já usados pela planilha do usuário. Ainda NÃO
- * implementados no motor: não existe um sistema de tokens de sala pra Segredos (só
- * Artefatos e Ídolos de Macaco têm mecanismo de "pegar" hoje — ver `takeArtifact`/
- * `takeMonkeyIdol` em game.ts). Fica como próximo passo se o MVP precisar deles.
+ * inclusive nomes em português. MODELADO em `GameEngine.tryAutoClaimSecret`: pego
+ * automaticamente ao entrar na sala (mesmo padrão de Artefato/Ídolo de Macaco), 1 por
+ * sala visitada, sorteado aleatoriamente do pool (Maior ou Menor conforme a sala).
+ * Efeitos "guarda até usar" das poções foram SIMPLIFICADOS pra imediato — ver nota em
+ * `SecretDefinition`. "Magic Spring" (efeito passivo recorrente — descarta uma carta
+ * do baralho no fim de TODO turno futuro) fica de fora por enquanto: é um tipo de
+ * efeito persistente que o motor ainda não tem onde guardar (nenhuma carta/mecanismo
+ * hoje precisa de "efeito que dispara em todo turno futuro, pro resto do jogo").
  */
-export const MAJOR_SECRETS_REFERENCE = [
-  { name: "Potion of Greater Healing", nomePt: "Cálice", effect: "Cura 2 de dano (guarda até usar)." },
-  { name: "Greater Skill Boost", nomePt: "Moeda +5", effect: "Ganha 5 Skill na hora." },
-  { name: "Greater Treasure", nomePt: "Cura +2", effect: "Vale 5 Gold." },
-  { name: "Flash of Brilliance", nomePt: "Mana +5", effect: "Compra 3 cartas na hora." },
-  { name: "Chalice", nomePt: "Cartas +3", effect: "Vale 7 pontos no fim de jogo (não é um Artefato)." },
-] as const;
+export const MAJOR_SECRETS_REFERENCE: SecretDefinition[] = [
+  { name: "Potion of Greater Healing", nomePt: "Poção de Cura Maior", effect: "Cura 2 de dano.", cardEffects: { heal: 2 } },
+  { name: "Greater Skill Boost", nomePt: "Impulso de Skill Maior", effect: "Ganha 5 Skill na hora.", cardEffects: { skill: 5 } },
+  { name: "Greater Treasure", nomePt: "Tesouro Maior", effect: "Vale 5 Gold.", cardEffects: { gold: 5 } },
+  { name: "Flash of Brilliance", nomePt: "Lampejo de Brilhantismo", effect: "Compra 3 cartas na hora.", cardEffects: { drawCards: 3 } },
+  { name: "Chalice", nomePt: "Cálice", effect: "Vale 7 pontos no fim de jogo (não é um Artefato).", points: 7 },
+];
 
-export const MINOR_SECRETS_REFERENCE = [
-  { name: "Potion of Healing", nomePt: "Cura +1", effect: "Cura 1 de dano (guarda até usar)." },
-  { name: "Potion of Swiftness", nomePt: "Bota +1", effect: "Ganha 1 Boot (guarda até usar)." },
-  { name: "Potion of Strength", nomePt: "Ataque +2", effect: "Ganha 2 Swords (guarda até usar)." },
-  { name: "Skill Boost", nomePt: "Mana +2", effect: "Ganha 2 Skill na hora." },
-  { name: "Treasure", nomePt: "Moeda +2", effect: "Vale 2 Gold." },
-  { name: "Magic Spring", effect: "No fim do turno, descarta (trash) uma carta do baralho." },
-  { name: "Dragon Egg", nomePt: "Ovo de Dragão", effect: "Vale 3 pontos no fim de jogo; avança a Trilha de Fúria em 1." },
-] as const;
+export const MINOR_SECRETS_REFERENCE: SecretDefinition[] = [
+  { name: "Potion of Healing", nomePt: "Poção de Cura", effect: "Cura 1 de dano.", cardEffects: { heal: 1 } },
+  { name: "Potion of Swiftness", nomePt: "Poção de Agilidade", effect: "Ganha 1 Boot.", cardEffects: { boots: 1 } },
+  { name: "Potion of Strength", nomePt: "Poção de Força", effect: "Ganha 2 Swords.", cardEffects: { swords: 2 } },
+  { name: "Skill Boost", nomePt: "Impulso de Skill", effect: "Ganha 2 Skill na hora.", cardEffects: { skill: 2 } },
+  { name: "Treasure", nomePt: "Tesouro", effect: "Vale 2 Gold.", cardEffects: { gold: 2 } },
+  { name: "Dragon Egg", nomePt: "Ovo de Dragão", effect: "Vale 3 pontos no fim de jogo; avança a Trilha de Fúria em 1.", points: 3, advancesRageTrack: true },
+];
