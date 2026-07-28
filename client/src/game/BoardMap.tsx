@@ -11,30 +11,162 @@ import { artifactImageUrl } from "./tokenImages";
  * esquemático — não há alinhamento pixel-a-pixel entre os círculos e as salas da foto.
  */
 const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
-  entrance: { x: 200, y: 40 },
-  "mine-entry": { x: 200, y: 120 },
-  "guard-post": { x: 90, y: 200 },
-  "narrow-passage": { x: 310, y: 200 },
-  "market-room": { x: 200, y: 270 },
-  crossroads: { x: 200, y: 340 },
-  "deep-tunnel": { x: 110, y: 410 },
-  "crystal-cave": { x: 290, y: 410 },
-  "depths-east": { x: 70, y: 490 },
-  "sealed-vault": { x: 200, y: 490 },
-  "depths-west": { x: 330, y: 490 },
-  "monkey-shrine": { x: 320, y: 340 },
-  // --- Adicionadas a partir da foto do tabuleiro físico (2026-07-24) ---
-  "castle-hall": { x: 320, y: 80 },
-  "tower-passage": { x: 380, y: 150 },
-  "market-annex": { x: 380, y: 220 },
-  "healing-spring-1": { x: 20, y: 260 },
-  "crystal-cave-2": { x: 390, y: 270 },
-  "depths-north": { x: 390, y: 340 },
-  "crystal-cave-3": { x: 150, y: 375 },
-  "healing-spring-2": { x: 20, y: 450 },
-  "depths-south": { x: 200, y: 555 },
-  "depths-ring": { x: 80, y: 400 },
-  "depths-vase": { x: 380, y: 300 },
+  "entrance": {
+    "x": 70,
+    "y": 56
+  },
+  "room-25": {
+    "x": 75,
+    "y": 153
+  },
+  "room-26": {
+    "x": 250,
+    "y": 156
+  },
+  "room-27": {
+    "x": 419,
+    "y": 158
+  },
+  "room-28": {
+    "x": 585,
+    "y": 158
+  },
+  "room-29": {
+    "x": 765,
+    "y": 129
+  },
+  "room-30": {
+    "x": 743,
+    "y": 269
+  },
+  "room-31": {
+    "x": 580,
+    "y": 328
+  },
+  "room-32": {
+    "x": 426,
+    "y": 301
+  },
+  "room-33": {
+    "x": 289,
+    "y": 306
+  },
+  "room-34": {
+    "x": 110,
+    "y": 283
+  },
+  "room-35": {
+    "x": 84,
+    "y": 428
+  },
+  "room-36": {
+    "x": 107,
+    "y": 566
+  },
+  "room-37": {
+    "x": 226,
+    "y": 449
+  },
+  "room-38": {
+    "x": 417,
+    "y": 461
+  },
+  "room-39": {
+    "x": 592,
+    "y": 462
+  },
+  "room-40": {
+    "x": 761,
+    "y": 424
+  },
+  "room-41": {
+    "x": 768,
+    "y": 548
+  },
+  "room-42": {
+    "x": 625,
+    "y": 610
+  },
+  "room-43": {
+    "x": 641,
+    "y": 775
+  },
+  "room-44": {
+    "x": 446,
+    "y": 768
+  },
+  "room-45": {
+    "x": 439,
+    "y": 599
+  },
+  "room-46": {
+    "x": 282,
+    "y": 590
+  },
+  "room-47": {
+    "x": 190,
+    "y": 679
+  },
+  "room-48": {
+    "x": 83,
+    "y": 815
+  },
+  "room-49": {
+    "x": 123,
+    "y": 1003
+  },
+  "room-50": {
+    "x": 259,
+    "y": 883
+  },
+  "room-51": {
+    "x": 279,
+    "y": 782
+  },
+  "room-52": {
+    "x": 326,
+    "y": 1008
+  },
+  "room-53": {
+    "x": 423,
+    "y": 894
+  },
+  "room-54": {
+    "x": 523,
+    "y": 1020
+  },
+  "room-55": {
+    "x": 574,
+    "y": 910
+  },
+  "room-56": {
+    "x": 736,
+    "y": 934
+  },
+  "room-57": {
+    "x": 899,
+    "y": 999
+  },
+  "room-58": {
+    "x": 857,
+    "y": 816
+  },
+  "room-59": {
+    "x": 986,
+    "y": 863
+  },
+  "room-60": {
+    "x": 771,
+    "y": 706
+  },
+  "room-61": {
+    "x": 986,
+    "y": 735
+  },
+  "room-62": {
+    "x": 910,
+    "y": 587
+  }
 };
 
 export interface BoardMapPlayer {
@@ -91,16 +223,16 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
   }
 
   return (
-    <div className="relative overflow-hidden rounded-lg" style={{ aspectRatio: "420 / 590" }}>
+    <div className="relative overflow-hidden rounded-lg" style={{ aspectRatio: "1200 / 1200" }}>
       <img
         src={boardPhoto}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-cover opacity-40"
+        className="absolute inset-0 h-full w-full object-contain opacity-40"
       />
       <div className="absolute inset-0 bg-slate-950/45" />
       <svg
-        viewBox="0 0 420 590"
+        viewBox="0 0 1200 1200"
         className="absolute inset-0 h-full w-full select-none"
         role="img"
         aria-label="Mapa da masmorra"

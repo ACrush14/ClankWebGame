@@ -80,6 +80,8 @@ interface RoomSpec {
   artifactValue?: number;
   artifactName?: string;
   monkeyIdolNames?: string[];
+  majorSecret?: boolean;
+  minorSecrets?: number;
 }
 
 interface EdgeSpec {
@@ -91,71 +93,592 @@ interface EdgeSpec {
 }
 
 const ROOM_SPECS: RoomSpec[] = [
-  { id: "entrance", name: "Entrada da Masmorra", isEntrance: true },
-  { id: "mine-entry", name: "Corredor de Pedra" },
-  { id: "guard-post", name: "Posto de Vigia" },
-  { id: "narrow-passage", name: "Passagem Estreita" },
-  { id: "market-room", name: "Mercado", isMarket: true },
-  { id: "crossroads", name: "Encruzilhada" },
-  { id: "deep-tunnel", name: "Túnel Profundo" },
-  { id: "crystal-cave", name: "Caverna de Cristal", isCrystalCave: true },
-  { id: "depths-east", name: "Profundezas — Câmara Leste", isDepths: true, artifactValue: 15, artifactName: ARTIFACT_NAMES_BY_VALUE[15] },
-  { id: "depths-west", name: "Profundezas — Câmara Oeste", isDepths: true, artifactValue: 7, artifactName: ARTIFACT_NAMES_BY_VALUE[7] },
-  { id: "sealed-vault", name: "Câmara Selada", isDepths: true, artifactValue: 25, artifactName: ARTIFACT_NAMES_BY_VALUE[25] },
-  { id: "monkey-shrine", name: "Santuário dos Macacos", monkeyIdolNames: ["Macaco Surdo", "Macaco Cego", "Macaco Mudo"] },
-
-  // --- Adicionadas a partir da foto do tabuleiro físico (2026-07-24) ---
-  { id: "castle-hall", name: "Salão do Castelo" },
-  { id: "tower-passage", name: "Passagem da Torre" },
-  { id: "crystal-cave-2", name: "Segunda Caverna de Cristal", isCrystalCave: true },
-  { id: "crystal-cave-3", name: "Terceira Caverna de Cristal", isCrystalCave: true },
-  { id: "market-annex", name: "Anexo do Mercado", isMarket: true },
-  { id: "healing-spring-1", name: "Fonte de Cura (Superior)", isFountainOfHealing: true },
-  { id: "healing-spring-2", name: "Fonte de Cura (Profundezas)", isDepths: true, isFountainOfHealing: true },
-  { id: "depths-north", name: "Profundezas — Câmara Norte", isDepths: true, artifactValue: 20, artifactName: ARTIFACT_NAMES_BY_VALUE[20] },
-  { id: "depths-south", name: "Profundezas — Câmara Sul", isDepths: true, artifactValue: 30, artifactName: ARTIFACT_NAMES_BY_VALUE[30] },
-  // Posições confirmadas pelo usuário (2026-07-24, print anotado do Steam): o Artefato
-  // de 5 fica perto da esquerda (perto das outras Cavernas de Cristal); o de 10 fica na
-  // parte de baixo à direita, dentro/perto do Mercado. Com isso, os 7 valores da escala
-  // (5/7/10/15/20/25/30) agora têm todos uma sala.
-  { id: "depths-ring", name: "Profundezas — Salão do Anel", isDepths: true, artifactValue: 5, artifactName: ARTIFACT_NAMES_BY_VALUE[5] },
-  { id: "depths-vase", name: "Profundezas — Salão do Vaso", isDepths: true, artifactValue: 10, artifactName: ARTIFACT_NAMES_BY_VALUE[10] },
+  {
+    "id": "entrance",
+    "name": "entrance",
+    "isEntrance": true
+  },
+  {
+    "id": "room-25",
+    "name": "Nova Sala"
+  },
+  {
+    "id": "room-26",
+    "name": "Nova Sala"
+  },
+  {
+    "id": "room-27",
+    "name": "Nova Sala",
+    "minorSecrets": 2
+  },
+  {
+    "id": "room-28",
+    "name": "Nova Sala",
+    "majorSecret": true
+  },
+  {
+    "id": "room-29",
+    "name": "Nova Sala",
+    "majorSecret": true
+  },
+  {
+    "id": "room-30",
+    "name": "Nova Sala"
+  },
+  {
+    "id": "room-31",
+    "name": "Nova Sala",
+    "isCrystalCave": true
+  },
+  {
+    "id": "room-32",
+    "name": "Nova Sala",
+    "majorSecret": true
+  },
+  {
+    "id": "room-33",
+    "name": "Nova Sala",
+    "isCrystalCave": true
+  },
+  {
+    "id": "room-34",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "majorSecret": true
+  },
+  {
+    "id": "room-35",
+    "name": "Nova Sala",
+    "isFountainOfHealing": true
+  },
+  {
+    "id": "room-36",
+    "name": "Nova Sala",
+    "isDepths": true
+  },
+  {
+    "id": "room-37",
+    "name": "Nova Sala",
+    "minorSecrets": 2
+  },
+  {
+    "id": "room-38",
+    "name": "Nova Sala",
+    "isCrystalCave": true
+  },
+  {
+    "id": "room-39",
+    "name": "Nova Sala"
+  },
+  {
+    "id": "room-40",
+    "name": "Nova Sala",
+    "minorSecrets": 2
+  },
+  {
+    "id": "room-41",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "artifactValue": 7
+  },
+  {
+    "id": "room-42",
+    "name": "Nova Sala",
+    "isMarket": true,
+    "minorSecrets": 2,
+    "isDepths": true
+  },
+  {
+    "id": "room-43",
+    "name": "Nova Sala",
+    "isMarket": true,
+    "artifactValue": 10,
+    "isDepths": true
+  },
+  {
+    "id": "room-44",
+    "name": "Nova Sala",
+    "isMarket": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-45",
+    "name": "Nova Sala",
+    "isMarket": true,
+    "minorSecrets": 2,
+    "isDepths": true
+  },
+  {
+    "id": "room-46",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "artifactValue": 5,
+    "isDepths": true
+  },
+  {
+    "id": "room-47",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "artifactValue": 15,
+    "isDepths": true
+  },
+  {
+    "id": "room-48",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "monkeyIdolNames": [
+      "Macaco Surdo",
+      "Macaco Cego",
+      "Macaco Mudo"
+    ]
+  },
+  {
+    "id": "room-49",
+    "name": "Nova Sala",
+    "isDepths": true
+  },
+  {
+    "id": "room-50",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "minorSecrets": 2
+  },
+  {
+    "id": "room-51",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "majorSecret": true
+  },
+  {
+    "id": "room-52",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "majorSecret": true
+  },
+  {
+    "id": "room-53",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "artifactValue": 20
+  },
+  {
+    "id": "room-54",
+    "name": "Nova Sala",
+    "isFountainOfHealing": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-55",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "minorSecrets": 2,
+    "isDepths": true
+  },
+  {
+    "id": "room-56",
+    "name": "Nova Sala",
+    "isDepths": true,
+    "artifactValue": 25
+  },
+  {
+    "id": "room-57",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "majorSecret": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-58",
+    "name": "Nova Sala",
+    "isFountainOfHealing": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-59",
+    "name": "Nova Sala",
+    "artifactValue": 30,
+    "isDepths": true
+  },
+  {
+    "id": "room-60",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "majorSecret": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-61",
+    "name": "Nova Sala",
+    "majorSecret": true,
+    "isDepths": true
+  },
+  {
+    "id": "room-62",
+    "name": "Nova Sala",
+    "isCrystalCave": true,
+    "isDepths": true
+  }
 ];
 
 const EDGE_SPECS: EdgeSpec[] = [
-  { a: "entrance", b: "mine-entry" },
-  { a: "mine-entry", b: "guard-post", icon: { monsterSwordCost: 1 } },
-  { a: "mine-entry", b: "narrow-passage", icon: { footprint: true } },
-  { a: "guard-post", b: "market-room" },
-  { a: "narrow-passage", b: "market-room" },
-  { a: "narrow-passage", b: "crossroads" },
-  { a: "market-room", b: "crossroads" },
-  { a: "crossroads", b: "deep-tunnel", icon: { monsterSwordCost: 2 } },
-  { a: "crossroads", b: "crystal-cave", icon: { footprint: true } },
-  { a: "deep-tunnel", b: "depths-east", icon: { monsterSwordCost: 1 } },
-  { a: "crystal-cave", b: "depths-west" },
-  // Câmara Selada: precisa da Chave-mestra do Mercado pra entrar (túnel com cadeado).
-  { a: "deep-tunnel", b: "sealed-vault", icon: { locked: true } },
-  // Escorregador de fuga: só dá pra sair da Câmara direto pra Entrada, não pra voltar por ele.
-  { a: "sealed-vault", b: "entrance", oneWay: true },
-  { a: "crossroads", b: "monkey-shrine" },
-
-  // --- Adicionadas a partir da foto do tabuleiro físico (2026-07-24) ---
-  { a: "mine-entry", b: "castle-hall", icon: { monsterSwordCost: 1 } },
-  { a: "castle-hall", b: "tower-passage" },
-  // Atalho de mão única no topo do castelo (seta visível na foto).
-  { a: "castle-hall", b: "entrance", oneWay: true },
-  { a: "tower-passage", b: "market-annex", icon: { locked: true } },
-  { a: "market-annex", b: "market-room" },
-  { a: "guard-post", b: "healing-spring-1" },
-  { a: "narrow-passage", b: "crystal-cave-2", icon: { monsterSwordCost: 1 } },
-  { a: "crystal-cave-2", b: "depths-north" },
-  { a: "crossroads", b: "crystal-cave-3", icon: { footprint: true } },
-  { a: "crystal-cave-3", b: "deep-tunnel" },
-  { a: "deep-tunnel", b: "healing-spring-2", icon: { monsterSwordCost: 1 } },
-  { a: "sealed-vault", b: "depths-south", icon: { locked: true } },
-  { a: "crystal-cave-3", b: "depths-ring", icon: { monsterSwordCost: 1 } },
-  { a: "market-annex", b: "depths-vase", icon: { locked: true } },
+  {
+    "a": "room-25",
+    "b": "entrance"
+  },
+  {
+    "a": "room-26",
+    "b": "room-25"
+  },
+  {
+    "a": "room-26",
+    "b": "room-27",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-26",
+    "b": "room-33"
+  },
+  {
+    "a": "room-34",
+    "b": "room-26",
+    "oneWay": true,
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-27",
+    "b": "room-32",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-27",
+    "b": "room-31"
+  },
+  {
+    "a": "room-27",
+    "b": "room-28",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-28",
+    "b": "room-31",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-29",
+    "b": "room-28",
+    "oneWay": true
+  },
+  {
+    "a": "room-30",
+    "b": "room-29",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-34",
+    "b": "room-35",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-33",
+    "b": "room-37",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-33",
+    "b": "room-38",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-32",
+    "b": "room-38",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-31",
+    "b": "room-30",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-31",
+    "b": "room-39",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-30",
+    "b": "room-40"
+  },
+  {
+    "a": "room-35",
+    "b": "room-36",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-37",
+    "b": "room-36",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-37",
+    "b": "room-46"
+  },
+  {
+    "a": "room-46",
+    "b": "room-38",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-45",
+    "b": "room-38",
+    "icon": {
+      "monsterSwordCost": 2
+    }
+  },
+  {
+    "a": "room-39",
+    "b": "room-38"
+  },
+  {
+    "a": "room-39",
+    "b": "room-40"
+  },
+  {
+    "a": "room-40",
+    "b": "room-41"
+  },
+  {
+    "a": "room-39",
+    "b": "room-41",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-36",
+    "b": "room-62"
+  },
+  {
+    "a": "room-36",
+    "b": "room-48",
+    "oneWay": true,
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-36",
+    "b": "room-47"
+  },
+  {
+    "a": "room-36",
+    "b": "room-46"
+  },
+  {
+    "a": "room-46",
+    "b": "room-51",
+    "icon": {
+      "footprint": true,
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-46",
+    "b": "room-44"
+  },
+  {
+    "a": "room-45",
+    "b": "room-44"
+  },
+  {
+    "a": "room-42",
+    "b": "room-43"
+  },
+  {
+    "a": "room-42",
+    "b": "room-41"
+  },
+  {
+    "a": "room-42",
+    "b": "room-60",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-41",
+    "b": "room-62"
+  },
+  {
+    "a": "room-62",
+    "b": "room-61",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-48",
+    "b": "room-47",
+    "oneWay": true
+  },
+  {
+    "a": "room-48",
+    "b": "room-49",
+    "oneWay": true
+  },
+  {
+    "a": "room-50",
+    "b": "room-48",
+    "oneWay": true,
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-51",
+    "b": "room-44",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-44",
+    "b": "room-50",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-44",
+    "b": "room-53",
+    "icon": {
+      "monsterSwordCost": 2
+    }
+  },
+  {
+    "a": "room-44",
+    "b": "room-43"
+  },
+  {
+    "a": "room-43",
+    "b": "room-55",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-58",
+    "b": "room-60",
+    "oneWay": true
+  },
+  {
+    "a": "room-61",
+    "b": "room-59",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-49",
+    "b": "room-50"
+  },
+  {
+    "a": "room-50",
+    "b": "room-53",
+    "icon": {
+      "monsterSwordCost": 2
+    }
+  },
+  {
+    "a": "room-52",
+    "b": "room-53",
+    "icon": {
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-53",
+    "b": "room-54",
+    "icon": {
+      "footprint": true
+    }
+  },
+  {
+    "a": "room-53",
+    "b": "room-55",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-55",
+    "b": "room-56",
+    "icon": {
+      "monsterSwordCost": 2
+    }
+  },
+  {
+    "a": "room-56",
+    "b": "room-58",
+    "icon": {
+      "footprint": true,
+      "monsterSwordCost": 1
+    }
+  },
+  {
+    "a": "room-56",
+    "b": "room-57"
+  },
+  {
+    "a": "room-49",
+    "b": "room-52",
+    "icon": {
+      "locked": true
+    }
+  },
+  {
+    "a": "room-54",
+    "b": "room-56",
+    "icon": {
+      "monsterSwordCost": 2
+    }
+  },
+  {
+    "a": "room-54",
+    "b": "room-57",
+    "icon": {
+      "footprint": true,
+      "monsterSwordCost": 1
+    }
+  }
 ];
 
 function buildBoard(): BoardDefinition {
@@ -173,6 +696,8 @@ function buildBoard(): BoardDefinition {
       artifactValue: spec.artifactValue,
       artifactName: spec.artifactName,
       monkeyIdolNames: spec.monkeyIdolNames,
+      majorSecret: spec.majorSecret,
+      minorSecrets: spec.minorSecrets,
     };
   }
   for (const edge of EDGE_SPECS) {

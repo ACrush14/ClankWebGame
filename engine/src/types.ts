@@ -142,12 +142,12 @@ export interface RoomDefinition {
   artifactValue?: number;
   /** Nome do artefato nesta sala — CONFIRMADO contra fotos oficiais dos 7 artefatos do jogo base (ver ARTIFACT_NAMES_BY_VALUE em board.ts). */
   artifactName?: string;
-  /**
-   * Nomes dos Ídolos de Macaco disponíveis nesta sala (regra oficial: os 3 ficam juntos
-   * na sala "Monkey Shrine", um por vez pode ser pego por entrada na sala). undefined/
-   * lista vazia = sem ídolo aqui.
-   */
+  /** Nomes dos ídolos presentes (cada um vale 5 pts). Array vazio/undefined = nenhum. */
   monkeyIdolNames?: string[];
+  /** Se a sala tem 1 Segredo Maior. */
+  majorSecret?: boolean;
+  /** Quantidade de Segredos Menores (geralmente 2). */
+  minorSecrets?: number;
 }
 
 export interface BoardDefinition {

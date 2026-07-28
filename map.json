@@ -1,0 +1,737 @@
+{
+  "ROOM_SPECS": [
+    {
+      "id": "entrance",
+      "name": "entrance",
+      "isEntrance": true
+    },
+    {
+      "id": "room-25",
+      "name": "Nova Sala"
+    },
+    {
+      "id": "room-26",
+      "name": "Nova Sala"
+    },
+    {
+      "id": "room-27",
+      "name": "Nova Sala",
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-28",
+      "name": "Nova Sala",
+      "majorSecret": true
+    },
+    {
+      "id": "room-29",
+      "name": "Nova Sala",
+      "majorSecret": true
+    },
+    {
+      "id": "room-30",
+      "name": "Nova Sala"
+    },
+    {
+      "id": "room-31",
+      "name": "Nova Sala",
+      "isCrystalCave": true
+    },
+    {
+      "id": "room-32",
+      "name": "Nova Sala",
+      "majorSecret": true
+    },
+    {
+      "id": "room-33",
+      "name": "Nova Sala",
+      "isCrystalCave": true
+    },
+    {
+      "id": "room-34",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "majorSecret": true
+    },
+    {
+      "id": "room-35",
+      "name": "Nova Sala",
+      "isFountainOfHealing": true
+    },
+    {
+      "id": "room-36",
+      "name": "Nova Sala",
+      "isDepths": true
+    },
+    {
+      "id": "room-37",
+      "name": "Nova Sala",
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-38",
+      "name": "Nova Sala",
+      "isCrystalCave": true
+    },
+    {
+      "id": "room-39",
+      "name": "Nova Sala"
+    },
+    {
+      "id": "room-40",
+      "name": "Nova Sala",
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-41",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "artifactValue": 7
+    },
+    {
+      "id": "room-42",
+      "name": "Nova Sala",
+      "isMarket": true,
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-43",
+      "name": "Nova Sala",
+      "isMarket": true,
+      "artifactValue": 10,
+      "isDepths": true
+    },
+    {
+      "id": "room-44",
+      "name": "Nova Sala",
+      "isMarket": true
+    },
+    {
+      "id": "room-45",
+      "name": "Nova Sala",
+      "isMarket": true,
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-46",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "artifactValue": 5,
+      "isDepths": true
+    },
+    {
+      "id": "room-47",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "artifactValue": 15,
+      "isDepths": true
+    },
+    {
+      "id": "room-48",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "monkeyIdolNames": [
+        "Macaco Surdo",
+        "Macaco Cego",
+        "Macaco Mudo"
+      ]
+    },
+    {
+      "id": "room-49",
+      "name": "Nova Sala",
+      "isDepths": true
+    },
+    {
+      "id": "room-50",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-51",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "majorSecret": true
+    },
+    {
+      "id": "room-52",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "majorSecret": true
+    },
+    {
+      "id": "room-53",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "artifactValue": 20
+    },
+    {
+      "id": "room-54",
+      "name": "Nova Sala",
+      "isFountainOfHealing": true
+    },
+    {
+      "id": "room-55",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "minorSecrets": 2
+    },
+    {
+      "id": "room-56",
+      "name": "Nova Sala",
+      "isDepths": true,
+      "artifactValue": 25
+    },
+    {
+      "id": "room-57",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "majorSecret": true
+    },
+    {
+      "id": "room-58",
+      "name": "Nova Sala",
+      "isFountainOfHealing": true
+    },
+    {
+      "id": "room-59",
+      "name": "Nova Sala",
+      "artifactValue": 30,
+      "isDepths": true
+    },
+    {
+      "id": "room-60",
+      "name": "Nova Sala",
+      "isCrystalCave": true,
+      "majorSecret": true
+    },
+    {
+      "id": "room-61",
+      "name": "Nova Sala",
+      "majorSecret": true
+    },
+    {
+      "id": "room-62",
+      "name": "Nova Sala",
+      "isCrystalCave": true
+    }
+  ],
+  "EDGE_SPECS": [
+    {
+      "a": "room-25",
+      "b": "entrance"
+    },
+    {
+      "a": "room-26",
+      "b": "room-25"
+    },
+    {
+      "a": "room-26",
+      "b": "room-27",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-26",
+      "b": "room-33"
+    },
+    {
+      "a": "room-34",
+      "b": "room-26",
+      "oneWay": true,
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-27",
+      "b": "room-32",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-27",
+      "b": "room-31"
+    },
+    {
+      "a": "room-27",
+      "b": "room-28",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-28",
+      "b": "room-31",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-29",
+      "b": "room-28",
+      "oneWay": true
+    },
+    {
+      "a": "room-30",
+      "b": "room-29",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-34",
+      "b": "room-35",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-33",
+      "b": "room-37",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-33",
+      "b": "room-38",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-32",
+      "b": "room-38",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-31",
+      "b": "room-30",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-31",
+      "b": "room-39",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-30",
+      "b": "room-40"
+    },
+    {
+      "a": "room-35",
+      "b": "room-36",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-37",
+      "b": "room-36",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-37",
+      "b": "room-46"
+    },
+    {
+      "a": "room-46",
+      "b": "room-38",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-45",
+      "b": "room-38",
+      "icon": {
+        "monsterSwordCost": 2
+      }
+    },
+    {
+      "a": "room-39",
+      "b": "room-38"
+    },
+    {
+      "a": "room-39",
+      "b": "room-40"
+    },
+    {
+      "a": "room-40",
+      "b": "room-41"
+    },
+    {
+      "a": "room-39",
+      "b": "room-41",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-36",
+      "b": "room-62"
+    },
+    {
+      "a": "room-36",
+      "b": "room-48",
+      "oneWay": true,
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-36",
+      "b": "room-47"
+    },
+    {
+      "a": "room-36",
+      "b": "room-46"
+    },
+    {
+      "a": "room-46",
+      "b": "room-51",
+      "icon": {
+        "footprint": true,
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-46",
+      "b": "room-44"
+    },
+    {
+      "a": "room-45",
+      "b": "room-44"
+    },
+    {
+      "a": "room-42",
+      "b": "room-43"
+    },
+    {
+      "a": "room-42",
+      "b": "room-41"
+    },
+    {
+      "a": "room-42",
+      "b": "room-60",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-41",
+      "b": "room-62"
+    },
+    {
+      "a": "room-62",
+      "b": "room-61",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-48",
+      "b": "room-47",
+      "oneWay": true
+    },
+    {
+      "a": "room-48",
+      "b": "room-49",
+      "oneWay": true
+    },
+    {
+      "a": "room-50",
+      "b": "room-48",
+      "oneWay": true,
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-51",
+      "b": "room-44",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-44",
+      "b": "room-50",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-44",
+      "b": "room-53",
+      "icon": {
+        "monsterSwordCost": 2
+      }
+    },
+    {
+      "a": "room-44",
+      "b": "room-43"
+    },
+    {
+      "a": "room-43",
+      "b": "room-55",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-58",
+      "b": "room-60",
+      "oneWay": true
+    },
+    {
+      "a": "room-61",
+      "b": "room-59",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-49",
+      "b": "room-50"
+    },
+    {
+      "a": "room-50",
+      "b": "room-53",
+      "icon": {
+        "monsterSwordCost": 2
+      }
+    },
+    {
+      "a": "room-52",
+      "b": "room-53",
+      "icon": {
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-53",
+      "b": "room-54",
+      "icon": {
+        "footprint": true
+      }
+    },
+    {
+      "a": "room-53",
+      "b": "room-55",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-55",
+      "b": "room-56",
+      "icon": {
+        "monsterSwordCost": 2
+      }
+    },
+    {
+      "a": "room-56",
+      "b": "room-58",
+      "icon": {
+        "footprint": true,
+        "monsterSwordCost": 1
+      }
+    },
+    {
+      "a": "room-56",
+      "b": "room-57"
+    },
+    {
+      "a": "room-49",
+      "b": "room-52",
+      "icon": {
+        "locked": true
+      }
+    },
+    {
+      "a": "room-54",
+      "b": "room-56",
+      "icon": {
+        "monsterSwordCost": 2
+      }
+    },
+    {
+      "a": "room-54",
+      "b": "room-57",
+      "icon": {
+        "footprint": true,
+        "monsterSwordCost": 1
+      }
+    }
+  ],
+  "ROOM_POSITIONS": {
+    "entrance": {
+      "x": 70,
+      "y": 56
+    },
+    "room-25": {
+      "x": 75,
+      "y": 153
+    },
+    "room-26": {
+      "x": 250,
+      "y": 156
+    },
+    "room-27": {
+      "x": 419,
+      "y": 158
+    },
+    "room-28": {
+      "x": 585,
+      "y": 158
+    },
+    "room-29": {
+      "x": 765,
+      "y": 129
+    },
+    "room-30": {
+      "x": 743,
+      "y": 269
+    },
+    "room-31": {
+      "x": 580,
+      "y": 328
+    },
+    "room-32": {
+      "x": 426,
+      "y": 301
+    },
+    "room-33": {
+      "x": 289,
+      "y": 306
+    },
+    "room-34": {
+      "x": 110,
+      "y": 283
+    },
+    "room-35": {
+      "x": 84,
+      "y": 428
+    },
+    "room-36": {
+      "x": 107,
+      "y": 566
+    },
+    "room-37": {
+      "x": 226,
+      "y": 449
+    },
+    "room-38": {
+      "x": 417,
+      "y": 461
+    },
+    "room-39": {
+      "x": 592,
+      "y": 462
+    },
+    "room-40": {
+      "x": 761,
+      "y": 424
+    },
+    "room-41": {
+      "x": 768,
+      "y": 548
+    },
+    "room-42": {
+      "x": 625,
+      "y": 610
+    },
+    "room-43": {
+      "x": 641,
+      "y": 775
+    },
+    "room-44": {
+      "x": 446,
+      "y": 768
+    },
+    "room-45": {
+      "x": 439,
+      "y": 599
+    },
+    "room-46": {
+      "x": 282,
+      "y": 590
+    },
+    "room-47": {
+      "x": 190,
+      "y": 679
+    },
+    "room-48": {
+      "x": 83,
+      "y": 815
+    },
+    "room-49": {
+      "x": 123,
+      "y": 1003
+    },
+    "room-50": {
+      "x": 259,
+      "y": 883
+    },
+    "room-51": {
+      "x": 279,
+      "y": 782
+    },
+    "room-52": {
+      "x": 326,
+      "y": 1008
+    },
+    "room-53": {
+      "x": 423,
+      "y": 894
+    },
+    "room-54": {
+      "x": 523,
+      "y": 1020
+    },
+    "room-55": {
+      "x": 574,
+      "y": 910
+    },
+    "room-56": {
+      "x": 736,
+      "y": 934
+    },
+    "room-57": {
+      "x": 899,
+      "y": 999
+    },
+    "room-58": {
+      "x": 857,
+      "y": 816
+    },
+    "room-59": {
+      "x": 986,
+      "y": 863
+    },
+    "room-60": {
+      "x": 771,
+      "y": 706
+    },
+    "room-61": {
+      "x": 986,
+      "y": 735
+    },
+    "room-62": {
+      "x": 910,
+      "y": 587
+    }
+  }
+}

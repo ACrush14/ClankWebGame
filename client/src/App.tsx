@@ -14,6 +14,7 @@ import {
 } from "./game/tokenImages";
 import { BoardMap } from "./game/BoardMap";
 import { PLAYER_COLORS } from "./game/playerColors";
+import { GameScreen } from "./game/GameScreen";
 
 function cardName(id: string): string {
   if (!id) return "";
@@ -25,7 +26,7 @@ function cardName(id: string): string {
 }
 
 /** Avatar sem arte oficial: círculo colorido com a inicial do nome. */
-function Avatar({ name, color, size = "sm" }: { name: string; color: string; size?: "sm" | "md" }) {
+export function Avatar({ name, color, size = "sm" }: { name: string; color: string; size?: "sm" | "md" }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
   const dims = size === "md" ? "h-8 w-8 text-sm" : "h-5 w-5 text-[10px]";
   return (
@@ -39,7 +40,7 @@ function Avatar({ name, color, size = "sm" }: { name: string; color: string; siz
 }
 
 /** Miniatura da carta — usa a arte real se tiver (ver `game/cardImages.ts`), senão um bloco cinza com a inicial. */
-function CardThumb({ cardId, name }: { cardId: string; name: string }) {
+export function CardThumb({ cardId, name }: { cardId: string; name: string }) {
   const url = cardImageUrl(cardId);
   if (url) {
     return (
@@ -57,7 +58,7 @@ function CardThumb({ cardId, name }: { cardId: string; name: string }) {
   );
 }
 
-const CHOICE_ICON_EMOJI: Record<ChoiceIcon, string> = {
+export const CHOICE_ICON_EMOJI: Record<ChoiceIcon, string> = {
   skill: "💎",
   swords: "⚔️",
   boots: "👢",
@@ -72,7 +73,7 @@ const CHOICE_ICON_EMOJI: Record<ChoiceIcon, string> = {
  * jogador precisa escolher uma opção antes de fazer qualquer outra ação (o motor já
  * bloqueia isso do lado do servidor; este modal só torna a escolha visível/clicável).
  */
-function ChoiceModal({
+export function ChoiceModal({
   choice,
   onChoose,
 }: {
@@ -460,422 +461,6 @@ function LobbyScreen({
   );
 }
 
-interface GameScreenProps {
-  mySessionId: string;
-  snapshot: RoomSnapshot;
-  hand: string[];
-  actionError: string | null;
-  onPlayCard: (cardId: string) => void;
-  onAcquireCard: (slotIndex: number) => void;
-  onFightMonster: (slotIndex: number) => void;
-  onAcquireFromReserve: (cardId: string) => void;
-  onMovePlayer: (toRoomId: string) => void;
-  onTakeArtifact: () => void;
-  onTakeMonkeyIdol: () => void;
-  onResolveChoice: (optionIndex: number) => void;
-  onLeaveDungeon: () => void;
-  onBuyMarketItem: (item: "key" | "backpack" | "crown") => void;
-  onEndTurn: () => void;
-  onLeave: () => void;
-}
-
-const RESOURCE_LABELS: Record<"skill" | "swords" | "boots" | "gold", string> = {
-  skill: "Skill",
-  swords: "Swords",
-  boots: "Boots",
-  gold: "Gold",
-};
-
-function GameScreen({
-  mySessionId,
-  snapshot,
-  hand,
-  actionError,
-  onPlayCard,
-  onAcquireCard,
-  onFightMonster,
-  onAcquireFromReserve,
-  onMovePlayer,
-  onTakeArtifact,
-  onTakeMonkeyIdol,
-  onResolveChoice,
-  onLeaveDungeon,
-  onBuyMarketItem,
-  onEndTurn,
-  onLeave,
-}: GameScreenProps) {
-  const isMyTurn = snapshot.currentPlayerId === mySessionId;
-  const me = snapshot.players.find((p) => p.id === mySessionId);
-  const currentPlayerName = snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.name ?? "?";
-  const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
-  const hasUnclaimedArtifact = !!myRoom?.artifactValue && !snapshot.claimedArtifacts[myRoom.id];
-  const unclaimedMonkeyIdol = myRoom?.monkeyIdolNames?.find((n) => !snapshot.claimedMonkeyIdols[n]);
-  const canLeaveDungeon = !!myRoom?.isEntrance;
-  const artifactLimit = me?.hasBackpack ? 2 : 1;
-  const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
-
-  return (
-    <main className="min-h-dvh bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-[max(1rem,env(safe-area-inset-top))] text-slate-100">
-      <div className="mx-auto flex max-w-md flex-col gap-4 pb-8">
-        <header className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Avatar
-              name={currentPlayerName}
-              color={snapshot.players.find((p) => p.id === snapshot.currentPlayerId)?.color ?? "#64748b"}
-              size="md"
-            />
-            <div>
-              <p className="text-xs text-slate-400">Turno {snapshot.turnNumber}</p>
-              <p className={`text-lg font-bold ${isMyTurn ? "text-amber-400" : "text-slate-100"}`}>
-                {isMyTurn ? "Sua vez!" : `Vez de ${currentPlayerName}`}
-              </p>
-            </div>
-          </div>
-          <button onClick={onLeave} className="rounded-lg px-3 py-2 text-sm text-slate-400 active:bg-slate-800">
-            Sair
-          </button>
-        </header>
-
-        <AnimatePresence>
-          {isMyTurn && snapshot.pendingChoice && (
-            <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {actionError && (
-            <motion.p
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="rounded-xl bg-red-900/60 px-4 py-2 text-sm text-red-200 ring-1 ring-red-700"
-            >
-              {actionError}
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        {me && (
-          <section className="grid grid-cols-4 gap-2 rounded-2xl bg-slate-900/70 p-3 shadow-xl ring-1 ring-white/10">
-            {(["skill", "swords", "boots", "gold"] as const).map((key) => (
-              <div key={key} className="flex flex-col items-center rounded-xl bg-slate-800 py-2">
-                <span className="text-lg font-bold text-amber-400">{me[key]}</span>
-                <span className="text-[10px] uppercase text-slate-400">{RESOURCE_LABELS[key]}</span>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {me && (
-          <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-            <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
-              <span>Vida</span>
-              <span>
-                {HEALTH_TRACK_SIZE - me.damage}/{HEALTH_TRACK_SIZE}
-              </span>
-            </div>
-            <div className="mb-3 h-2 overflow-hidden rounded-full bg-slate-800">
-              <div
-                className="h-full bg-emerald-500 transition-all"
-                style={{ width: `${((HEALTH_TRACK_SIZE - me.damage) / HEALTH_TRACK_SIZE) * 100}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Fúria do dragão (sorteia {Math.max(0, snapshot.dragonRageTrack - 1)} cubo(s))</span>
-              <span className="font-mono text-amber-400">{snapshot.dragonRageTrack}</span>
-            </div>
-            {snapshot.countdownTrack > 0 && (
-              <div className="mt-2 flex items-center justify-between text-xs text-red-300">
-                <span>
-                  ⏳ Contagem regressiva —{" "}
-                  {snapshot.players.find((p) => p.id === snapshot.countdownPlayerId)?.name ?? "alguém"} anda nela a
-                  cada turno seu; corra pra fora!
-                </span>
-                <span className="font-mono">{snapshot.countdownTrack}/5</span>
-              </div>
-            )}
-          </section>
-        )}
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">
-            Tabuleiro — {myRoom?.name ?? "?"}
-          </h2>
-          <div className="mb-3 rounded-xl bg-slate-950/60 p-2">
-            <BoardMap
-              players={snapshot.players.map((p) => ({
-                id: p.id,
-                name: p.name,
-                color: p.color,
-                roomId: p.roomId,
-                knockedOut: p.knockedOut,
-                hasLeftDungeon: p.hasLeftDungeon,
-              }))}
-              claimedArtifacts={snapshot.claimedArtifacts}
-              currentRoomId={myRoom?.id}
-              reachableRoomIds={new Set(myRoom?.tunnels.map((t) => t.to) ?? [])}
-              onRoomClick={isMyTurn ? onMovePlayer : undefined}
-            />
-          </div>
-          {hasUnclaimedArtifact && (
-            <button
-              onClick={onTakeArtifact}
-              disabled={!isMyTurn || atArtifactLimit}
-              title={atArtifactLimit ? `Você já carrega o máximo de artefatos (${artifactLimit})` : undefined}
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
-            >
-              {artifactImageUrl(myRoom!.artifactValue!) && (
-                <img
-                  src={artifactImageUrl(myRoom!.artifactValue!)}
-                  alt=""
-                  className="h-8 w-8 shrink-0 object-contain"
-                />
-              )}
-              {atArtifactLimit
-                ? `Máximo de artefatos carregados (${me?.artifactsCarried}/${artifactLimit})`
-                : `Pegar artefato (${myRoom!.artifactValue} pts) — ${me?.artifactsCarried ?? 0}/${artifactLimit}`}
-            </button>
-          )}
-          {unclaimedMonkeyIdol && (
-            <button
-              onClick={onTakeMonkeyIdol}
-              disabled={!isMyTurn}
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl bg-fuchsia-600 px-3 py-2 text-sm font-semibold text-fuchsia-50 active:scale-[0.98] disabled:opacity-40"
-            >
-              {monkeyIdolImageUrl(unclaimedMonkeyIdol) ? (
-                <img
-                  src={monkeyIdolImageUrl(unclaimedMonkeyIdol)}
-                  alt=""
-                  className="h-8 w-8 shrink-0 object-contain"
-                />
-              ) : (
-                "🐒"
-              )}
-              Pegar {unclaimedMonkeyIdol} (5 pts)
-            </button>
-          )}
-          {canLeaveDungeon && (
-            <button
-              onClick={onLeaveDungeon}
-              disabled={!isMyTurn}
-              className="mb-2 w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-emerald-50 active:scale-[0.98] disabled:opacity-40"
-            >
-              Sair da masmorra
-            </button>
-          )}
-          <ul className="grid grid-cols-1 gap-2">
-            {myRoom?.tunnels.map((tunnel) => {
-              const targetRoom = BOARD.rooms[tunnel.to];
-              const bootCost = tunnel.icon?.footprint ? 2 : 1;
-              return (
-                <li
-                  key={tunnel.to}
-                  className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
-                >
-                  <span className="text-sm">
-                    {targetRoom?.name ?? tunnel.to}
-                    {tunnel.icon?.monsterSwordCost && (
-                      <span className="ml-1 text-red-400">👹{tunnel.icon.monsterSwordCost}⚔</span>
-                    )}
-                    {tunnel.icon?.locked && <span className="ml-1 text-amber-300">🔒</span>}
-                  </span>
-                  <button
-                    onClick={() => onMovePlayer(tunnel.to)}
-                    disabled={!isMyTurn}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                  >
-                    Ir ({bootCost}👢)
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        {myRoom?.isMarket && (
-          <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-            <h2 className="mb-2 text-sm font-semibold text-slate-300">Mercado (7💰 cada item)</h2>
-            <ul className="grid grid-cols-1 gap-2">
-              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm">
-                  <img src={masterKeyImageUrl} alt="" className="h-8 w-8 shrink-0 object-contain" />
-                  Chave-mestra {me?.hasMasterKey && "✓"}
-                </span>
-                <button
-                  onClick={() => onBuyMarketItem("key")}
-                  disabled={!isMyTurn || !snapshot.marketKeyAvailable || !!me?.hasMasterKey}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                >
-                  {snapshot.marketKeyAvailable ? "Comprar" : "Esgotado"}
-                </button>
-              </li>
-              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm">
-                  <img src={backpackImageUrl} alt="" className="h-8 w-8 shrink-0 object-contain" />
-                  Mochila {me?.hasBackpack && "✓"}
-                </span>
-                <button
-                  onClick={() => onBuyMarketItem("backpack")}
-                  disabled={!isMyTurn || !snapshot.marketBackpackAvailable || !!me?.hasBackpack}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                >
-                  {snapshot.marketBackpackAvailable ? "Comprar" : "Esgotado"}
-                </button>
-              </li>
-              <li className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="flex items-center gap-2 text-sm">
-                  {snapshot.marketCrownsAvailable[0] !== undefined && (
-                    <img
-                      src={crownImageUrl(snapshot.marketCrownsAvailable[0])}
-                      alt=""
-                      className="h-8 w-8 shrink-0 object-contain"
-                    />
-                  )}
-                  Coroa {snapshot.marketCrownsAvailable[0] !== undefined && `(${snapshot.marketCrownsAvailable[0]} pts)`}
-                </span>
-                <button
-                  onClick={() => onBuyMarketItem("crown")}
-                  disabled={!isMyTurn || snapshot.marketCrownsAvailable.length === 0}
-                  className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                >
-                  {snapshot.marketCrownsAvailable.length > 0 ? "Comprar" : "Esgotado"}
-                </button>
-              </li>
-            </ul>
-          </section>
-        )}
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Dungeon Row</h2>
-          <ul className="grid grid-cols-1 gap-2">
-            {snapshot.dungeonRowSlots.map((cardId, slotIndex) => {
-              if (!cardId) {
-                return (
-                  <li key={slotIndex} className="rounded-xl border border-dashed border-slate-700 px-3 py-2 text-sm text-slate-600">
-                    (vazio)
-                  </li>
-                );
-              }
-              const card = getCard(cardId);
-              const isMonster = card.kind === "monster";
-              return (
-                <li
-                  key={slotIndex}
-                  className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2 text-sm">
-                    <CardThumb cardId={cardId} name={card.name} />
-                    {card.name}
-                  </span>
-                  <button
-                    onClick={() => (isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex))}
-                    disabled={!isMyTurn}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                  >
-                    {isMonster ? `Lutar (${card.swordCost ?? 0}⚔)` : `Comprar (${card.skillCost ?? 0}✦)`}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Reserva</h2>
-          <ul className="grid grid-cols-1 gap-2">
-            {Object.entries(snapshot.reserveRemaining).map(([cardId, remaining]) => {
-              const card = getCard(cardId);
-              const isMonster = card.kind === "monster";
-              return (
-                <li
-                  key={cardId}
-                  className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2 text-sm">
-                    <CardThumb cardId={cardId} name={card.name} />
-                    {card.name} <span className="text-slate-500">×{remaining}</span>
-                  </span>
-                  <button
-                    onClick={() => onAcquireFromReserve(cardId)}
-                    disabled={!isMyTurn || remaining <= 0}
-                    className="shrink-0 rounded-lg bg-slate-700 px-3 py-2.5 text-xs font-semibold active:scale-95 disabled:opacity-40"
-                  >
-                    {isMonster ? `Lutar (${card.swordCost ?? 0}⚔)` : `Comprar (${card.skillCost ?? 0}✦)`}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Sua mão</h2>
-          <ul className="grid grid-cols-1 gap-2">
-            {hand.map((cardId, i) => (
-              <li key={`${cardId}-${i}`} className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2">
-                <span className="flex min-w-0 items-center gap-2 text-sm">
-                  <CardThumb cardId={cardId} name={cardName(cardId)} />
-                  {cardName(cardId)}
-                </span>
-                <button
-                  onClick={() => onPlayCard(cardId)}
-                  disabled={!isMyTurn}
-                  className="shrink-0 rounded-lg bg-amber-500 px-3 py-2.5 text-xs font-semibold text-slate-950 active:scale-95 disabled:opacity-40"
-                >
-                  Jogar
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <button
-          onClick={onEndTurn}
-          disabled={!isMyTurn}
-          className="rounded-xl bg-amber-500 px-4 py-4 text-base font-semibold text-slate-950 active:scale-[0.98] disabled:opacity-40"
-        >
-          Terminar turno
-        </button>
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Jogadores</h2>
-          <ul className="space-y-2">
-            {snapshot.players.map((p) => (
-              <li key={p.id} className="flex items-center justify-between rounded-xl bg-slate-800 px-3 py-2 text-sm">
-                <span className="flex items-center gap-2">
-                  <Avatar name={p.name} color={p.color} />
-                  {p.name}
-                  {!p.connected && <span className="text-slate-500">(desconectado)</span>}
-                  {p.knockedOut && <span className="text-red-400">(nocauteado)</span>}
-                  {p.hasLeftDungeon && <span className="text-emerald-400">(escapou)</span>}
-                </span>
-                <span className="text-slate-400">
-                  {BOARD.rooms[p.roomId]?.name ?? p.roomId} · {HEALTH_TRACK_SIZE - p.damage}❤ · {p.points}pts ·{" "}
-                  <img
-                    src="/assets/kenney/board-game-icons/skull.png"
-                    alt="clank"
-                    className="inline h-3 w-3 opacity-70"
-                  />{" "}
-                  {p.clank}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="rounded-2xl bg-slate-900/70 p-4 shadow-xl ring-1 ring-white/10">
-          <h2 className="mb-2 text-sm font-semibold text-slate-300">Eventos</h2>
-          <ul className="max-h-40 space-y-1 overflow-y-auto text-sm text-slate-400">
-            {snapshot.log.length === 0 && <li className="italic">Nenhum evento ainda.</li>}
-            {[...snapshot.log].reverse().map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
-        </section>
-      </div>
-    </main>
-  );
-}
 
 interface EndScreenProps {
   snapshot: RoomSnapshot;

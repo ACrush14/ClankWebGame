@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Criador de Mapa - Clank!</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+      background: #1e293b;
+      color: #f8fafc;
+    }
+    #sidebar {
+      width: 350px;
+      background: #0f172a;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow-y: auto;
+      border-right: 1px solid #334155;
+    }
+    #workspace {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #1e293b;
+    }
+    #map-container {
+      position: relative;
+      display: inline-block;
+      background: #000;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      transform-origin: top left;
+    }
+    #map-image {
+      width: 1200px; /* Largura padrão de trabalho */
+      height: auto;
+      display: block;
+      opacity: 0.8;
+    }
+    .node {
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      background: #475569;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: white;
+      font-weight: bold;
+      user-select: none;
+      z-index: 10;
+    }
+    .node.selected {
+      background: #f59e0b;
+      border-color: #fbbf24;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+    .node[data-type="entrance"] { background: #10b981; }
+    .node[data-type="market"] { background: #eab308; }
+    .node[data-type="depths"] { background: #8b5cf6; }
+    .node[data-type="crystal"] { background: #0ea5e9; }
+    .node[data-type="healing"] { background: #f43f5e; }
+
+    svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .edge {
+      stroke: #94a3b8;
+      stroke-width: 3;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .edge.selected {
+      stroke: #f59e0b;
+      stroke-width: 5;
+    }
+    .edge-hitbox {
+      stroke: transparent;
+      stroke-width: 15;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    input, select, button, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      box-sizing: border-box;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: white;
+      border-radius: 4px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover { background: #1d4ed8; }
+    button.danger { background: #ef4444; }
+    button.danger:hover { background: #b91c1c; }
+    
+    label { font-size: 12px; font-weight: bold; color: #94a3b8; }
+    .form-group { margin-bottom: 10px; }
+
+    .help-text {
+      font-size: 12px;
+      color: #94a3b8;
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h2>Editor de Mapa</h2>
+    <div class="help-text">
+      <b>Instruções:</b><br>
+      - <b>Clique no mapa:</b> Cria uma sala.<br>
+      - <b>Clique numa sala:</b> Seleciona ela.<br>
+      - <b>Arraste uma sala:</b> Move ela.<br>
+      - <b>Shift + Clique noutra sala:</b> Cria um túnel entre a sala selecionada e a clicada.<br>
+      - <b>Clique num túnel:</b> Seleciona ele.
+    </div>
+
+    <div id="editor-panel" style="display: none;">
+      <h3 id="editor-title" style="margin-top: 0;">Editando</h3>
+      
+      <div id="node-editor" style="display: none;">
+        <div class="form-group">
+          <label>ID da Sala (sem espaços, ex: sala-1)</label>
+          <input type="text" id="node-id">
+        </div>
+        <div class="form-group">
+          <label>Nome Visível</label>
+          <input type="text" id="node-name">
+        </div>
+        <div class="form-group">
+          <label>Tipo Específico</label>
+          <select id="node-type">
+            <option value="normal">Normal</option>
+            <option value="entrance">Entrada (Entrance)</option>
+            <option value="market">Mercado (Market)</option>
+            <option value="depths">Profundezas (Depths)</option>
+            <option value="crystal">Caverna de Cristal (Crystal Cave)</option>
+            <option value="healing">Fonte de Cura</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Artefato? (Valor)</label>
+          <select id="node-artifact">
+            <option value="">Nenhum</option>
+            <option value="5">5 (Anel)</option>
+            <option value="7">7 (Cruz)</option>
+            <option value="10">10 (Vaso)</option>
+            <option value="15">15 (Banana)</option>
+            <option value="20">20 (Escudo)</option>
+            <option value="25">25 (Armadura)</option>
+            <option value="30">30 (Orbe)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Santuário do Macaco?</label>
+          <select id="node-monkey">
+            <option value="false">Não</option>
+            <option value="true">Sim (3 ídolos)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Segredos (Tokens na Sala)</label>
+          <select id="node-secrets">
+            <option value="none">Nenhum</option>
+            <option value="major">1 Segredo Maior (Major Secret)</option>
+            <option value="minor">2 Segredos Menores (Minor Secrets)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="edge-editor" style="display: none;">
+        <div class="form-group">
+          <label>Restrições do Túnel</label>
+          <div style="margin-top: 8px;">
+            <label style="color: #fff; font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="edge-footprint" style="width: auto;"> 2 Botas (Pegadas)
+            </label>
+          </div>
+          <div style="margin-top: 8px;">
+            <label style="color: #fff; font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="edge-locked" style="width: auto;"> Cadeado (Requer Chave)
+            </label>
+          </div>
+          <div style="margin-top: 8px;">
+            <label style="color: #fff; font-weight: normal; cursor: pointer;">
+              <input type="checkbox" id="edge-oneway" style="width: auto;"> Caminho Único (Mão única)
+            </label>
+          </div>
+          <div style="margin-top: 8px;">
+            <label style="color: #fff; font-weight: normal; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+              Qtd Monstros:
+              <select id="edge-monster" style="width: 60px; padding: 2px;">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button class="danger" id="btn-delete">Excluir Selecionado</button>
+    </div>
+
+    <hr style="border-color: #334155; width: 100%; margin: 20px 0;">
+
+    <button id="btn-export" style="background: #10b981;">Gerar Código JSON</button>
+    <textarea id="export-area" rows="10" readonly style="font-family: monospace; font-size: 10px;"></textarea>
+  </div>
+
+  <div id="workspace">
+    <div id="map-container">
+      <img id="map-image" src="client/src/assets/board/ClankBoardCastle.jpg" alt="Mapa">
+      <svg id="edges-layer">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="25" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+          </marker>
+        </defs>
+      </svg>
+      <div id="nodes-layer"></div>
+      <button id="btn-generate" style="background: #10b981; margin-top: 20px;">Gerar Código JSON</button>
+      <button id="btn-download" style="background: #3b82f6; margin-top: 5px;">Baixar JSON (.json)</button>
+      <button id="btn-import" style="background: #8b5cf6; margin-top: 5px;">Importar JSON</button>
+      <input type="file" id="file-import" accept=".json" style="display:none">
+      
+      <div style="margin-top: 20px; font-size: 11px; color: #94a3b8; border-top: 1px solid #334155; padding-top: 10px;">
+        Progresso é salvo automaticamente no seu navegador.
+        <button id="btn-clear" class="danger" style="margin-top: 5px; font-size: 11px; padding: 4px;">Apagar Tudo (Zerar Progresso)</button>
+      </div>
+
+      <textarea id="output" rows="10" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById('map-container');
+    const nodesLayer = document.getElementById('nodes-layer');
+    const edgesLayer = document.getElementById('edges-layer');
+    
+    // Editor elements
+    let nodes = [];
+    let edges = [];
+    let selectedNodeId = null;
+    let selectedEdgeId = null;
+    let nodeCounter = 1;
+
+    const editorPanel = document.getElementById('editor-panel');
+    const editorTitle = document.getElementById('editor-title');
+    const nodeEditor = document.getElementById('node-editor');
+    const edgeEditor = document.getElementById('edge-editor');
+    
+    // Form elements (Node)
+    const iNodeId = document.getElementById('node-id');
+    const iNodeName = document.getElementById('node-name');
+    const iNodeType = document.getElementById('node-type');
+    const iNodeArtifact = document.getElementById('node-artifact');
+    const iNodeMonkey = document.getElementById('node-monkey');
+    const iNodeSecrets = document.getElementById('node-secrets');
+
+    // Form elements (Edge)
+    const iEdgeFootprint = document.getElementById('edge-footprint');
+    const iEdgeLocked = document.getElementById('edge-locked');
+    const iEdgeOneWay = document.getElementById('edge-oneway');
+    const iEdgeMonster = document.getElementById('edge-monster');
+
+    // Mapeamento original (para carregar se estiver vazio)
+    const ORIGINAL_POS = {
+      "entrance": { x: 200, y: 40 },
+      "mine-entry": { x: 200, y: 120 },
+      "guard-post": { x: 90, y: 200 },
+      "narrow-passage": { x: 310, y: 200 },
+      "market-room": { x: 200, y: 270 },
+      "crossroads": { x: 200, y: 340 },
+      "deep-tunnel": { x: 110, y: 410 },
+      "crystal-cave": { x: 290, y: 410 },
+      "depths-east": { x: 70, y: 490 },
+      "sealed-vault": { x: 200, y: 490 },
+      "depths-west": { x: 330, y: 490 },
+      "monkey-shrine": { x: 320, y: 340 },
+      "castle-hall": { x: 320, y: 80 },
+      "tower-passage": { x: 380, y: 150 },
+      "market-annex": { x: 380, y: 220 },
+      "healing-spring-1": { x: 20, y: 260 },
+      "crystal-cave-2": { x: 390, y: 270 },
+      "depths-north": { x: 390, y: 340 },
+      "crystal-cave-3": { x: 150, y: 375 },
+      "healing-spring-2": { x: 20, y: 450 },
+      "depths-south": { x: 200, y: 555 },
+      "depths-ring": { x: 80, y: 400 },
+      "depths-vase": { x: 380, y: 300 }
+    };
+
+    // Load from LocalStorage
+    const saved = localStorage.getItem('clankMapSave');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        nodes = data.nodes || [];
+        edges = data.edges || [];
+        nodeCounter = data.nodeCounter || 1;
+      } catch(e) {
+        console.error("Erro lendo save", e);
+      }
+    }
+    
+    if (nodes.length === 0) {
+      // Inicializa com as posições antigas se estiver vazio
+      Object.keys(ORIGINAL_POS).forEach((key, idx) => {
+        nodes.push({
+          id: key,
+          name: key,
+          x: ORIGINAL_POS[key].x,
+          y: ORIGINAL_POS[key].y,
+          type: 'normal', // simplificado, o usuario arruma
+          artifact: '',
+          monkey: false,
+          secrets: 'none'
+        });
+        nodeCounter++;
+      });
+    }
+
+    function autoSave() {
+      localStorage.setItem('clankMapSave', JSON.stringify({ nodes, edges, nodeCounter }));
+    }
+
+    // Add Node by clicking on map
+    container.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('map-image') || e.target === edgesLayer) {
+        const rect = container.getBoundingClientRect();
+        // Coordenadas exatas
+        const x = (e.clientX - rect.left);
+        const y = (e.clientY - rect.top);
+        
+        const newNode = {
+          id: `room-${nodeCounter++}`,
+          name: "Nova Sala",
+          x: Math.round(x),
+          y: Math.round(y),
+          type: 'normal',
+          artifact: '',
+          monkey: false,
+          secrets: 'none'
+        };
+        nodes.push(newNode);
+        selectNode(newNode.id);
+        render();
+      }
+    });
+
+    function selectNode(id) {
+      selectedNodeId = id;
+      selectedEdgeId = null;
+      updateEditor();
+      render();
+    }
+
+    function selectEdge(id) {
+      selectedEdgeId = id;
+      selectedNodeId = null;
+      updateEditor();
+      render();
+    }
+
+    function render() {
+      // Render Nodes
+      nodesLayer.innerHTML = '';
+      nodes.forEach(n => {
+        const div = document.createElement('div');
+        div.className = `node ${selectedNodeId === n.id ? 'selected' : ''}`;
+        div.style.left = `${n.x}px`;
+        div.style.top = `${n.y}px`;
+        div.dataset.type = n.type;
+        // show short id and indicate if it has secrets/artifact
+        let label = n.id.slice(0, 3);
+        if (n.artifact) label += ' 🏆';
+        if (n.secrets === 'major') label += ' ❓';
+        if (n.secrets === 'minor') label += ' ❔';
+        div.innerText = label;
+        div.title = n.id;
+        
+        div.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          if (e.shiftKey && selectedNodeId && selectedNodeId !== n.id) {
+            // Create Edge
+            const exists = edges.find(ed => 
+              (ed.a === selectedNodeId && ed.b === n.id) || 
+              (ed.a === n.id && ed.b === selectedNodeId)
+            );
+            if (!exists) {
+              const newEdge = { 
+                id: `edge-${Date.now()}`, 
+                a: selectedNodeId, 
+                b: n.id, 
+                footprint: false, 
+                locked: false, 
+                monster: 0, 
+                oneWay: false 
+              };
+              edges.push(newEdge);
+              selectEdge(newEdge.id);
+            }
+          } else {
+            selectNode(n.id);
+          }
+        });
+        
+        // Make draggable
+        let isDragging = false;
+        div.addEventListener('mousedown', (e) => {
+          if(e.shiftKey) return;
+          isDragging = true;
+          const onMove = (em) => {
+            if(!isDragging) return;
+            const rect = container.getBoundingClientRect();
+            n.x = Math.round(em.clientX - rect.left);
+            n.y = Math.round(em.clientY - rect.top);
+            render();
+          };
+          const onUp = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+
+        nodesLayer.appendChild(div);
+      });
+
+      // Render Edges
+      Array.from(edgesLayer.children).forEach(child => {
+        if (child.tagName.toLowerCase() !== 'defs') {
+          edgesLayer.removeChild(child);
+        }
+      });
+      edges.forEach(ed => {
+        const nodeA = nodes.find(n => n.id === ed.a);
+        const nodeB = nodes.find(n => n.id === ed.b);
+        if(!nodeA || !nodeB) return;
+
+        // Visual line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', nodeA.x);
+        line.setAttribute('y1', nodeA.y);
+        line.setAttribute('x2', nodeB.x);
+        line.setAttribute('y2', nodeB.y);
+        line.setAttribute('class', `edge ${selectedEdgeId === ed.id ? 'selected' : ''}`);
+        
+        if (ed.oneWay) {
+          line.setAttribute('stroke-dasharray', '10 5');
+          line.setAttribute('marker-end', 'url(#arrow)');
+        }
+        
+        let color = '#94a3b8'; // Normal
+        if (ed.footprint) color = '#cbd5e1';
+        if (ed.monster > 0) color = '#ef4444';
+        if (ed.locked) color = '#fbbf24';
+        if (selectedEdgeId !== ed.id) line.setAttribute('stroke', color);
+
+        // Hitbox line (invisible, thicker for clicking)
+        const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        hitbox.setAttribute('x1', nodeA.x);
+        hitbox.setAttribute('y1', nodeA.y);
+        hitbox.setAttribute('x2', nodeB.x);
+        hitbox.setAttribute('y2', nodeB.y);
+        hitbox.setAttribute('class', 'edge-hitbox');
+        hitbox.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          selectEdge(ed.id);
+        });
+
+        edgesLayer.appendChild(line);
+        edgesLayer.appendChild(hitbox);
+
+        // Icons on edge
+        const midX = (nodeA.x + nodeB.x) / 2;
+        const midY = (nodeA.y + nodeB.y) / 2;
+        let icons = [];
+        if (ed.locked) icons.push('🔒');
+        if (ed.footprint) icons.push('👣2');
+        if (ed.monster > 0) icons.push(`👹${ed.monster}`);
+        
+        if (icons.length > 0) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', midX);
+          text.setAttribute('y', midY - 6);
+          text.setAttribute('text-anchor', 'middle');
+          text.setAttribute('font-size', '14');
+          text.setAttribute('fill', '#fff');
+          text.setAttribute('font-weight', 'bold');
+          text.setAttribute('style', 'pointer-events: none; text-shadow: 0 0 4px #000;');
+          text.textContent = icons.join(' ');
+          edgesLayer.appendChild(text);
+        }
+      });
+      
+      autoSave();
+    }
+
+    function updateEditor() {
+      if (selectedNodeId) {
+        editorPanel.style.display = 'block';
+        nodeEditor.style.display = 'block';
+        edgeEditor.style.display = 'none';
+        editorTitle.innerText = "Editando Sala";
+        
+        const n = nodes.find(x => x.id === selectedNodeId);
+        iNodeId.value = n.id;
+        iNodeName.value = n.name;
+        iNodeType.value = n.type;
+        iNodeArtifact.value = n.artifact || '';
+        iNodeMonkey.value = n.monkey ? "true" : "false";
+        iNodeSecrets.value = n.secrets || 'none';
+      } else if (selectedEdgeId) {
+        editorPanel.style.display = 'block';
+        nodeEditor.style.display = 'none';
+        edgeEditor.style.display = 'block';
+        editorTitle.innerText = "Editando Túnel";
+
+        const ed = edges.find(x => x.id === selectedEdgeId);
+        iEdgeFootprint.checked = ed.footprint;
+        iEdgeLocked.checked = ed.locked;
+        iEdgeOneWay.checked = ed.oneWay;
+        iEdgeMonster.value = ed.monster.toString();
+      } else {
+        editorPanel.style.display = 'none';
+      }
+    }
+
+    // Node updates
+    const saveNode = () => {
+      const n = nodes.find(x => x.id === selectedNodeId);
+      if(!n) return;
+      
+      const oldId = n.id;
+      const newId = iNodeId.value.trim().replace(/[^a-zA-Z0-9_-]/g, '') || oldId;
+      
+      // se mudou ID, atualiza arestas
+      if(oldId !== newId) {
+        edges.forEach(ed => {
+          if(ed.a === oldId) ed.a = newId;
+          if(ed.b === oldId) ed.b = newId;
+        });
+        n.id = newId;
+        selectedNodeId = newId;
+      }
+      
+      n.name = iNodeName.value;
+      n.type = iNodeType.value;
+      n.artifact = iNodeArtifact.value;
+      n.monkey = iNodeMonkey.value === "true";
+      n.secrets = iNodeSecrets.value;
+      render();
+    };
+    iNodeId.addEventListener('change', saveNode);
+    iNodeName.addEventListener('input', saveNode);
+    iNodeType.addEventListener('change', saveNode);
+    iNodeArtifact.addEventListener('change', saveNode);
+    iNodeMonkey.addEventListener('change', saveNode);
+    iNodeSecrets.addEventListener('change', saveNode);
+
+    // Edge updates
+    const saveEdge = () => {
+      const ed = edges.find(x => x.id === selectedEdgeId);
+      if(!ed) return;
+      ed.footprint = iEdgeFootprint.checked;
+      ed.locked = iEdgeLocked.checked;
+      ed.oneWay = iEdgeOneWay.checked;
+      ed.monster = parseInt(iEdgeMonster.value) || 0;
+      render();
+    };
+    iEdgeFootprint.addEventListener('change', saveEdge);
+    iEdgeLocked.addEventListener('change', saveEdge);
+    iEdgeOneWay.addEventListener('change', saveEdge);
+    iEdgeMonster.addEventListener('change', saveEdge);
+
+    // Delete
+    document.getElementById('btn-delete').addEventListener('click', () => {
+      if (selectedNodeId) {
+        nodes = nodes.filter(x => x.id !== selectedNodeId);
+        edges = edges.filter(x => x.a !== selectedNodeId && x.b !== selectedNodeId);
+        selectedNodeId = null;
+      } else if (selectedEdgeId) {
+        edges = edges.filter(x => x.id !== selectedEdgeId);
+        selectedEdgeId = null;
+      }
+      updateEditor();
+      render();
+    });
+
+    // Export JSON
+    document.getElementById('btn-export').addEventListener('click', () => {
+      // Build ROOM_SPECS
+      const roomSpecs = nodes.map(n => {
+        let spec = { id: n.id, name: n.name };
+        if (n.type === 'entrance') spec.isEntrance = true;
+        if (n.type === 'market') spec.isMarket = true;
+        if (n.type === 'depths') spec.isDepths = true;
+        if (n.type === 'crystal') spec.isCrystalCave = true;
+        if (n.type === 'healing') spec.isFountainOfHealing = true;
+        if (n.artifact) {
+          spec.artifactValue = parseInt(n.artifact);
+          spec.isDepths = true; // Artefatos ficam nas profundezas
+        }
+        if (n.monkey) {
+          spec.monkeyIdolNames = ["Macaco Surdo", "Macaco Cego", "Macaco Mudo"];
+        }
+        if (n.secrets === 'major') {
+          spec.majorSecret = true;
+        } else if (n.secrets === 'minor') {
+          spec.minorSecrets = 2;
+        }
+        return spec;
+      });
+
+      // Build EDGE_SPECS
+      const edgeSpecs = edges.map(ed => {
+        let spec = { a: ed.a, b: ed.b };
+        if (ed.oneWay) spec.oneWay = true;
+        
+        if (ed.footprint || ed.locked || ed.monster > 0) {
+          spec.icon = {};
+          if (ed.footprint) spec.icon.footprint = true;
+          if (ed.locked) spec.icon.locked = true;
+          if (ed.monster > 0) spec.icon.monsterSwordCost = ed.monster;
+        }
+        return spec;
+      });
+
+      // Build ROOM_POSITIONS
+      const roomPositions = {};
+      nodes.forEach(n => {
+        roomPositions[n.id] = { x: n.x, y: n.y };
+      });
+
+      const output = {
+        ROOM_SPECS: roomSpecs,
+        EDGE_SPECS: edgeSpecs,
+        ROOM_POSITIONS: roomPositions
+      };
+
+      document.getElementById('export-area').value = JSON.stringify(output, null, 2);
+    });
+
+    // Clear Progress
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      if (confirm('Tem certeza que deseja apagar todo o seu progresso? Isso não pode ser desfeito.')) {
+        localStorage.removeItem('clankMapSave');
+        location.reload();
+      }
+    });
+
+    // Download JSON
+    document.getElementById('btn-download').addEventListener('click', () => {
+      document.getElementById('btn-export').click();
+      const content = document.getElementById('export-area').value;
+      if (!content) return;
+      const blob = new Blob([content], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "map_save.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Import JSON
+    document.getElementById('btn-import').addEventListener('click', () => {
+      document.getElementById('file-import').click();
+    });
+    document.getElementById('file-import').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const content = JSON.parse(ev.target.result);
+          if (content.nodes && content.edges) {
+            localStorage.setItem('clankMapSave', JSON.stringify(content));
+            alert('Importado com sucesso! A página será recarregada.');
+            location.reload();
+          } else {
+            alert('Arquivo JSON inválido para este mapa.');
+          }
+        } catch (err) {
+          alert('Erro ao ler arquivo JSON.');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Init
+    render();
+  </script>
+</body>
+</html>
