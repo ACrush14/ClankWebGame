@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import type { RoomSnapshot } from "./useClankRoom";
@@ -118,6 +119,43 @@ function CardDetailModal({ cardId, onClose }: { cardId: string; onClose: () => v
   );
 }
 
+interface HoverInfo {
+  cardId: string;
+  rect: DOMRect;
+}
+
+/**
+ * Tooltip de hover (mouse) com nome, custo e descrição em português — renderizado via
+ * portal direto em `document.body` de propósito: os cards ficam dentro de containers
+ * com `overflow-x-auto`/`overflow-y-auto` (mão, Masmorra, Reserva), e um tooltip
+ * absolutamente posicionado DENTRO desses containers seria cortado pelo overflow
+ * mesmo com z-index alto. Só existe em telas com mouse de verdade (desktop) — em
+ * touch não há `onMouseEnter` de verdade, por isso o botão "ⓘ"/modal continua sendo o
+ * caminho principal pra ler a carta no celular.
+ */
+function HoverCardTooltip({ hover }: { hover: HoverInfo | null }) {
+  if (!hover) return null;
+  const card = getCard(hover.cardId);
+  const isMonster = card.kind === "monster";
+  const top = Math.max(8, hover.rect.top - 8);
+  const left = Math.min(Math.max(140, hover.rect.left + hover.rect.width / 2), window.innerWidth - 140);
+
+  return createPortal(
+    <div
+      className="pointer-events-none fixed z-[70] w-64 -translate-x-1/2 -translate-y-full rounded-xl bg-slate-950/95 p-3 text-left shadow-2xl ring-1 ring-amber-400/30"
+      style={{ top, left }}
+    >
+      <p className="text-sm font-bold text-slate-100">{card.nomePt}</p>
+      <p className="text-xs font-semibold text-amber-400">
+        {isMonster ? `${card.swordCost ?? 0} Swords pra vencer` : `${card.skillCost ?? 0} Skill pra adquirir`}
+        {card.points ? ` · ${card.points} pts` : ""}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-300">{card.descriptionPt}</p>
+    </div>,
+    document.body,
+  );
+}
+
 export function GameScreen({
   mySessionId,
   snapshot,
@@ -137,6 +175,10 @@ export function GameScreen({
   onLeave,
 }: GameScreenProps) {
   const [detailCardId, setDetailCardId] = useState<string | null>(null);
+  const [hover, setHover] = useState<HoverInfo | null>(null);
+  const showHover = (cardId: string) => (e: React.MouseEvent<HTMLElement>) =>
+    setHover({ cardId, rect: e.currentTarget.getBoundingClientRect() });
+  const hideHover = () => setHover(null);
   const isMyTurn = snapshot.currentPlayerId === mySessionId;
   const me = snapshot.players.find((p) => p.id === mySessionId);
   const myRoom = me ? BOARD.rooms[me.roomId] : undefined;
@@ -151,6 +193,7 @@ export function GameScreen({
       <AnimatePresence>
         {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
       </AnimatePresence>
+      <HoverCardTooltip hover={hover} />
 
       {/* LEFT SIDEBAR: Dragon + Players */}
       <aside className="flex w-full shrink-0 flex-col border-b border-slate-800 bg-slate-900 z-10 shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:h-full md:w-64 md:border-b-0 md:border-r md:shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
@@ -303,6 +346,8 @@ export function GameScreen({
                         onKeyDown={(e) => {
                           if (isMyTurn && (e.key === "Enter" || e.key === " ")) onPlayCard(cardId);
                         }}
+                        onMouseEnter={showHover(cardId)}
+                        onMouseLeave={hideHover}
                         whileHover={isMyTurn ? { y: -20, rotate: -2, zIndex: 30 } : undefined}
                         whileTap={isMyTurn ? { scale: 0.95 } : undefined}
                         className={`group relative -ml-8 first:ml-0 sm:-ml-12 rounded-lg shadow-2xl transition-shadow ${isMyTurn ? "cursor-pointer" : "opacity-80 cursor-default"}`}
@@ -435,6 +480,8 @@ export function GameScreen({
                         if (!isMyTurn || (e.key !== "Enter" && e.key !== " ")) return;
                         isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex);
                       }}
+                      onMouseEnter={showHover(cardId)}
+                      onMouseLeave={hideHover}
                       className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 hover:shadow-[0_0_15px_rgba(251,191,36,0.3)] transition-all active:scale-95 flex flex-col ${isMyTurn ? "cursor-pointer" : "opacity-60 cursor-default"}`}
                     >
                       <InfoButton onClick={() => setDetailCardId(cardId)} />
@@ -481,7 +528,8 @@ export function GameScreen({
                     onKeyDown={(e) => {
                       if (canAct && (e.key === "Enter" || e.key === " ")) onAcquireFromReserve(cardId);
                     }}
-                    title={`${card.nomePt} (${remaining} restantes) — ${card.descriptionPt}`}
+                    onMouseEnter={showHover(cardId)}
+                    onMouseLeave={hideHover}
                     className={`relative group aspect-[2/3] rounded-lg border border-slate-700 bg-slate-800 overflow-hidden hover:border-amber-400 transition-all active:scale-95 ${canAct ? "cursor-pointer" : "opacity-40 cursor-default"}`}
                   >
                     <InfoButton onClick={() => setDetailCardId(cardId)} />
