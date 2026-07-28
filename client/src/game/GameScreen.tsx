@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
 import type { RoomSnapshot } from "./useClankRoom";
 import { cardImageUrl } from "./cardImages";
@@ -76,14 +76,12 @@ function CardDetailModal({ cardId, onClose }: { cardId: string; onClose: () => v
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       onClick={onClose}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 px-4"
     >
       <motion.div
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.92, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
         className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-slate-900 p-4 shadow-2xl ring-1 ring-white/10"
       >
@@ -234,9 +232,10 @@ export function GameScreen({
 
   return (
     <main className="flex h-dvh w-dvw flex-col overflow-y-auto bg-slate-950 font-sans text-slate-100 select-none md:flex-row md:overflow-hidden">
-      <AnimatePresence>
-        {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
-      </AnimatePresence>
+      {/* Sem AnimatePresence: exit nunca completa nesse ambiente (ver nota grande mais abaixo,
+          na mão) — aqui seria pior que fantasma, travaria a tela inteira (modal em tela cheia
+          que nunca some ao fechar). Sem exit, fecha instantâneo; entrada continua animada. */}
+      {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
       <HoverCardTooltip hover={hover} />
 
       {/* LEFT SIDEBAR: Dragon + Players */}
@@ -310,36 +309,34 @@ export function GameScreen({
       {/* CENTER: Board + Bottom Panel */}
       <section className="flex min-h-[60vh] flex-1 flex-col relative overflow-hidden bg-slate-950 md:min-h-0">
 
-        <AnimatePresence>
-          {isMyTurn && snapshot.pendingChoice && (
-            <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
-          )}
-        </AnimatePresence>
+        {isMyTurn && snapshot.pendingChoice && (
+          <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
+        )}
 
-        {/* Banner de turno — bem visível quem está jogando agora, pedido explícito de playtest */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={snapshot.currentPlayerId}
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            className="absolute inset-x-0 top-0 z-30 flex justify-center pt-2"
-          >
-            {isMyTurn ? (
-              <span className="animate-pulse rounded-full bg-amber-500 px-5 py-1.5 text-sm font-black uppercase tracking-widest text-amber-950 shadow-[0_0_20px_rgba(251,191,36,0.5)]">
-                Sua vez!
-              </span>
-            ) : (
-              <span
-                className="flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-1.5 text-sm font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur"
-                style={{ boxShadow: currentPlayer ? `0 0 16px ${currentPlayer.color}55` : undefined }}
-              >
-                {currentPlayer && <Avatar name={currentPlayer.name} color={currentPlayer.color} />}
-                Vez de {currentPlayer?.name ?? "?"}
-              </span>
-            )}
-          </motion.div>
-        </AnimatePresence>
+        {/* Banner de turno — bem visível quem está jogando agora, pedido explícito de playtest.
+            Sem AnimatePresence/mode="wait": nesse ambiente o exit nunca completa, e com
+            mode="wait" isso travaria o banner ANTIGO pra sempre (a troca de jogador nunca
+            apareceria, já que o "wait" espera o exit terminar antes de montar o próximo). */}
+        <motion.div
+          key={snapshot.currentPlayerId}
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute inset-x-0 top-0 z-30 flex justify-center pt-2"
+        >
+          {isMyTurn ? (
+            <span className="animate-pulse rounded-full bg-amber-500 px-5 py-1.5 text-sm font-black uppercase tracking-widest text-amber-950 shadow-[0_0_20px_rgba(251,191,36,0.5)]">
+              Sua vez!
+            </span>
+          ) : (
+            <span
+              className="flex items-center gap-2 rounded-full bg-slate-900/90 px-4 py-1.5 text-sm font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur"
+              style={{ boxShadow: currentPlayer ? `0 0 16px ${currentPlayer.color}55` : undefined }}
+            >
+              {currentPlayer && <Avatar name={currentPlayer.name} color={currentPlayer.color} />}
+              Vez de {currentPlayer?.name ?? "?"}
+            </span>
+          )}
+        </motion.div>
 
         {/* Board Area */}
         <div className="relative flex-1 overflow-hidden">
@@ -358,18 +355,15 @@ export function GameScreen({
             onRoomClick={isMyTurn ? onMovePlayer : undefined}
           />
 
-          <AnimatePresence>
-            {actionError && (
-              <motion.div
-                initial={{ opacity: 0, y: -20, x: '-50%' }}
-                animate={{ opacity: 1, y: 0, x: '-50%' }}
-                exit={{ opacity: 0, y: -20, x: '-50%' }}
-                className="absolute top-6 left-1/2 z-50 rounded-xl bg-red-950/90 px-6 py-3 text-sm font-semibold text-red-200 shadow-2xl ring-1 ring-red-500/50 backdrop-blur-sm pointer-events-none"
-              >
-                {actionError}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {actionError && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              className="absolute top-6 left-1/2 z-50 rounded-xl bg-red-950/90 px-6 py-3 text-sm font-semibold text-red-200 shadow-2xl ring-1 ring-red-500/50 backdrop-blur-sm pointer-events-none"
+            >
+              {actionError}
+            </motion.div>
+          )}
 
           {/* Floating Actions overlay for current room */}
           <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
@@ -548,8 +542,10 @@ export function GameScreen({
           <div>
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 px-1">Masmorra</h3>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">
-              <AnimatePresence mode="popLayout">
-                {snapshot.dungeonRowSlots.map((cardId, slotIndex) => {
+              {/* Sem AnimatePresence: mesmo problema da mão (exit nunca completa nesse
+                  ambiente) — aqui travaria o card antigo visível pra sempre ocupando uma
+                  célula extra do grid a cada compra/derrota, bagunçando o layout de vez. */}
+              {snapshot.dungeonRowSlots.map((cardId, slotIndex) => {
                   if (!cardId) {
                     return (
                       <div key={slotIndex} className="aspect-[2/3] rounded-lg border-2 border-dashed border-slate-700 bg-slate-800/30 flex items-center justify-center">
@@ -571,7 +567,6 @@ export function GameScreen({
                       aria-label={`${isMonster ? "Atacar" : "Comprar"} ${card.nomePt}`}
                       initial={{ opacity: 0, scale: 0.85 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.85 }}
                       onClick={() => isMyTurn && (isMonster ? onFightMonster(slotIndex) : onAcquireCard(slotIndex))}
                       onKeyDown={(e) => {
                         if (!isMyTurn || (e.key !== "Enter" && e.key !== " ")) return;
@@ -602,26 +597,25 @@ export function GameScreen({
                           {isMonster ? 'Atacar' : 'Comprar'}
                         </span>
                       </div>
-                      {/* Flash de "comprada"/"derrotado" -- acende quando ESSE slot acabou de trocar de carta */}
-                      <AnimatePresence>
-                        {dungeonFlashes[slotIndex] && (
-                          <motion.div
-                            initial={{ opacity: 0.95 }}
-                            animate={{ opacity: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.75 }}
-                            className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg text-center text-xs font-black uppercase leading-tight tracking-wide ${
-                              dungeonFlashes[slotIndex] === "bought" ? "bg-amber-400/60 text-amber-950" : "bg-red-500/60 text-red-950"
-                            }`}
-                          >
-                            {dungeonFlashes[slotIndex] === "bought" ? "Comprada!" : "Derrotado!"}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {/* Flash de "comprada"/"derrotado" -- acende quando ESSE slot acabou de
+                          trocar de carta. Sem AnimatePresence/exit (mesmo motivo de cima) —
+                          o próprio `animate` já desvanece pra opacity 0 antes do estado
+                          limpar (800ms), então não perde o efeito visual removendo o exit. */}
+                      {dungeonFlashes[slotIndex] && (
+                        <motion.div
+                          initial={{ opacity: 0.95 }}
+                          animate={{ opacity: 0 }}
+                          transition={{ duration: 0.75 }}
+                          className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-lg text-center text-xs font-black uppercase leading-tight tracking-wide ${
+                            dungeonFlashes[slotIndex] === "bought" ? "bg-amber-400/60 text-amber-950" : "bg-red-500/60 text-red-950"
+                          }`}
+                        >
+                          {dungeonFlashes[slotIndex] === "bought" ? "Comprada!" : "Derrotado!"}
+                        </motion.div>
+                      )}
                     </motion.div>
                   );
                 })}
-              </AnimatePresence>
             </div>
           </div>
 

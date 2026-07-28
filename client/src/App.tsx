@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useClankRoom } from "./game/useClankRoom";
 import type { ChoiceIcon, PendingChoiceSnapshot, RoomSnapshot } from "./game/useClankRoom";
 import { cardImageUrl } from "./game/cardImages";
@@ -65,7 +65,6 @@ export function ChoiceModal({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4"
     >
       <motion.div
@@ -344,14 +343,15 @@ function LobbyScreen({
           <h2 className="mb-2 text-sm font-semibold text-slate-300">
             Jogadores ({snapshot.players.length}/4)
           </h2>
+          {/* Sem AnimatePresence: exit nunca completa nesse ambiente (framer-motion 12 +
+              React 19) — remover um bot/jogador deixaria a linha antiga travada na tela
+              pra sempre. Sem exit, a linha só some instantâneo; entrada continua animada. */}
           <ul className="space-y-2">
-            <AnimatePresence initial={false}>
-              {snapshot.players.map((p) => (
+            {snapshot.players.map((p) => (
                 <motion.li
                   key={p.id}
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
                   className="flex items-center justify-between rounded-xl bg-slate-800 px-4 py-3"
                 >
                   <span className="flex items-center gap-2">
@@ -380,8 +380,7 @@ function LobbyScreen({
                     )}
                   </span>
                 </motion.li>
-              ))}
-            </AnimatePresence>
+            ))}
           </ul>
           {snapshot.players.length < 4 && (
             <button

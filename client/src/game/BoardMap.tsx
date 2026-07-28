@@ -1,6 +1,10 @@
+import { useRef, useState } from "react";
 import { BOARD } from "@clank/engine";
 import boardPhoto from "../assets/board/ClankBoardCastle.jpg";
 import { artifactImageUrl } from "./tokenImages";
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 4;
 
 /**
  * Layout manual (x, y em coordenadas do viewBox) — o layout do BOARD (engine/src/board.ts)
@@ -197,6 +201,58 @@ function roomFill(room: (typeof BOARD.rooms)[string], isCurrent: boolean) {
 }
 
 export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick, reachableRoomIds }: BoardMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number; moved: boolean } | null>(null);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  const clampPan = (nextScale: number, x: number, y: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const maxX = rect ? (rect.width * (nextScale - 1)) / 2 : 0;
+    const maxY = rect ? (rect.height * (nextScale - 1)) / 2 : 0;
+    return { x: Math.min(maxX, Math.max(-maxX, x)), y: Math.min(maxY, Math.max(-maxY, y)) };
+  };
+
+  const zoomBy = (factor: number) => {
+    setScale((s) => {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s * factor));
+      setPan((p) => clampPan(next, p.x, p.y));
+      return next;
+    });
+  };
+
+  const resetView = () => {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15);
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (scale <= MIN_ZOOM) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y, moved: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    const dy = e.clientY - drag.startY;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
+    setPan(clampPan(scale, drag.startPanX + dx, drag.startPanY + dy));
+  };
+
+  const justDraggedRef = useRef(false);
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.moved) justDraggedRef.current = true;
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
   const rooms = Object.values(BOARD.rooms);
   const edges: { from: string; to: string; icon?: { monsterSwordCost?: number; footprint?: boolean; locked?: boolean }; oneWay?: boolean }[] = [];
   const seen = new Set<string>();
@@ -223,20 +279,37 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
   }
 
   return (
-    <div className="relative overflow-hidden rounded-lg" style={{ aspectRatio: "1200 / 1200" }}>
-      <img
-        src={boardPhoto}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 h-full w-full object-contain opacity-40"
-      />
-      <div className="absolute inset-0 bg-slate-950/45" />
-      <svg
-        viewBox="0 0 1200 1200"
-        className="absolute inset-0 h-full w-full select-none"
-        role="img"
-        aria-label="Mapa da masmorra"
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden rounded-lg touch-none"
+      style={{ cursor: scale > MIN_ZOOM ? "grab" : "default" }}
+      onWheel={onWheel}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+          transformOrigin: "center center",
+        }}
       >
+        <img
+          src={boardPhoto}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-contain opacity-40"
+        />
+        <div className="absolute inset-0 bg-slate-950/45" />
+        <svg
+          viewBox="0 0 1200 1200"
+          className="absolute inset-0 h-full w-full select-none"
+          role="img"
+          aria-label="Mapa da masmorra"
+          preserveAspectRatio="xMidYMid meet"
+        >
       {edges.map((edge, i) => {
         const a = ROOM_POSITIONS[edge.from];
         const b = ROOM_POSITIONS[edge.to];
@@ -284,7 +357,17 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
         return (
           <g
             key={room.id}
-            onClick={onRoomClick && isReachable ? () => onRoomClick(room.id) : undefined}
+            onClick={
+              onRoomClick && isReachable
+                ? () => {
+                    if (justDraggedRef.current) {
+                      justDraggedRef.current = false;
+                      return;
+                    }
+                    onRoomClick(room.id);
+                  }
+                : undefined
+            }
             style={{ cursor: onRoomClick && isReachable ? "pointer" : "default" }}
           >
             <circle
@@ -354,7 +437,38 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
           </g>
         );
       })}
-      </svg>
+        </svg>
+      </div>
+
+      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={() => zoomBy(1.4)}
+          disabled={scale >= MAX_ZOOM}
+          aria-label="Aumentar zoom"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => zoomBy(1 / 1.4)}
+          disabled={scale <= MIN_ZOOM}
+          aria-label="Diminuir zoom"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-lg font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+        >
+          −
+        </button>
+        <button
+          type="button"
+          onClick={resetView}
+          disabled={scale === MIN_ZOOM && pan.x === 0 && pan.y === 0}
+          aria-label="Resetar zoom"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900/80 text-xs font-bold text-slate-100 shadow-lg ring-1 ring-white/10 backdrop-blur active:scale-95 disabled:opacity-30"
+        >
+          ⤾
+        </button>
+      </div>
     </div>
   );
 }
