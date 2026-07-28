@@ -720,7 +720,6 @@ export function GameScreen({
                   return (
                     <motion.div
                       key={`${slotIndex}-${cardId}`}
-                      layout
                       role="button"
                       tabIndex={isMyTurn ? 0 : -1}
                       aria-disabled={!isMyTurn}
