@@ -10,7 +10,7 @@ import {
   monkeyIdolImageUrl,
 } from "./tokenImages";
 import { BoardMap } from "./BoardMap";
-import { Avatar, CardThumb, ChoiceModal } from "../App";
+import { Avatar, ChoiceModal } from "../App";
 
 export interface GameScreenProps {
   mySessionId: string;

@@ -1,30 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BOARD, getCard, HEALTH_TRACK_SIZE } from "@clank/engine";
 import { useClankRoom } from "./game/useClankRoom";
 import type { ChoiceIcon, PendingChoiceSnapshot, RoomSnapshot } from "./game/useClankRoom";
 import { cardImageUrl } from "./game/cardImages";
-import {
-  artifactImageUrl,
-  backpackImageUrl,
-  choiceTokenImageUrl,
-  crownImageUrl,
-  masterKeyImageUrl,
-  monkeyIdolImageUrl,
-} from "./game/tokenImages";
-import { BoardMap } from "./game/BoardMap";
+import { choiceTokenImageUrl } from "./game/tokenImages";
 import { PLAYER_COLORS } from "./game/playerColors";
 import { GameScreen } from "./game/GameScreen";
-
-function cardName(id: string): string {
-  if (!id) return "";
-  try {
-    return getCard(id).name;
-  } catch {
-    return id;
-  }
-}
-
 /** Avatar sem arte oficial: círculo colorido com a inicial do nome. */
 export function Avatar({ name, color, size = "sm" }: { name: string; color: string; size?: "sm" | "md" }) {
   const initial = name.trim().charAt(0).toUpperCase() || "?";
