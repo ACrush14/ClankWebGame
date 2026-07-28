@@ -480,7 +480,7 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
     );
     const player = game.currentPlayer;
     player.clank = 1;
-    game.state.dragon.rageTrackPosition = 1; // sozinho sortearia 0 cubos (posição - 1 = 0)
+    game.state.dragon.rageTrackPosition = 1; // casa 1 sozinha sorteia 2 cubos (RAGE_TRACK_CUBES[0])
     game.state.dungeonRow.slots[1] = "kobold"; // Danger — está na Dungeon Row
     game.state.dungeonRow.slots[0] = "animated-door";
     game.state.dungeonRow.drawPile.unshift("sneak"); // carta de reposição sem símbolo de ataque
@@ -493,11 +493,15 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
     const triggerAttack = (
       game as unknown as { triggerDragonAttack: (extra?: number) => void }
     ).triggerDragonAttack.bind(game);
-    triggerAttack(0); // rageTrackPosition=1 -> 0 base + 0 extra + 1 (Danger) = 1 cubo sorteado
+    // rageTrackPosition=1 -> 2 base + 0 extra + 1 (Danger) = 3 cubos sorteados; mas só existe
+    // 1 ticket do jogador (clank=1) no saco, os outros 2 sorteios caem em cubos pretos — o
+    // dano esperado continua sendo exatamente 1 (o rng determinístico sempre pega o índice 0,
+    // e depois que o ticket do jogador é removido só sobra cubo preto pra sortear).
+    triggerAttack(0);
     expect(player.damage).toBe(1);
   });
 
-  it("sem carta de Danger na fileira, não soma cubo extra", () => {
+  it("sem carta de Danger na fileira, não soma cubo extra além da base da trilha", () => {
     const game = new GameEngine(
       [
         { id: "p1", name: "A" },
@@ -506,14 +510,14 @@ describe("PERIGO (Danger) — bônus de cubo no ataque do dragão", () => {
       () => 0,
     );
     const player = game.currentPlayer;
-    player.clank = 1;
+    player.clank = 0; // sem ticket do jogador no saco -- qualquer cubo sorteado é preto, sem dano
     game.state.dragon.rageTrackPosition = 1;
     game.state.dungeonRow.slots[0] = "animated-door"; // sem Danger
 
     const triggerAttack = (
       game as unknown as { triggerDragonAttack: (extra?: number) => void }
     ).triggerDragonAttack.bind(game);
-    triggerAttack(0); // 0 base + 0 extra + 0 Danger = 0 cubos sorteados
+    triggerAttack(0); // 2 base (casa 1) + 0 extra + 0 Danger = 2 cubos pretos sorteados, sem dano
 
     expect(player.damage).toBe(0);
   });
@@ -818,9 +822,18 @@ describe("leaveDungeon e fim de jogo", () => {
     expect(() => game.leaveDungeon(player.id)).toThrow(/entrada/i);
   });
 
+  it("lança erro se não estiver carregando nenhum artefato (CONFIRMADO no playtest do jogo físico)", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    expect(() => game.leaveDungeon(player.id)).toThrow(/pelo menos 1 artefato/i);
+  });
+
   it("sair pela primeira vez começa a Trilha de Contagem Regressiva", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
+    player.roomId = "room-41"; // precisa de artefato pra sair
+    game.takeArtifact(player.id);
+    player.roomId = "entrance";
 
     game.leaveDungeon(player.id);
 
@@ -832,19 +845,26 @@ describe("leaveDungeon e fim de jogo", () => {
   it("termina a partida e calcula a pontuação quando todos saem/são nocauteados", () => {
     const game = twoPlayerGame();
     const [p1, p2] = game.state.players;
-    p1.points = 10; // artefato pego
+    p1.roomId = "room-43"; // Vaso, 10 pontos
+    game.takeArtifact(p1.id);
+    p1.roomId = "entrance";
 
     game.leaveDungeon(p1.id); // já avança a vez sozinho (não tem mais o que fazer depois de sair)
     expect(game.currentPlayer.id).toBe(p2.id);
 
+    p2.roomId = "room-41"; // 7 pontos — também precisa de artefato pra sair
+    game.takeArtifact(p2.id);
+    p2.roomId = "entrance";
     game.leaveDungeon(p2.id);
 
     expect(game.state.phase).toBe("ended");
     expect(game.state.finalScores).toBeDefined();
-    expect(game.state.finalScores![p1.id]).toBe(10);
+    // 10 (Vaso) + 20 (Mastery) -- desde que sair exige carregar artefato, quem sai
+    // pela Entrada SEMPRE carrega um, então sempre ganha o bônus de Mastery agora.
+    expect(game.state.finalScores![p1.id]).toBe(30);
   });
 
-  it("Mastery: +20 pontos pra quem escapa carregando um artefato antes de ser nocauteado", () => {
+  it("Mastery: +20 pontos só pra quem ESCAPA carregando artefato — nocauteado com artefato é só resgatado, sem o bônus", () => {
     const game = twoPlayerGame();
     const [p1, p2] = game.state.players;
     p1.roomId = "room-41"; // 7 pontos
@@ -852,10 +872,15 @@ describe("leaveDungeon e fim de jogo", () => {
     p1.roomId = "entrance";
 
     game.leaveDungeon(p1.id); // escapou carregando artefato -> ganha Mastery
-    game.leaveDungeon(p2.id); // p2 não tem artefato -> sem Mastery
+
+    p2.roomId = "room-47"; // 15 pontos
+    game.takeArtifact(p2.id); // p2 carrega um artefato, mas não escapa — é nocauteado
+    p2.damage = 10;
+    p2.knockedOut = true;
+    (game as unknown as { checkGameEnd: () => void }).checkGameEnd();
 
     expect(game.state.finalScores![p1.id]).toBe(7 + 20);
-    expect(game.state.finalScores![p2.id]).toBe(0);
+    expect(game.state.finalScores![p2.id]).toBe(15); // resgatado (tem artefato), mas sem Mastery (não escapou)
   });
 
   it("jogador nocauteado sem nenhum artefato/coroa pontua 0 (eliminado)", () => {
@@ -864,8 +889,10 @@ describe("leaveDungeon e fim de jogo", () => {
     p1.points = 0;
     p1.damage = 10;
     p1.knockedOut = true;
-    p2.points = 5;
+    p2.roomId = "room-46"; // 5 pontos — precisa de artefato pra poder sair
     game.state.currentPlayerIndex = 1; // p1 nocauteado manualmente, não passou pelo advanceTurn
+    game.takeArtifact(p2.id);
+    p2.roomId = "entrance";
 
     game.leaveDungeon(p2.id);
 
@@ -881,6 +908,9 @@ describe("leaveDungeon e fim de jogo", () => {
       () => 0.99, // evita sortear cubo de jogador nos ataques normais (cai nos cubos pretos)
     );
     const [p1, p2] = game.state.players;
+    p1.roomId = "room-41"; // precisa de artefato pra sair
+    game.takeArtifact(p1.id);
+    p1.roomId = "entrance";
     game.leaveDungeon(p1.id); // p1 vira o "marcador" da trilha (casa 1); vez passa pro p2 sozinha
     expect(game.state.countdownPlayerId).toBe(p1.id);
     expect(game.state.countdownTrack).toBe(1);

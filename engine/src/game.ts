@@ -24,6 +24,27 @@ import {
 /** CONFIRMADO no manual oficial: "Shuffle the Dungeon Deck and deal six cards..." */
 export const DUNGEON_ROW_SIZE = 6;
 const MAX_LOG_LINES = 30;
+
+/**
+ * Trilha de Fúria — CONFIRMADO pelo usuário (playtest do jogo físico, 2026-07-28), 7
+ * casas: quantos cubos cada ataque do dragão sorteia, por casa (índice 0 = casa 1).
+ * Substituiu a fórmula antiga (`posição - 1`), que só batia por coincidência na casa 5
+ * — o único ponto que eu tinha confirmado antes ("5ª casa sorteia 4 cubos").
+ */
+const RAGE_TRACK_CUBES = [2, 2, 3, 3, 4, 4, 5];
+const RAGE_TRACK_SIZE = RAGE_TRACK_CUBES.length;
+
+/**
+ * Casa inicial da Trilha de Fúria por número de jogadores — CONFIRMADO pelo usuário:
+ * com menos jogadores (menos Clank! coletivo gerado por turno), o jogo começa mais
+ * adiantado na trilha pra compensar. 1 jogador (solo) não é modo suportado ainda —
+ * usa a mesma casa de 2 jogadores como aproximação razoável até isso ser confirmado.
+ */
+function startingRageTrackPosition(playerCount: number): number {
+  if (playerCount >= 4) return 1;
+  if (playerCount === 3) return 2;
+  return 3; // 2 jogadores (ou 1, solo — aproximação)
+}
 /**
  * Quantidade de cubos "pretos" (neutros) sempre disponíveis no saco do dragão.
  * ⚠️ Estimativa baseada na contagem de componentes ("24 dragon cubes") — não confirmei
@@ -89,7 +110,7 @@ export class GameEngine {
       currentPlayerIndex: 0,
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
       reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
-      dragon: { rageTrackPosition: 1 },
+      dragon: { rageTrackPosition: startingRageTrackPosition(playerInfos.length) },
       market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
       claimedArtifacts: {},
       claimedMonkeyIdols: {},
@@ -285,11 +306,21 @@ export class GameEngine {
    * Sai da masmorra pela Entrada — fica fora de jogo pro resto da partida. Se for a
    * primeira pessoa a sair, começa a Trilha de Contagem Regressiva (ver triggerDragonAttack).
    * Encerra o turno automaticamente (não tem mais o que fazer depois de sair).
+   *
+   * CONFIRMADO pelo usuário via playtest do jogo físico (2026-07-28): só pode sair
+   * carregando pelo menos 1 Artefato — de mãos vazias, o jogador é obrigado a
+   * continuar na masmorra (voltar mais fundo ou arriscar ficar até ser nocauteado).
+   * Como não existe mecanismo pra "largar" um Artefato, e ninguém sai sem um, o bônus
+   * de Mastery (ver `computeFinalScores`) passa a valer pra TODO mundo que sai por
+   * aqui — antes disso, dava pra sair sem nada e só não ganhar o bônus.
    */
   leaveDungeon(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
     if (player.roomId !== BOARD.entranceRoomId) {
       throw new Error(`Só dá pra sair da masmorra pela ${BOARD.rooms[BOARD.entranceRoomId].name}.`);
+    }
+    if (player.artifactsCarried <= 0) {
+      throw new Error(`Só dá pra sair da masmorra carregando pelo menos 1 Artefato.`);
     }
 
     player.hasLeftDungeon = true;
@@ -370,7 +401,7 @@ export class GameEngine {
     this.state.claimedArtifacts[room.id] = true;
     player.points += room.artifactValue;
     player.artifactsCarried += 1;
-    this.state.dragon.rageTrackPosition += 1;
+    this.state.dragon.rageTrackPosition = Math.min(RAGE_TRACK_SIZE, this.state.dragon.rageTrackPosition + 1);
     this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
   }
 
@@ -405,14 +436,17 @@ export class GameEngine {
 
   /**
    * Ataque do dragão: sorteia cubos do saco (jogadores + cubos pretos neutros) em
-   * quantidade igual à posição atual na Trilha de Fúria menos 1 (regra confirmada:
-   * "5ª casa da trilha sorteia 4 cubos"), mais `extraCubes` (usado pela Trilha de
-   * Contagem Regressiva — ver `processCountdownStep`) e +1 por carta com PERIGO
-   * atualmente na Dungeon Row. Cubo de um jogador = 1 dano.
+   * quantidade dada por `RAGE_TRACK_CUBES[posição - 1]` — CONFIRMADO pelo usuário via
+   * playtest do jogo físico (2026-07-28): tabela de 7 casas (2,2,3,3,4,4,5), não a
+   * fórmula linear "posição - 1" que eu tinha antes (essa só batia por coincidência na
+   * casa 5). Soma `extraCubes` (usado pela Trilha de Contagem Regressiva — ver
+   * `processCountdownStep`) e +1 por carta com PERIGO atualmente na Dungeon Row. Cubo
+   * de um jogador = 1 dano.
    */
   private triggerDragonAttack(extraCubes = 0) {
-    const drawCount =
-      Math.max(0, this.state.dragon.rageTrackPosition - 1) + extraCubes + this.countDangerCards();
+    const position = this.state.dragon.rageTrackPosition;
+    const baseCubes = RAGE_TRACK_CUBES[Math.min(RAGE_TRACK_SIZE, Math.max(1, position)) - 1] ?? 0;
+    const drawCount = baseCubes + extraCubes + this.countDangerCards();
     if (drawCount === 0) return;
 
     const tickets: (string | null)[] = [];
