@@ -8,7 +8,15 @@ describe("tabuleiro", () => {
   });
 
   it("todo túnel é bidirecional, exceto os de mão única conhecidos", () => {
-    const oneWayExceptions = new Set(["sealed-vault->entrance", "castle-hall->entrance"]);
+    const oneWayExceptions = new Set([
+      "room-34->room-26",
+      "room-29->room-28",
+      "room-36->room-48",
+      "room-48->room-47",
+      "room-48->room-49",
+      "room-50->room-48",
+      "room-58->room-60",
+    ]);
     for (const room of Object.values(BOARD.rooms)) {
       for (const tunnel of room.tunnels) {
         const target = BOARD.rooms[tunnel.to];

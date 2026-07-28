@@ -34,12 +34,22 @@ import type { CardDefinition } from "./types.js";
  * - "+1 mana/ouro/ponto por cada X que você tem" (bônus escalável) — não modelado.
  * - Efeito que afeta só os OUTROS jogadores (diferente de `arriveEffects`, que afeta
  *   TODOS, e de `playEffects`/`acquireEffects`, que só afetam quem jogou/adquiriu).
+ *
+ * `descriptionPt` (2026-07-28, a pedido do usuário): descrição em português do efeito
+ * completo da carta, pro jogador ler na UI — inclui as cláusulas condicionais/de escolha
+ * de cima mesmo quando o motor não as executa automaticamente (mesma lógica do texto
+ * oficial impresso na carta física). Isso é intencional: a carta real diz isso, e
+ * esconder a cláusula deixaria a descrição incompleta/enganosa por omissão. O comentário
+ * `// Nota:` de cada carta continua sendo a referência de que fração disso é de fato
+ * aplicada pelo motor.
  */
 
 export const STARTING_DECK: CardDefinition[] = [
   {
     id: "burgle",
     name: "Burgle",
+    nomePt: "Furtar",
+    descriptionPt: "Ganhe 1 Skill.",
     kind: "starting",
     playEffects: { skill: 1 },
     verified: true,
@@ -47,6 +57,8 @@ export const STARTING_DECK: CardDefinition[] = [
   {
     id: "scramble",
     name: "Scramble",
+    nomePt: "Correria",
+    descriptionPt: "Ganhe 1 Skill e 1 Bota.",
     kind: "starting",
     playEffects: { skill: 1, boots: 1 },
     verified: true,
@@ -54,6 +66,8 @@ export const STARTING_DECK: CardDefinition[] = [
   {
     id: "sidestep",
     name: "Sidestep",
+    nomePt: "Desviar",
+    descriptionPt: "Ganhe 1 Bota.",
     kind: "starting",
     playEffects: { boots: 1 },
     verified: true,
@@ -61,6 +75,8 @@ export const STARTING_DECK: CardDefinition[] = [
   {
     id: "stumble",
     name: "Stumble",
+    nomePt: "Tropeço",
+    descriptionPt: "Ganhe 1 Clank!.",
     kind: "starting",
     playEffects: { clank: 1 },
     verified: true,
@@ -89,6 +105,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "sneak",
     name: "Sneak",
+    nomePt: "Furtividade",
+    descriptionPt: "Ganhe 1 Skill e 1 Bota. Remova 2 Clank!.",
     kind: "item",
     skillCost: 2,
     playEffects: { skill: 1, boots: 1, clank: -2 },
@@ -101,6 +119,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "move-silently",
     name: "Move Silently",
+    nomePt: "Mover em Silêncio",
+    descriptionPt: "Ganhe 2 Botas. Remova 2 Clank!.",
     kind: "item",
     skillCost: 3,
     playEffects: { boots: 2, clank: -2 },
@@ -110,6 +130,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "elven-cloak",
     name: "Elven Cloak",
+    nomePt: "Manto Élfico",
+    descriptionPt: "Ganhe 1 Skill. Remova 2 Clank!. Compre 1 carta.",
     kind: "item",
     skillCost: 4,
     playEffects: { skill: 1, clank: -2, drawCards: 1 },
@@ -120,6 +142,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "singing-sword",
     name: "Singing Sword",
+    nomePt: "Espada Cantante",
+    descriptionPt:
+      "Ganhe 3 Skill, 2 Swords e 1 Clank!. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 5,
     playEffects: { skill: 3, swords: 2, clank: 1 },
@@ -131,6 +156,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "lucky-coin",
     name: "Lucky Coin",
+    nomePt: "Moeda da Sorte",
+    descriptionPt: "Ganhe 1 Skill e 1 Clank!. Compre 1 carta.",
     kind: "item",
     skillCost: 1,
     playEffects: { skill: 1, clank: 1, drawCards: 1 },
@@ -141,6 +168,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "underworld-dealing",
     name: "Underworld Dealing",
+    nomePt: "Negócio do Submundo",
+    descriptionPt: "Ganhe 1 Moeda -OU- gaste 7 Moedas para comprar 2 Tomos Secretos.",
     kind: "item",
     skillCost: 1,
     verified: true,
@@ -149,6 +178,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "dead-run",
     name: "Dead Run",
+    nomePt: "Corrida Mortal",
+    descriptionPt: "Ganhe 2 Botas e 2 Clank!. Você não precisa parar em Cavernas de Cristal neste turno.",
     kind: "item",
     skillCost: 3,
     playEffects: { boots: 2, clank: 2 },
@@ -159,6 +190,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "pickaxe",
     name: "Pickaxe",
+    nomePt: "Picareta",
+    descriptionPt: "Ganhe 2 Swords e 2 Moedas.",
     kind: "item",
     skillCost: 4,
     playEffects: { swords: 2, gold: 2 },
@@ -168,6 +201,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "boots-of-swiftness",
     name: "Boots of Swiftness",
+    nomePt: "Botas da Agilidade",
+    descriptionPt: "Ganhe 3 Botas. Ao adquirir, ganhe 1 Bota extra.",
     kind: "item",
     skillCost: 5,
     playEffects: { boots: 3 },
@@ -179,6 +214,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "silver-spear",
     name: "Silver Spear",
+    nomePt: "Lança de Prata",
+    descriptionPt: "Ganhe 3 Swords. Ao adquirir, ganhe 1 Sword extra.",
     kind: "item",
     skillCost: 3,
     playEffects: { swords: 3 },
@@ -190,6 +227,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "scepter-of-the-ape-lord",
     name: "Scepter of the Ape Lord",
+    nomePt: "Cetro do Senhor Macaco",
+    descriptionPt: "Ganhe 3 Skill e 3 Clank!.",
     kind: "item",
     skillCost: 3,
     playEffects: { skill: 3, clank: 3 },
@@ -200,6 +239,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "treasure-map",
     name: "Treasure Map",
+    nomePt: "Mapa do Tesouro",
+    descriptionPt: "Ganhe 5 Moedas.",
     kind: "item",
     skillCost: 6,
     playEffects: { gold: 5 },
@@ -209,6 +250,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "amulet-of-vigor",
     name: "Amulet of Vigor",
+    nomePt: "Amuleto do Vigor",
+    descriptionPt: "Ganhe 4 Skill. Ao adquirir, cure 1 de dano.",
     kind: "item",
     skillCost: 7,
     playEffects: { skill: 4 },
@@ -220,6 +263,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "search",
     name: "Search",
+    nomePt: "Busca",
+    descriptionPt: "Ganhe 2 Skill e 1 Bota. A cada Moeda ganha neste turno, ganhe +1 Moeda extra.",
     kind: "item",
     skillCost: 4,
     playEffects: { skill: 2, boots: 1 },
@@ -230,6 +275,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "sleight-of-hand",
     name: "Sleight of Hand",
+    nomePt: "Prestidigitação",
+    descriptionPt: "Descarte uma carta para comprar duas cartas.",
     kind: "item",
     skillCost: 2,
     verified: true,
@@ -238,6 +285,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "diamond",
     name: "Diamond",
+    nomePt: "Diamante",
+    descriptionPt:
+      "Gema. Ao adquirir, ganhe 2 Clank! e compre 1 carta. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 8,
     acquireEffects: { clank: 2, drawCards: 1 },
@@ -249,6 +299,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "emerald",
     name: "Emerald",
+    nomePt: "Esmeralda",
+    descriptionPt:
+      "Gema. Ao adquirir, ganhe 2 Clank! e compre 1 carta. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 5,
     acquireEffects: { clank: 2, drawCards: 1 },
@@ -260,6 +313,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "ruby",
     name: "Ruby",
+    nomePt: "Rubi",
+    descriptionPt:
+      "Gema. Ao adquirir, ganhe 2 Clank! e compre 1 carta. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 6,
     acquireEffects: { clank: 2, drawCards: 1 },
@@ -271,6 +327,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "sapphire",
     name: "Sapphire",
+    nomePt: "Safira",
+    descriptionPt:
+      "Gema. Ao adquirir, ganhe 2 Clank! e compre 1 carta. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 4,
     acquireEffects: { clank: 2, drawCards: 1 },
@@ -282,6 +341,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "dragons-eye",
     name: "Dragon's Eye",
+    nomePt: "Olho de Dragão",
+    descriptionPt:
+      "Gema. Só pode ser adquirida nas Profundezas. Ao adquirir, ganhe 2 Clank! e compre 1 carta. Vale 10 pontos se você tiver uma Moeda de Maestria. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 5,
     acquireEffects: { clank: 2, drawCards: 1 },
@@ -294,6 +356,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "flying-carpet",
     name: "Flying Carpet",
+    nomePt: "Tapete Voador",
+    descriptionPt: "Ganhe 2 Botas. Neste turno, ignore monstros em túneis e não precisa parar em Cavernas de Cristal.",
     kind: "item",
     skillCost: 6,
     playEffects: { boots: 2 },
@@ -305,6 +369,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "swagger",
     name: "Swagger",
+    nomePt: "Ostentação",
+    descriptionPt: "Ganhe 1 Bota. A cada Clank! que você fizer neste turno, ganhe +1 Skill.",
     kind: "item",
     skillCost: 2,
     playEffects: { boots: 1 },
@@ -314,6 +380,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "bracers-of-agility",
     name: "Bracers of Agility",
+    nomePt: "Braceletes da Agilidade",
+    descriptionPt: "Compre 2 cartas.",
     kind: "item",
     skillCost: 5,
     playEffects: { drawCards: 2 },
@@ -324,6 +392,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "brilliance",
     name: "Brilliance",
+    nomePt: "Brilhantismo",
+    descriptionPt: "Compre 3 cartas.",
     kind: "item",
     skillCost: 6,
     playEffects: { drawCards: 3 },
@@ -333,6 +403,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "elven-boots",
     name: "Elven Boots",
+    nomePt: "Botas Élficas",
+    descriptionPt: "Ganhe 1 Skill e 1 Bota. Compre 1 carta.",
     kind: "item",
     skillCost: 4,
     playEffects: { skill: 1, boots: 1, drawCards: 1 },
@@ -343,6 +415,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "elven-dagger",
     name: "Elven Dagger",
+    nomePt: "Adaga Élfica",
+    descriptionPt: "Ganhe 1 Skill e 1 Sword. Compre 1 carta.",
     kind: "item",
     skillCost: 4,
     playEffects: { skill: 1, swords: 1, drawCards: 1 },
@@ -353,6 +427,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "wand-of-recall",
     name: "Wand of Recall",
+    nomePt: "Varinha de Retorno",
+    descriptionPt: "Ganhe 2 Skill. Se você possuir um artefato, teleporte para uma câmara adjacente.",
     kind: "item",
     skillCost: 5,
     playEffects: { skill: 2 },
@@ -363,6 +439,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "wand-of-wind",
     name: "Wand of Wind",
+    nomePt: "Varinha do Vento",
+    descriptionPt: "Teleporte para uma câmara adjacente -OU- pegue um bônus/segredo de uma câmara adjacente.",
     kind: "item",
     skillCost: 6,
     points: 3,
@@ -372,6 +450,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "tattle",
     name: "Tattle",
+    nomePt: "Fofoca",
+    descriptionPt: "Cada outro jogador ganha +1 Clank!.",
     kind: "item",
     skillCost: 2,
     points: 3,
@@ -386,6 +466,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "tunnel-guide",
     name: "Tunnel Guide",
+    nomePt: "Guia de Túneis",
+    descriptionPt: "Ganhe 1 Bota e 1 Sword.",
     kind: "item",
     skillCost: 1,
     playEffects: { boots: 1, swords: 1 },
@@ -396,6 +478,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "gem-collector",
     name: "Gem Collector",
+    nomePt: "Colecionador de Gemas",
+    descriptionPt: "Ganhe 2 Skill. Remova 2 Clank!. Gemas custam 2 Skill a menos neste turno.",
     kind: "item",
     skillCost: 4,
     playEffects: { skill: 2, clank: -2 },
@@ -406,6 +490,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "invoker-of-the-ancients",
     name: "Invoker of the Ancients",
+    nomePt: "Invocador dos Antigos",
+    descriptionPt: "Ganhe 1 Clank!. Teleporte para uma câmara adjacente.",
     kind: "item",
     skillCost: 4,
     playEffects: { clank: 1 },
@@ -416,6 +502,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "kobold-merchant",
     name: "Kobold Merchant",
+    nomePt: "Mercador Kobold",
+    descriptionPt: "Ganhe 2 Moedas (+2 Moedas extra se você tiver um artefato).",
     kind: "item",
     skillCost: 3,
     playEffects: { gold: 2 },
@@ -428,6 +516,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "rebel-miner",
     name: "Rebel Miner",
+    nomePt: "Minerador Rebelde",
+    descriptionPt: "Ganhe 2 Moedas. Se você tiver um Companheiro em jogo, compre 1 carta.",
     kind: "item",
     skillCost: 2,
     playEffects: { gold: 2 },
@@ -438,6 +528,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "monkey-bot-3000",
     name: "Monkey Bot 3000",
+    nomePt: "Macaco-Robô 3000",
+    descriptionPt: "Ganhe 3 Clank!. Compre 3 cartas. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 5,
     playEffects: { clank: 3, drawCards: 3 },
@@ -449,6 +541,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "cleric-of-the-sun",
     name: "Cleric of the Sun",
+    nomePt: "Clérigo do Sol",
+    descriptionPt: "Ganhe 2 Skill e 1 Sword. Ao adquirir, cure 1 de dano.",
     kind: "item",
     skillCost: 3,
     playEffects: { skill: 2, swords: 1 },
@@ -460,6 +554,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "apothecary",
     name: "Apothecary",
+    nomePt: "Boticário",
+    descriptionPt: "Descarte uma carta para escolher um dos seguintes: +3 Swords -OU- +2 Moedas -OU- cure 1 de dano.",
     kind: "item",
     skillCost: 3,
     points: 2,
@@ -476,6 +572,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "dwarven-peddler",
     name: "Dwarven Peddler",
+    nomePt: "Vendedor Anão",
+    descriptionPt:
+      "Ganhe 1 Bota e 2 Moedas. Vale 4 pontos se você tiver pelo menos 2 dos seguintes: Cálice, Ovo de Dragão e Ídolo de Macaco.",
     kind: "item",
     skillCost: 4,
     playEffects: { boots: 1, gold: 2 },
@@ -486,6 +585,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "master-burglar",
     name: "Master Burglar",
+    nomePt: "Mestre Ladrão",
+    descriptionPt: "Ganhe 2 Skill. Jogue um Burgle da sua mão ou descarte para o lixo (trash).",
     kind: "item",
     skillCost: 3,
     playEffects: { skill: 2 },
@@ -496,6 +597,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "mister-whiskers",
     name: "Mister Whiskers",
+    nomePt: "Senhor Bigodes",
+    descriptionPt: "O Dragão ataca -OU- remova 2 Clank!. Ao ser revelada na Fileira da Masmorra, dispara um ataque do dragão.",
     kind: "item",
     skillCost: 1,
     points: 1,
@@ -506,6 +609,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "archaeologist",
     name: "Archaeologist",
+    nomePt: "Arqueólogo",
+    descriptionPt: "Compre 1 carta. Se você possuir um Ídolo de Macaco, ganhe +2 Skill.",
     kind: "item",
     skillCost: 2,
     playEffects: { drawCards: 1 },
@@ -516,6 +621,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "queen-of-hearts",
     name: "The Queen of Hearts",
+    nomePt: "A Rainha de Copas",
+    descriptionPt: "Ganhe 3 Skill e 1 Sword. Se você tiver uma coroa, cure 1 de dano.",
     kind: "item",
     skillCost: 6,
     playEffects: { skill: 3, swords: 1 },
@@ -526,6 +633,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "rebel-captain",
     name: "Rebel Captain",
+    nomePt: "Capitão Rebelde",
+    descriptionPt: "Ganhe 2 Skill. Se você tiver um Companheiro em jogo, compre 1 carta.",
     kind: "item",
     skillCost: 3,
     playEffects: { skill: 2 },
@@ -536,6 +645,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "rebel-scout",
     name: "Rebel Scout",
+    nomePt: "Batedor Rebelde",
+    descriptionPt: "Ganhe 2 Botas. Se você tiver um Companheiro em jogo, compre 1 carta.",
     kind: "item",
     skillCost: 3,
     playEffects: { boots: 2 },
@@ -546,6 +657,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "rebel-soldier",
     name: "Rebel Soldier",
+    nomePt: "Soldado Rebelde",
+    descriptionPt: "Ganhe 2 Swords. Se você tiver um Companheiro em jogo, compre 1 carta.",
     kind: "item",
     skillCost: 2,
     playEffects: { swords: 2 },
@@ -556,6 +669,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "treasure-hunter",
     name: "Treasure Hunter",
+    nomePt: "Caçador de Tesouros",
+    descriptionPt:
+      "Ganhe 2 Skill e 2 Swords. Troque uma carta na Fileira da Masmorra por outra do monte; se a nova carta tiver o símbolo de ataque do dragão, ignore o ataque.",
     kind: "item",
     skillCost: 3,
     playEffects: { skill: 2, swords: 2 },
@@ -567,6 +683,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "mountain-king",
     name: "The Mountain King",
+    nomePt: "O Rei da Montanha",
+    descriptionPt: "Ganhe 2 Skill, 1 Bota e 1 Sword (2 Swords e 2 Botas se você tiver uma coroa).",
     kind: "item",
     skillCost: 6,
     playEffects: { skill: 2, boots: 1, swords: 1 },
@@ -577,6 +695,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "the-duke",
     name: "The Duke",
+    nomePt: "O Duque",
+    descriptionPt: "Ganhe 2 Skill e 2 Swords. Vale +1 ponto para cada 5 Moedas que você tiver no fim de jogo.",
     kind: "item",
     skillCost: 5,
     playEffects: { skill: 2, swords: 2 },
@@ -586,6 +706,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "wizard",
     name: "Wizard",
+    nomePt: "Mago",
+    descriptionPt: "Ganhe 3 Skill. Vale +2 pontos para cada Tomo Secreto que você tiver no fim de jogo.",
     kind: "item",
     skillCost: 6,
     playEffects: { skill: 3 },
@@ -596,6 +718,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "ladder",
     name: "Ladder",
+    nomePt: "Escada",
+    descriptionPt: "USE: ganhe 2 Botas.",
     kind: "device",
     skillCost: 3,
     acquireEffects: { boots: 2 },
@@ -605,6 +729,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "shrine",
     name: "Shrine",
+    nomePt: "Santuário",
+    descriptionPt: "Ao ser revelada, devolva 3 cubos de dragão à bolsa. USE: escolha 1 Moeda -OU- cure 1 de dano.",
     kind: "device",
     skillCost: 2,
     acquireChoices: [
@@ -619,6 +745,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "dragon-shrine",
     name: "Dragon Shrine",
+    nomePt: "Altar do Dragão",
+    descriptionPt:
+      "PERIGO — enquanto estiver na Fileira da Masmorra, ataques do dragão puxam +1 cubo extra. USE: 2 Moedas -OU- jogue uma carta fora (trash).",
     kind: "device",
     skillCost: 4,
     isDanger: true,
@@ -630,6 +759,9 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "the-vault",
     name: "The Vault",
+    nomePt: "O Cofre",
+    descriptionPt:
+      "Só pode ser adquirida nas Profundezas. USE: ganhe 5 Moedas e 3 Clank!. Ao ser revelada, dispara um ataque do dragão.",
     kind: "device",
     skillCost: 3,
     requiresRoomFlag: "isDepths",
@@ -641,6 +773,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "teleporter",
     name: "Teleporter",
+    nomePt: "Teleportador",
+    descriptionPt: "USE: teleporte para uma câmara adjacente.",
     kind: "device",
     skillCost: 4,
     verified: true,
@@ -650,6 +784,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "animated-door",
     name: "Animated Door",
+    nomePt: "Porta Animada",
+    descriptionPt: "DERROTA: ganhe 1 Bota. Ao ser revelada, dispara um ataque do dragão.",
     kind: "monster",
     swordCost: 1,
     acquireEffects: { boots: 1 },
@@ -660,6 +796,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "kobold",
     name: "Kobold",
+    nomePt: "Kobold",
+    descriptionPt: "PERIGO — enquanto estiver na Fileira da Masmorra, ataques do dragão puxam +1 cubo extra. DERROTA: ganhe 1 Skill.",
     kind: "monster",
     swordCost: 1,
     acquireEffects: { skill: 1 },
@@ -670,6 +808,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "cave-troll",
     name: "Cave Troll",
+    nomePt: "Troll das Cavernas",
+    descriptionPt: "DERROTA: ganhe 3 Moedas e compre 2 cartas. Ao ser revelada, dispara um ataque do dragão.",
     kind: "monster",
     swordCost: 4,
     acquireEffects: { gold: 3, drawCards: 2 },
@@ -680,6 +820,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "orc-grunt",
     name: "Orc Grunt",
+    nomePt: "Orc Recruta",
+    descriptionPt: "DERROTA: ganhe 3 Moedas. Ao ser revelada, dispara um ataque do dragão.",
     kind: "monster",
     swordCost: 2,
     acquireEffects: { gold: 3 },
@@ -690,6 +832,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "belcher",
     name: "Belcher",
+    nomePt: "Arrotador",
+    descriptionPt: "DERROTA: ganhe 4 Moedas e 2 Clank!. Ao ser revelada, dispara um ataque do dragão.",
     kind: "monster",
     swordCost: 2,
     acquireEffects: { gold: 4, clank: 2 },
@@ -700,6 +844,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "ogre",
     name: "Ogre",
+    nomePt: "Ogro",
+    descriptionPt: "DERROTA: ganhe 5 Moedas. Ao ser revelada, dispara um ataque do dragão.",
     kind: "monster",
     swordCost: 3,
     acquireEffects: { gold: 5 },
@@ -710,6 +856,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "crystal-golem",
     name: "Crystal Golem",
+    nomePt: "Golem de Cristal",
+    descriptionPt: "Só pode ser enfrentado numa Caverna de Cristal. DERROTA: ganhe 3 Skill.",
     kind: "monster",
     swordCost: 3,
     requiresRoomFlag: "isCrystalCave",
@@ -720,6 +868,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "watcher",
     name: "Watcher",
+    nomePt: "Observador",
+    descriptionPt: "Ao ser revelada, todos os jogadores ganham +1 Clank!. DERROTA: ganhe 3 Moedas; todos os outros jogadores ganham +1 Clank!.",
     kind: "monster",
     swordCost: 3,
     acquireEffects: { gold: 3 },
@@ -731,6 +881,8 @@ export const DUNGEON_DECK: CardDefinition[] = [
   {
     id: "overlord",
     name: "Overlord",
+    nomePt: "Senhor Supremo",
+    descriptionPt: "Ao ser revelada, todos os jogadores ganham +1 Clank!. DERROTA: compre 2 cartas.",
     kind: "monster",
     swordCost: 2,
     acquireEffects: { drawCards: 2 },
@@ -826,6 +978,8 @@ export const RESERVE_CARDS: CardDefinition[] = [
   {
     id: "mercenary",
     name: "Mercenary",
+    nomePt: "Mercenário",
+    descriptionPt: "Ganhe 1 Skill e 2 Swords.",
     kind: "dungeon",
     skillCost: 2,
     playEffects: { skill: 1, swords: 2 },
@@ -834,6 +988,8 @@ export const RESERVE_CARDS: CardDefinition[] = [
   {
     id: "explore",
     name: "Explore",
+    nomePt: "Explorar",
+    descriptionPt: "Ganhe 2 Skill e 1 Bota.",
     kind: "dungeon",
     skillCost: 3,
     playEffects: { skill: 2, boots: 1 },
@@ -842,6 +998,8 @@ export const RESERVE_CARDS: CardDefinition[] = [
   {
     id: "secret-tome",
     name: "Secret Tome",
+    nomePt: "Tomo Secreto",
+    descriptionPt: "Vale 7 pontos no fim de jogo.",
     kind: "dungeon",
     skillCost: 7,
     points: 7,
@@ -850,6 +1008,8 @@ export const RESERVE_CARDS: CardDefinition[] = [
   {
     id: "goblin",
     name: "Goblin",
+    nomePt: "Goblin",
+    descriptionPt: "DERROTA: ganhe 1 Moeda. (Não descarte após o combate — pode ser lutado de novo.)",
     kind: "monster",
     swordCost: 2,
     acquireEffects: { gold: 1 },

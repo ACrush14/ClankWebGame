@@ -95,136 +95,136 @@ interface EdgeSpec {
 const ROOM_SPECS: RoomSpec[] = [
   {
     "id": "entrance",
-    "name": "entrance",
+    "name": "Entrada da Masmorra",
     "isEntrance": true
   },
   {
     "id": "room-25",
-    "name": "Nova Sala"
+    "name": "Corredor de Pedra"
   },
   {
     "id": "room-26",
-    "name": "Nova Sala"
+    "name": "Passagem Estreita"
   },
   {
     "id": "room-27",
-    "name": "Nova Sala",
+    "name": "Câmara Empoeirada",
     "minorSecrets": 2
   },
   {
     "id": "room-28",
-    "name": "Nova Sala",
+    "name": "Salão Esquecido",
     "majorSecret": true
   },
   {
     "id": "room-29",
-    "name": "Nova Sala",
+    "name": "Recanto Oculto",
     "majorSecret": true
   },
   {
     "id": "room-30",
-    "name": "Nova Sala"
+    "name": "Encruzilhada"
   },
   {
     "id": "room-31",
-    "name": "Nova Sala",
+    "name": "Caverna de Cristal",
     "isCrystalCave": true
   },
   {
     "id": "room-32",
-    "name": "Nova Sala",
+    "name": "Cripta Selada",
     "majorSecret": true
   },
   {
     "id": "room-33",
-    "name": "Nova Sala",
+    "name": "Gruta Cristalina",
     "isCrystalCave": true
   },
   {
     "id": "room-34",
-    "name": "Nova Sala",
+    "name": "Câmara de Cristal Escondida",
     "isCrystalCave": true,
     "majorSecret": true
   },
   {
     "id": "room-35",
-    "name": "Nova Sala",
+    "name": "Fonte de Cura",
     "isFountainOfHealing": true
   },
   {
     "id": "room-36",
-    "name": "Nova Sala",
+    "name": "Túnel Profundo",
     "isDepths": true
   },
   {
     "id": "room-37",
-    "name": "Nova Sala",
+    "name": "Galeria de Pedra",
     "minorSecrets": 2
   },
   {
     "id": "room-38",
-    "name": "Nova Sala",
+    "name": "Salão de Cristal",
     "isCrystalCave": true
   },
   {
     "id": "room-39",
-    "name": "Nova Sala"
+    "name": "Posto de Vigia"
   },
   {
     "id": "room-40",
-    "name": "Nova Sala",
+    "name": "Corredor dos Ecos",
     "minorSecrets": 2
   },
   {
     "id": "room-41",
-    "name": "Nova Sala",
+    "name": "Câmara da Cruz",
     "isDepths": true,
     "artifactValue": 7
   },
   {
     "id": "room-42",
-    "name": "Nova Sala",
+    "name": "Mercado das Profundezas",
     "isMarket": true,
     "minorSecrets": 2,
     "isDepths": true
   },
   {
     "id": "room-43",
-    "name": "Nova Sala",
+    "name": "Mercado do Vaso",
     "isMarket": true,
     "artifactValue": 10,
     "isDepths": true
   },
   {
     "id": "room-44",
-    "name": "Nova Sala",
+    "name": "Anexo do Mercado",
     "isMarket": true,
     "isDepths": true
   },
   {
     "id": "room-45",
-    "name": "Nova Sala",
+    "name": "Feira Escondida",
     "isMarket": true,
     "minorSecrets": 2,
     "isDepths": true
   },
   {
     "id": "room-46",
-    "name": "Nova Sala",
+    "name": "Gruta do Anel",
     "isCrystalCave": true,
     "artifactValue": 5,
     "isDepths": true
   },
   {
     "id": "room-47",
-    "name": "Nova Sala",
+    "name": "Caverna da Banana",
     "isCrystalCave": true,
     "artifactValue": 15,
     "isDepths": true
   },
   {
     "id": "room-48",
-    "name": "Nova Sala",
+    "name": "Santuário dos Macacos",
     "isDepths": true,
     "monkeyIdolNames": [
       "Macaco Surdo",
@@ -234,87 +234,87 @@ const ROOM_SPECS: RoomSpec[] = [
   },
   {
     "id": "room-49",
-    "name": "Nova Sala",
+    "name": "Passagem das Profundezas",
     "isDepths": true
   },
   {
     "id": "room-50",
-    "name": "Nova Sala",
+    "name": "Câmara Sombria",
     "isDepths": true,
     "minorSecrets": 2
   },
   {
     "id": "room-51",
-    "name": "Nova Sala",
+    "name": "Cripta Profunda",
     "isDepths": true,
     "majorSecret": true
   },
   {
     "id": "room-52",
-    "name": "Nova Sala",
+    "name": "Salão Selado",
     "isDepths": true,
     "majorSecret": true
   },
   {
     "id": "room-53",
-    "name": "Nova Sala",
+    "name": "Câmara do Escudo",
     "isDepths": true,
     "artifactValue": 20
   },
   {
     "id": "room-54",
-    "name": "Nova Sala",
+    "name": "Fonte Sagrada",
     "isFountainOfHealing": true,
     "isDepths": true
   },
   {
     "id": "room-55",
-    "name": "Nova Sala",
+    "name": "Gruta de Cristal Profunda",
     "isCrystalCave": true,
     "minorSecrets": 2,
     "isDepths": true
   },
   {
     "id": "room-56",
-    "name": "Nova Sala",
+    "name": "Câmara da Armadura",
     "isDepths": true,
     "artifactValue": 25
   },
   {
     "id": "room-57",
-    "name": "Nova Sala",
+    "name": "Caverna Reluzente",
     "isCrystalCave": true,
     "majorSecret": true,
     "isDepths": true
   },
   {
     "id": "room-58",
-    "name": "Nova Sala",
+    "name": "Poço da Cura",
     "isFountainOfHealing": true,
     "isDepths": true
   },
   {
     "id": "room-59",
-    "name": "Nova Sala",
+    "name": "Câmara do Orbe",
     "artifactValue": 30,
     "isDepths": true
   },
   {
     "id": "room-60",
-    "name": "Nova Sala",
+    "name": "Gruta Sombria",
     "isCrystalCave": true,
     "majorSecret": true,
     "isDepths": true
   },
   {
     "id": "room-61",
-    "name": "Nova Sala",
+    "name": "Recanto Selado",
     "majorSecret": true,
     "isDepths": true
   },
   {
     "id": "room-62",
-    "name": "Nova Sala",
+    "name": "Caverna Silenciosa",
     "isCrystalCave": true,
     "isDepths": true
   }
@@ -694,7 +694,10 @@ function buildBoard(): BoardDefinition {
       isCrystalCave: spec.isCrystalCave,
       isFountainOfHealing: spec.isFountainOfHealing,
       artifactValue: spec.artifactValue,
-      artifactName: spec.artifactName,
+      // Deriva o nome automaticamente de ARTIFACT_NAMES_BY_VALUE quando o spec não seta um
+      // explicitamente — os specs novos (2026-07-28, ferramenta de anotação) só trazem o
+      // valor numérico, então sem isso `artifactName` ficava undefined em toda sala nova.
+      artifactName: spec.artifactName ?? (spec.artifactValue !== undefined ? ARTIFACT_NAMES_BY_VALUE[spec.artifactValue] : undefined),
       monkeyIdolNames: spec.monkeyIdolNames,
       majorSecret: spec.majorSecret,
       minorSecrets: spec.minorSecrets,

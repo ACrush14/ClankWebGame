@@ -57,6 +57,17 @@ export interface PendingChoice {
 export interface CardDefinition {
   id: string;
   name: string;
+  /** Nome traduzido pro português (mesma convenção já usada em MAJOR_SECRETS_REFERENCE/MINOR_SECRETS_REFERENCE) — pra UI mostrar em vez do nome oficial em inglês. */
+  nomePt: string;
+  /**
+   * Descrição do efeito em português, pro jogador ler na UI (ex: tooltip/modal de
+   * detalhes da carta) — client acessa via `getCard(id).descriptionPt`, sem precisar de
+   * nenhuma mudança de servidor/schema (o client já importa `@clank/engine` direto).
+   * Descreve o efeito real e completo da carta (igual ao texto oficial impresso, incluindo
+   * cláusulas condicionais/de escolha que o motor ainda não executa automaticamente —
+   * ver comentário `// Nota:` de cada carta em cards.ts pra saber o que é de fato aplicado).
+   */
+  descriptionPt: string;
   kind: CardKind;
   /** Custo em Skill para adquirir (cartas normais/itens/devices) — undefined se não compra com skill. */
   skillCost?: number;

@@ -265,35 +265,35 @@ describe("movePlayer", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.resources.boots = 0;
-    expect(() => game.movePlayer(player.id, "mine-entry")).toThrow(/boots insuficientes/i);
+    expect(() => game.movePlayer(player.id, "room-25")).toThrow(/boots insuficientes/i);
   });
 
   it("move pra sala vizinha gastando 1 boot", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.resources.boots = 1;
-    game.movePlayer(player.id, "mine-entry");
-    expect(player.roomId).toBe("mine-entry");
+    game.movePlayer(player.id, "room-25");
+    expect(player.roomId).toBe("room-25");
     expect(player.resources.boots).toBe(0);
   });
 
   it("túnel de pegada custa 2 boots", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "mine-entry";
+    player.roomId = "room-26";
     player.resources.boots = 2;
-    game.movePlayer(player.id, "narrow-passage");
-    expect(player.roomId).toBe("narrow-passage");
+    game.movePlayer(player.id, "room-27");
+    expect(player.roomId).toBe("room-27");
     expect(player.resources.boots).toBe(0);
   });
 
   it("túnel com monstro: paga swords automaticamente quando tem o suficiente", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "mine-entry"; // guard-post só liga em mine-entry, não na entrada
+    player.roomId = "room-28"; // room-28<->room-31 tem túnel com monstro (custo 1)
     player.resources.boots = 1;
     player.resources.swords = 1;
-    game.movePlayer(player.id, "guard-post");
+    game.movePlayer(player.id, "room-31");
     expect(player.resources.swords).toBe(0);
     expect(player.damage).toBe(0);
   });
@@ -301,11 +301,11 @@ describe("movePlayer", () => {
   it("túnel com monstro sem swords suficientes causa 1 de dano em vez de bloquear", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "mine-entry";
+    player.roomId = "room-28";
     player.resources.boots = 1;
     player.resources.swords = 0;
-    game.movePlayer(player.id, "guard-post");
-    expect(player.roomId).toBe("guard-post");
+    game.movePlayer(player.id, "room-31");
+    expect(player.roomId).toBe("room-31");
     expect(player.damage).toBe(1);
   });
 
@@ -313,44 +313,44 @@ describe("movePlayer", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.resources.boots = 99;
-    expect(() => game.movePlayer(player.id, "depths-east")).toThrow(/não há túnel/i);
+    expect(() => game.movePlayer(player.id, "room-56")).toThrow(/não há túnel/i);
   });
 
   it("entrar numa Caverna de Cristal esgota os Boots restantes no turno (CONFIRMADO no manual oficial)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "crossroads";
+    player.roomId = "room-27";
     player.resources.boots = 5;
-    game.movePlayer(player.id, "crystal-cave");
-    expect(player.roomId).toBe("crystal-cave");
+    game.movePlayer(player.id, "room-31");
+    expect(player.roomId).toBe("room-31");
     expect(player.resources.boots).toBe(0);
   });
 
   it("entrar numa Fonte de Cura cura 1 de dano na hora (CONFIRMADO no manual oficial)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "mine-entry";
+    player.roomId = "room-28";
     player.damage = 5;
     player.resources.boots = 1;
-    player.resources.swords = 1; // paga o túnel com monstro entre mine-entry e castle-hall, sem levar dano
-    game.movePlayer(player.id, "castle-hall");
-    // castle-hall não é Fonte de Cura, então nada muda ainda
+    player.resources.swords = 1; // paga o túnel com monstro entre room-28 e room-31, sem levar dano
+    game.movePlayer(player.id, "room-31");
+    // room-31 não é Fonte de Cura, então nada muda ainda
     expect(player.damage).toBe(5);
 
-    player.roomId = "guard-post";
-    player.resources.boots = 1;
-    game.movePlayer(player.id, "healing-spring-1");
-    expect(player.roomId).toBe("healing-spring-1");
+    player.roomId = "room-36";
+    player.resources.boots = 2; // room-36<->room-35 é túnel de pegada (2 boots)
+    game.movePlayer(player.id, "room-35");
+    expect(player.roomId).toBe("room-35");
     expect(player.damage).toBe(4);
   });
 
   it("Fonte de Cura não deixa o dano negativo se já estiver em 0", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "guard-post";
+    player.roomId = "room-36";
     player.damage = 0;
-    player.resources.boots = 1;
-    game.movePlayer(player.id, "healing-spring-1");
+    player.resources.boots = 2;
+    game.movePlayer(player.id, "room-35");
     expect(player.damage).toBe(0);
   });
 });
@@ -367,7 +367,7 @@ describe("escolha X -OU- Y (PendingChoice / resolveChoice)", () => {
     expect(player.gold).toBe(0);
     expect(player.damage).toBe(0);
     expect(game.state.pendingChoice).not.toBeNull();
-    expect(game.state.pendingChoice?.cardName).toBe("Shrine");
+    expect(game.state.pendingChoice?.cardName).toBe("Santuário");
     expect(game.state.pendingChoice?.options).toHaveLength(2);
   });
 
@@ -546,7 +546,7 @@ describe("restrição de sala (Deep / Crystal Cave)", () => {
 
     expect(() => game.fightMonster(player.id, 0)).toThrow(/isCrystalCave/i);
 
-    player.roomId = "crystal-cave";
+    player.roomId = "room-31";
     game.fightMonster(player.id, 0);
     expect(player.resources.swords).toBe(0);
   });
@@ -559,7 +559,7 @@ describe("restrição de sala (Deep / Crystal Cave)", () => {
 
     expect(() => game.acquireCard(player.id, 0)).toThrow(/isDepths/i);
 
-    player.roomId = "depths-east";
+    player.roomId = "room-41";
     game.acquireCard(player.id, 0);
     expect(player.resources.skill).toBe(0);
   });
@@ -569,7 +569,7 @@ describe("Ídolos de Macaco", () => {
   it("pega um Ídolo de Macaco no Santuário e ganha 5 pontos", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "monkey-shrine";
+    player.roomId = "room-48";
 
     game.takeMonkeyIdol(player.id);
 
@@ -580,7 +580,7 @@ describe("Ídolos de Macaco", () => {
   it("pega os 3 ídolos um de cada vez (nomes diferentes, sem limite de quantidade)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "monkey-shrine";
+    player.roomId = "room-48";
 
     game.takeMonkeyIdol(player.id);
     game.takeMonkeyIdol(player.id);
@@ -593,7 +593,7 @@ describe("Ídolos de Macaco", () => {
   it("lança erro quando não há mais ídolos disponíveis na sala", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "monkey-shrine";
+    player.roomId = "room-48";
     game.takeMonkeyIdol(player.id);
     game.takeMonkeyIdol(player.id);
     game.takeMonkeyIdol(player.id);
@@ -610,9 +610,9 @@ describe("Ídolos de Macaco", () => {
 
 describe("nomes dos artefatos", () => {
   it("as 3 salas de artefato têm nome confirmado (Cruz/Banana/Armadura)", () => {
-    expect(BOARD.rooms["depths-west"].artifactName).toBe("Cruz");
-    expect(BOARD.rooms["depths-east"].artifactName).toBe("Banana");
-    expect(BOARD.rooms["sealed-vault"].artifactName).toBe("Armadura");
+    expect(BOARD.rooms["room-41"].artifactName).toBe("Cruz");
+    expect(BOARD.rooms["room-47"].artifactName).toBe("Banana");
+    expect(BOARD.rooms["room-56"].artifactName).toBe("Armadura");
   });
 });
 
@@ -620,21 +620,21 @@ describe("takeArtifact", () => {
   it("pega um artefato pequeno (7 pts) e avança a Trilha de Fúria em +1", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "depths-west"; // 7 pontos
+    player.roomId = "room-41"; // 7 pontos
     const rageBefore = game.state.dragon.rageTrackPosition;
 
     game.takeArtifact(player.id);
 
     expect(player.points).toBe(7);
     expect(game.state.dragon.rageTrackPosition).toBe(rageBefore + 1);
-    expect(game.state.claimedArtifacts["depths-west"]).toBe(true);
+    expect(game.state.claimedArtifacts["room-41"]).toBe(true);
   });
 
   it("pega um artefato grande (25 pts) e a Trilha de Fúria avança os mesmos +1 fixos (regra oficial, não escala com o valor)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.hasMasterKey = true;
-    player.roomId = "sealed-vault"; // 25 pontos
+    player.roomId = "room-56"; // 25 pontos
     const rageBefore = game.state.dragon.rageTrackPosition;
 
     game.takeArtifact(player.id);
@@ -652,7 +652,7 @@ describe("takeArtifact", () => {
   it("lança erro se o artefato já foi pego", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "depths-east";
+    player.roomId = "room-47";
     game.takeArtifact(player.id);
     expect(() => game.takeArtifact(player.id)).toThrow(/já foi pego/i);
   });
@@ -661,15 +661,15 @@ describe("takeArtifact", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.hasMasterKey = true;
-    player.roomId = "depths-west";
+    player.roomId = "room-41";
     game.takeArtifact(player.id);
     expect(player.artifactsCarried).toBe(1);
 
-    player.roomId = "sealed-vault";
+    player.roomId = "room-56";
     expect(() => game.takeArtifact(player.id)).toThrow(/já está carregando o máximo/i);
     // não pontuou o segundo artefato nem marcou a sala como já pega
     expect(player.points).toBe(7);
-    expect(game.state.claimedArtifacts["sealed-vault"]).toBeUndefined();
+    expect(game.state.claimedArtifacts["room-56"]).toBeUndefined();
   });
 
   it("com a Mochila dá pra carregar 2 artefatos", () => {
@@ -677,10 +677,10 @@ describe("takeArtifact", () => {
     const player = game.currentPlayer;
     player.hasMasterKey = true;
     player.hasBackpack = true;
-    player.roomId = "depths-west";
+    player.roomId = "room-41";
     game.takeArtifact(player.id);
 
-    player.roomId = "sealed-vault";
+    player.roomId = "room-56";
     game.takeArtifact(player.id);
 
     expect(player.artifactsCarried).toBe(2);
@@ -728,39 +728,39 @@ describe("túneis com cadeado e de mão única", () => {
   it("lança erro ao tentar passar por um túnel com cadeado sem a Chave-mestra", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "deep-tunnel";
+    player.roomId = "room-27"; // room-27<->room-32 tem cadeado
     player.resources.boots = 1;
-    expect(() => game.movePlayer(player.id, "sealed-vault")).toThrow(/cadeado/i);
+    expect(() => game.movePlayer(player.id, "room-32")).toThrow(/cadeado/i);
   });
 
   it("com a Chave-mestra, passa livremente", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "deep-tunnel";
+    player.roomId = "room-27";
     player.hasMasterKey = true;
     player.resources.boots = 1;
-    game.movePlayer(player.id, "sealed-vault");
-    expect(player.roomId).toBe("sealed-vault");
+    game.movePlayer(player.id, "room-32");
+    expect(player.roomId).toBe("room-32");
   });
 
-  it("o escorregador da Câmara Selada só funciona num sentido", () => {
+  it("um túnel de mão única (room-34 -> room-26) só funciona num sentido", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "sealed-vault";
-    player.resources.boots = 1;
-    game.movePlayer(player.id, "entrance");
-    expect(player.roomId).toBe("entrance");
+    player.roomId = "room-34";
+    player.resources.boots = 2; // esse túnel tem pegada (2 boots)
+    game.movePlayer(player.id, "room-26");
+    expect(player.roomId).toBe("room-26");
 
-    // não existe túnel de volta da entrada pro cofre
+    // não existe túnel de volta de room-26 pra room-34 (é de mão única)
     player.resources.boots = 99;
-    expect(() => game.movePlayer(player.id, "sealed-vault")).toThrow(/não há túnel/i);
+    expect(() => game.movePlayer(player.id, "room-34")).toThrow(/não há túnel/i);
   });
 });
 
 describe("buyMarketItem", () => {
   function inMarket(game: GameEngine) {
     const player = game.currentPlayer;
-    player.roomId = "market-room";
+    player.roomId = "room-44";
     return player;
   }
 
@@ -790,7 +790,7 @@ describe("buyMarketItem", () => {
     expect(game.state.market.masterKeyAvailable).toBe(false);
 
     const other = game.state.players[1];
-    other.roomId = "market-room";
+    other.roomId = "room-44";
     other.gold = 7;
     game.endTurn(player.id);
     expect(() => game.buyMarketItem(other.id, "key")).toThrow(/já foi comprada/i);
@@ -814,7 +814,7 @@ describe("leaveDungeon e fim de jogo", () => {
   it("lança erro se não estiver na sala de Entrada", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.roomId = "mine-entry";
+    player.roomId = "room-25";
     expect(() => game.leaveDungeon(player.id)).toThrow(/entrada/i);
   });
 
@@ -847,7 +847,7 @@ describe("leaveDungeon e fim de jogo", () => {
   it("Mastery: +20 pontos pra quem escapa carregando um artefato antes de ser nocauteado", () => {
     const game = twoPlayerGame();
     const [p1, p2] = game.state.players;
-    p1.roomId = "depths-west"; // 7 pontos
+    p1.roomId = "room-41"; // 7 pontos
     game.takeArtifact(p1.id); // p1 pega o artefato de verdade (artifactsCarried = 1)
     p1.roomId = "entrance";
 

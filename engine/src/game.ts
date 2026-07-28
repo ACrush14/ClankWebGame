@@ -145,7 +145,7 @@ export class GameEngine {
     choices: EffectChoiceOption[] | undefined,
   ) {
     if (choices && choices.length > 0) {
-      this.state.pendingChoice = { cardId: card.id, cardName: card.name, options: choices };
+      this.state.pendingChoice = { cardId: card.id, cardName: card.nomePt, options: choices };
       return;
     }
     this.applyEffects(player, effects);
@@ -206,7 +206,7 @@ export class GameEngine {
     const room = BOARD.rooms[player.roomId];
     if (!room?.[card.requiresRoomFlag]) {
       throw new Error(
-        `${card.name} só pode ser adquirida/enfrentada numa sala do tipo "${card.requiresRoomFlag}" (você está em ${room?.name ?? player.roomId}).`,
+        `${card.nomePt} só pode ser adquirida/enfrentada numa sala do tipo "${card.requiresRoomFlag}" (você está em ${room?.name ?? player.roomId}).`,
       );
     }
   }
@@ -557,11 +557,11 @@ export class GameEngine {
     if (!cardId) throw new Error(`Posição ${slotIndex} da Dungeon Row está vazia.`);
 
     const card = getCard(cardId);
-    if (card.kind === "monster") throw new Error(`${card.name} é um monstro — use fightMonster.`);
+    if (card.kind === "monster") throw new Error(`${card.nomePt} é um monstro — use fightMonster.`);
     this.checkRoomRequirement(player, card);
     const cost = card.skillCost ?? 0;
     if (player.resources.skill < cost) {
-      throw new Error(`Skill insuficiente pra comprar ${card.name} (precisa ${cost}, tem ${player.resources.skill}).`);
+      throw new Error(`Skill insuficiente pra comprar ${card.nomePt} (precisa ${cost}, tem ${player.resources.skill}).`);
     }
 
     player.resources.skill -= cost;
@@ -581,11 +581,11 @@ export class GameEngine {
     if (!cardId) throw new Error(`Posição ${slotIndex} da Dungeon Row está vazia.`);
 
     const card = getCard(cardId);
-    if (card.kind !== "monster") throw new Error(`${card.name} não é um monstro — use acquireCard.`);
+    if (card.kind !== "monster") throw new Error(`${card.nomePt} não é um monstro — use acquireCard.`);
     this.checkRoomRequirement(player, card);
     const cost = card.swordCost ?? 0;
     if (player.resources.swords < cost) {
-      throw new Error(`Swords insuficientes pra vencer ${card.name} (precisa ${cost}, tem ${player.resources.swords}).`);
+      throw new Error(`Swords insuficientes pra vencer ${card.nomePt} (precisa ${cost}, tem ${player.resources.swords}).`);
     }
 
     player.resources.swords -= cost;
@@ -604,13 +604,13 @@ export class GameEngine {
     const player = this.requireCurrentPlayer(playerId);
     const card = getCard(cardId);
     const remaining = this.state.reserve.remaining[cardId] ?? 0;
-    if (remaining <= 0) throw new Error(`${card.name} esgotou na Reserva.`);
+    if (remaining <= 0) throw new Error(`${card.nomePt} esgotou na Reserva.`);
     this.checkRoomRequirement(player, card);
 
     if (card.kind === "monster") {
       const cost = card.swordCost ?? 0;
       if (player.resources.swords < cost) {
-        throw new Error(`Swords insuficientes pra vencer ${card.name} (precisa ${cost}, tem ${player.resources.swords}).`);
+        throw new Error(`Swords insuficientes pra vencer ${card.nomePt} (precisa ${cost}, tem ${player.resources.swords}).`);
       }
       player.resources.swords -= cost;
       this.applyEffectsOrSetChoice(player, card, card.acquireEffects, card.acquireChoices);
@@ -622,7 +622,7 @@ export class GameEngine {
 
     const cost = card.skillCost ?? 0;
     if (player.resources.skill < cost) {
-      throw new Error(`Skill insuficiente pra comprar ${card.name} (precisa ${cost}, tem ${player.resources.skill}).`);
+      throw new Error(`Skill insuficiente pra comprar ${card.nomePt} (precisa ${cost}, tem ${player.resources.skill}).`);
     }
     player.resources.skill -= cost;
     player.discardPile.push(cardId);
@@ -641,7 +641,7 @@ export class GameEngine {
     for (const player of this.state.players) {
       this.applyEffects(player, card.arriveEffects);
     }
-    this.pushLog(`${card.name} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
+    this.pushLog(`${card.nomePt} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
   }
 
   private refillDungeonSlot(slotIndex: number) {
