@@ -133,6 +133,8 @@ export default function App() {
     createRoom,
     joinRoom,
     toggleReady,
+    addBot,
+    removeBot,
     setColor,
     startGame,
     playCard,
@@ -210,6 +212,8 @@ export default function App() {
       mySessionId={room.sessionId}
       snapshot={snapshot}
       onToggleReady={toggleReady}
+      onAddBot={addBot}
+      onRemoveBot={removeBot}
       onSetColor={setColor}
       onStartGame={startGame}
       onLeave={leaveRoom}
@@ -303,12 +307,24 @@ interface LobbyScreenProps {
   mySessionId: string;
   snapshot: RoomSnapshot;
   onToggleReady: () => void;
+  onAddBot: () => void;
+  onRemoveBot: (botId: string) => void;
   onSetColor: (color: string) => void;
   onStartGame: () => void;
   onLeave: () => void;
 }
 
-function LobbyScreen({ roomCode, mySessionId, snapshot, onToggleReady, onSetColor, onStartGame, onLeave }: LobbyScreenProps) {
+function LobbyScreen({
+  roomCode,
+  mySessionId,
+  snapshot,
+  onToggleReady,
+  onAddBot,
+  onRemoveBot,
+  onSetColor,
+  onStartGame,
+  onLeave,
+}: LobbyScreenProps) {
   const [copied, setCopied] = useState(false);
   const me = snapshot.players.find((p) => p.id === mySessionId);
 
@@ -360,20 +376,39 @@ function LobbyScreen({ roomCode, mySessionId, snapshot, onToggleReady, onSetColo
                     <Avatar name={p.name} color={p.color} />
                     <span className={p.connected ? "" : "text-slate-500 line-through"}>
                       {p.name}
+                      {p.isBot && " 🤖"}
                       {!p.connected && " (desconectado)"}
                     </span>
                   </span>
-                  <span
-                    className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                      p.ready ? "bg-emerald-600 text-emerald-50" : "bg-slate-700 text-slate-400"
-                    }`}
-                  >
-                    {p.ready ? "Pronto" : "Aguardando"}
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                        p.ready ? "bg-emerald-600 text-emerald-50" : "bg-slate-700 text-slate-400"
+                      }`}
+                    >
+                      {p.ready ? "Pronto" : "Aguardando"}
+                    </span>
+                    {p.isBot && (
+                      <button
+                        onClick={() => onRemoveBot(p.id)}
+                        className="rounded-md px-2 py-1 text-xs font-semibold text-red-400 active:bg-slate-700"
+                      >
+                        Remover
+                      </button>
+                    )}
                   </span>
                 </motion.li>
               ))}
             </AnimatePresence>
           </ul>
+          {snapshot.players.length < 4 && (
+            <button
+              onClick={onAddBot}
+              className="mt-2 w-full rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold active:scale-[0.98]"
+            >
+              🤖 Adicionar Bot
+            </button>
+          )}
         </section>
 
         {me && (

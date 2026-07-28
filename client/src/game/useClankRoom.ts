@@ -8,6 +8,7 @@ export interface PlayerSnapshot {
   color: string;
   connected: boolean;
   ready: boolean;
+  isBot: boolean;
   knockedOut: boolean;
   handCount: number;
   drawPileCount: number;
@@ -149,6 +150,7 @@ export function useClankRoom() {
         color: p.color,
         connected: p.connected,
         ready: p.ready,
+        isBot: p.isBot,
         knockedOut: p.knockedOut,
         handCount: p.handCount,
         drawPileCount: p.drawPileCount,
@@ -301,6 +303,14 @@ export function useClankRoom() {
     roomRef.current?.send("toggle_ready");
   }, []);
 
+  const addBot = useCallback(() => {
+    roomRef.current?.send("add_bot");
+  }, []);
+
+  const removeBot = useCallback((botId: string) => {
+    roomRef.current?.send("remove_bot", botId);
+  }, []);
+
   const setColor = useCallback((color: string) => {
     roomRef.current?.send("set_color", color);
   }, []);
@@ -386,6 +396,8 @@ export function useClankRoom() {
     createRoom,
     joinRoom,
     toggleReady,
+    addBot,
+    removeBot,
     setColor,
     startGame,
     playCard,

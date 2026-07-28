@@ -1,6 +1,6 @@
 import { Room, Client } from "colyseus";
 import { Schema, type, MapSchema, ArraySchema } from "@colyseus/schema";
-import { GameEngine } from "@clank/engine";
+import { BOARD, GameEngine, getCard } from "@clank/engine";
 
 /** Paleta fixa de cores por jogador — sem arte oficial, só blocos de cor + inicial. */
 const PLAYER_COLORS = ["#38bdf8", "#f472b6", "#a3e635", "#fb923c", "#a78bfa", "#2dd4bf"];
@@ -43,6 +43,8 @@ export class Player extends Schema {
   @type("boolean") connected = true;
   /** Só usado na fase de lobby. */
   @type("boolean") ready = false;
+  /** Bot local (sem client de verdade por trás) — pra testar sozinho. Ver `runBotTurn`. */
+  @type("boolean") isBot = false;
 
   // Estado de jogo (populado quando phase vira "playing")
   @type("boolean") knockedOut = false;
@@ -104,6 +106,7 @@ export class ClankRoom extends Room<ClankRoomState> {
   maxClients = MAX_PLAYERS;
   private engine: GameEngine | null = null;
   private lastEngineLogIndex = 0;
+  private botCounter = 0;
 
   onCreate() {
     this.setState(new ClankRoomState());
@@ -131,6 +134,28 @@ export class ClankRoom extends Room<ClankRoomState> {
       if (!player) return;
       player.ready = !player.ready;
       this.pushLog(`${player.name} está ${player.ready ? "pronto" : "não pronto"}.`);
+    });
+
+    /** Adiciona um bot local pra testar sozinho — pronto automaticamente, joga sozinho via `runBotTurn`. */
+    this.onMessage("add_bot", () => {
+      if (this.state.phase !== "lobby") return;
+      if (this.state.players.size >= MAX_PLAYERS) return;
+      const botId = `bot-${++this.botCounter}`;
+      const bot = new Player();
+      bot.name = `Bot ${this.botCounter}`;
+      bot.color = PLAYER_COLORS[this.state.players.size % PLAYER_COLORS.length];
+      bot.isBot = true;
+      bot.ready = true;
+      this.state.players.set(botId, bot);
+      this.pushLog(`${bot.name} entrou na sala.`);
+    });
+
+    this.onMessage("remove_bot", (_client, botId: string) => {
+      if (this.state.phase !== "lobby") return;
+      const bot = this.state.players.get(botId);
+      if (!bot?.isBot) return;
+      this.state.players.delete(botId);
+      this.pushLog(`${bot.name} saiu da sala.`);
     });
 
     this.onMessage("start_game", (client) => this.handleStartGame(client));
@@ -228,6 +253,7 @@ export class ClankRoom extends Room<ClankRoomState> {
       this.pushLog("A partida começou.");
       this.syncFromEngine();
       for (const [sessionId] of connected) this.sendHand(sessionId);
+      this.runBotTurnsIfNeeded();
     } catch (err) {
       this.engine = null;
       this.state.phase = "lobby";
@@ -245,6 +271,7 @@ export class ClankRoom extends Room<ClankRoomState> {
       action();
       this.syncFromEngine();
       this.sendHand(client.sessionId);
+      this.runBotTurnsIfNeeded();
     } catch (err) {
       client.send("error", err instanceof Error ? err.message : "Ação inválida.");
     }
@@ -255,6 +282,211 @@ export class ClankRoom extends Room<ClankRoomState> {
     if (!player) return;
     const client = this.clients.find((c) => c.sessionId === sessionId);
     client?.send("hand", player.hand);
+  }
+
+  /**
+   * Roda o(s) turno(s) de bot automaticamente enquanto o jogador da vez for um bot —
+   * cobre o caso de 2+ bots seguidos, ou o bot já ser o primeiro a jogar. `guard` é só
+   * proteção contra um bug fazer isso girar pra sempre (nunca deveria bater no limite,
+   * já que cada `runBotTurn` sempre avança a vez).
+   */
+  private runBotTurnsIfNeeded() {
+    if (!this.engine) return;
+    let ranAny = false;
+    let guard = 0;
+    while (this.engine.state.phase === "playing" && guard++ < 20) {
+      const current = this.engine.currentPlayer;
+      if (!this.state.players.get(current.id)?.isBot) break;
+      this.runBotTurn(current.id);
+      ranAny = true;
+    }
+    if (ranAny) this.syncFromEngine();
+  }
+
+  /**
+   * IA bem simples só pra dar um oponente pra testar sozinho — não é estratégica de
+   * verdade: joga toda a mão, gasta Skill/Swords na opção mais barata disponível
+   * (repetindo até não sobrar recurso ou nada acessível), pega artefato/ídolo da sala
+   * atual se puder, anda por túneis que consiga pagar, e sai da masmorra se estiver na
+   * Entrada carregando algum artefato. Qualquer escolha "X -OU- Y" pendente sempre pega
+   * a primeira opção. O `finally` garante que o turno sempre termina (mesmo se algo
+   * desse errado no meio), pra nunca travar a sala esperando um bot que nunca age.
+   */
+  private runBotTurn(botId: string) {
+    const engine = this.engine;
+    if (!engine) return;
+
+    const resolvePendingChoices = () => {
+      let guard = 0;
+      while (engine.state.pendingChoice && guard++ < 10) {
+        try {
+          engine.resolveChoice(botId, 0);
+        } catch {
+          break;
+        }
+      }
+    };
+
+    try {
+      resolvePendingChoices();
+      const player = () => engine.state.players.find((p) => p.id === botId);
+
+      for (const cardId of [...(player()?.hand ?? [])]) {
+        try {
+          engine.playCard(botId, cardId);
+        } catch {
+          // carta não jogável agora — fica na mão, descartada no fim do turno mesmo assim
+        }
+        resolvePendingChoices();
+      }
+
+      // Skill: compra repetidamente a opção mais barata disponível (Dungeon Row, depois Reserva).
+      for (let guard = 0; guard < 20; guard++) {
+        const p = player();
+        if (!p || p.resources.skill <= 0) break;
+        let bought = false;
+
+        let bestSlot = -1;
+        let bestCost = Infinity;
+        engine.state.dungeonRow.slots.forEach((cardId, idx) => {
+          if (!cardId) return;
+          const card = getCard(cardId);
+          if (card.kind === "monster") return;
+          const cost = card.skillCost ?? 0;
+          if (cost <= p.resources.skill && cost < bestCost) {
+            bestCost = cost;
+            bestSlot = idx;
+          }
+        });
+        if (bestSlot !== -1) {
+          try {
+            engine.acquireCard(botId, bestSlot);
+            bought = true;
+          } catch {
+            // sala/requisito não bate — tenta a Reserva a seguir
+          }
+        }
+
+        if (!bought) {
+          for (const [cardId, count] of Object.entries(engine.state.reserve.remaining)) {
+            if (count <= 0) continue;
+            const card = getCard(cardId);
+            if (card.kind === "monster") continue;
+            if ((card.skillCost ?? 0) > p.resources.skill) continue;
+            try {
+              engine.acquireFromReserve(botId, cardId);
+              bought = true;
+              break;
+            } catch {
+              // tenta a próxima carta da Reserva
+            }
+          }
+        }
+
+        resolvePendingChoices();
+        if (!bought) break;
+      }
+
+      // Swords: luta repetidamente o monstro mais barato disponível (Dungeon Row, depois Reserva).
+      for (let guard = 0; guard < 20; guard++) {
+        const p = player();
+        if (!p || p.resources.swords <= 0) break;
+        let fought = false;
+
+        let bestSlot = -1;
+        let bestCost = Infinity;
+        engine.state.dungeonRow.slots.forEach((cardId, idx) => {
+          if (!cardId) return;
+          const card = getCard(cardId);
+          if (card.kind !== "monster") return;
+          const cost = card.swordCost ?? 0;
+          if (cost <= p.resources.swords && cost < bestCost) {
+            bestCost = cost;
+            bestSlot = idx;
+          }
+        });
+        if (bestSlot !== -1) {
+          try {
+            engine.fightMonster(botId, bestSlot);
+            fought = true;
+          } catch {
+            // sala/requisito não bate — tenta a Reserva a seguir
+          }
+        }
+
+        if (!fought) {
+          for (const [cardId, count] of Object.entries(engine.state.reserve.remaining)) {
+            if (count <= 0) continue;
+            const card = getCard(cardId);
+            if (card.kind !== "monster") continue;
+            if ((card.swordCost ?? 0) > p.resources.swords) continue;
+            try {
+              engine.acquireFromReserve(botId, cardId);
+              fought = true;
+              break;
+            } catch {
+              // tenta a próxima carta da Reserva
+            }
+          }
+        }
+
+        resolvePendingChoices();
+        if (!fought) break;
+      }
+
+      try {
+        engine.takeArtifact(botId);
+      } catch {
+        // sem artefato disponível na sala, ou já no limite — sem-op
+      }
+      try {
+        engine.takeMonkeyIdol(botId);
+      } catch {
+        // sem ídolo disponível na sala — sem-op
+      }
+
+      // Boots: anda por túneis que consiga pagar (pula os trancados sem chave-mestra).
+      for (let guard = 0; guard < 10; guard++) {
+        const p = player();
+        if (!p || p.resources.boots <= 0) break;
+        const room = BOARD.rooms[p.roomId];
+        if (!room) break;
+        const tunnel = room.tunnels.find((t) => {
+          if (t.icon?.locked && !p.hasMasterKey) return false;
+          const cost = t.icon?.footprint ? 2 : 1;
+          return cost <= p.resources.boots;
+        });
+        if (!tunnel) break;
+        try {
+          engine.movePlayer(botId, tunnel.to);
+        } catch {
+          break;
+        }
+        resolvePendingChoices();
+      }
+
+      const finalPlayer = player();
+      if (finalPlayer) {
+        const room = BOARD.rooms[finalPlayer.roomId];
+        if (room?.isEntrance && finalPlayer.artifactsCarried > 0) {
+          try {
+            engine.leaveDungeon(botId);
+          } catch {
+            // não devia acontecer (regra: só a Entrada permite sair), mas não trava o bot por isso
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Bot ${botId} teve um erro inesperado no turno:`, err);
+    } finally {
+      try {
+        if (engine.state.phase === "playing" && engine.currentPlayer.id === botId) {
+          engine.endTurn(botId);
+        }
+      } catch {
+        // último recurso — se nem isso funcionar, o guard de runBotTurnsIfNeeded evita loop infinito
+      }
+    }
   }
 
   private syncFromEngine() {

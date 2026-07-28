@@ -269,11 +269,17 @@ placeholder (projeto pessoal, sem restrição de IP — ver nota atualizada em
 
 1. ~~Se o usuário mandar os arquivos de arte das cartas/tabuleiro: integrar no
    client~~ ✅ (2026-07-27, ver seção acima).
-2. Terminar a verificação ao vivo dos tokens (artefatos, coroas, chave, mochila, ídolos,
-   ChoiceModal) — resolver o bloqueio de automação de navegador acima primeiro.
-3. Commit + push do trabalho de arte/tokens, e deploy real (ver item 16 do
-   [PLANNING.md](../../PLANNING.md)) — próximo pedido explícito do usuário.
-4. Decidir com o usuário se `images/` (pasta de fotos brutas, hoje fora do
-   `.gitignore`) deve ser versionada ou ignorada antes desse commit.
-5. Se quiser fechar o verso do tabuleiro ("Montículos e Covas"): mandar foto de cima.
-6. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.
+2. ~~Commit + push do trabalho de arte/tokens, e deploy real~~ ✅ (2026-07-27) — no ar em
+   produção (Vercel + Railway), testado ao vivo com 2 abas reais. Ver item 16 do
+   [PLANNING.md](../../PLANNING.md) pra detalhes de URLs/config.
+3. A verificação ao vivo dos tokens específicos (artefatos, coroas, chave, mochila,
+   ídolos, ChoiceModal) ainda não foi conferida visualmente com atenção — o teste em
+   produção focou no fluxo de sala/código, não em cada token individualmente. Vale
+   conferir quando for mexer no polish visual (ver item 17 do PLANNING.md).
+4. Se quiser fechar o verso do tabuleiro ("Montículos e Covas"): mandar foto de cima.
+5. Revisar a planilha em busca de mais discrepâncias, se sobrar tempo.
+
+Demanda atual do projeto (front-end mais bonito/funcional, testar caminhos, playtest com
+outras IAs) está registrada no item 17 do [PLANNING.md](../../PLANNING.md) — não é escopo
+desta pasta de pesquisa (que é só sobre os dados de carta/tabuleiro), então não duplicado
+aqui em detalhe.
