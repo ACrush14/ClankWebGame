@@ -231,9 +231,17 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
     zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15);
   };
 
+  /**
+   * CONFIRMADO no playtest com 2 jogadores reais (2026-07-28): não dava pra andar mesmo
+   * com Botas — a causa era aqui. Antes, `setPointerCapture` era chamado já no
+   * `pointerdown` (assim que o zoom estava ativo), o que podia redirecionar o "click"
+   * nativo pra esse container em vez da sala clicada, fazendo o clique nunca chegar no
+   * `onClick` da sala — mesmo num toque totalmente parado, sem nenhum arraste de
+   * verdade. Agora só capturamos o ponteiro depois de confirmar que É um arraste (>5px
+   * de movimento), então um clique limpo nunca aciona a captura e sempre chega na sala.
+   */
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (scale <= MIN_ZOOM) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y, moved: false };
   };
 
@@ -242,15 +250,24 @@ export function BoardMap({ players, claimedArtifacts, currentRoomId, onRoomClick
     if (!drag) return;
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
-    setPan(clampPan(scale, drag.startPanX + dx, drag.startPanY + dy));
+    if (!drag.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      drag.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (drag.moved) {
+      setPan(clampPan(scale, drag.startPanX + dx, drag.startPanY + dy));
+    }
   };
 
   const justDraggedRef = useRef(false);
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current?.moved) justDraggedRef.current = true;
+    if (dragRef.current?.moved) {
+      justDraggedRef.current = true;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    }
     dragRef.current = null;
-    e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
   const rooms = Object.values(BOARD.rooms);

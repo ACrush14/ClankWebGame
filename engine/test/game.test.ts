@@ -26,6 +26,16 @@ describe("setup", () => {
     expect(game.state.dungeonRow.slots.every((s) => s !== null)).toBe(true);
   });
 
+  it("nenhuma carta da Dungeon Row inicial dispara ataque do dragão — CONFIRMADO no manual oficial", () => {
+    // roda várias vezes (rng não seedado) já que a regra só se prova violada por sorte
+    for (let i = 0; i < 20; i++) {
+      const game = twoPlayerGame();
+      for (const cardId of game.state.dungeonRow.slots) {
+        if (cardId) expect(getCard(cardId).triggersDragonAttack).toBeFalsy();
+      }
+    }
+  });
+
   it("inicia a Reserva com as contagens reais do jogo base (Goblin 1, Explore 15, Mercenary 15, Secret Tome 12)", () => {
     const game = twoPlayerGame();
     expect(game.state.reserve.remaining).toEqual({
@@ -59,6 +69,7 @@ describe("playCard", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.hand = ["stumble"];
+    player.clank = 0; // zera o Clank! inicial do 1º jogador (3, CONFIRMADO no manual)
 
     game.playCard(player.id, "stumble");
 
@@ -218,11 +229,11 @@ describe("acquireFromReserve", () => {
 });
 
 describe("endTurn", () => {
-  it("descarta mão e cartas jogadas, compra 5 novas, zera recursos e passa a vez", () => {
+  it("descarta cartas jogadas, compra 5 novas, zera recursos e passa a vez (mão precisa estar vazia)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
-    player.hand = ["burgle", "burgle"];
-    player.playedThisTurn = ["stumble"];
+    player.hand = [];
+    player.playedThisTurn = ["burgle", "burgle", "stumble"];
     player.resources.skill = 3;
 
     game.endTurn(player.id);
@@ -233,6 +244,13 @@ describe("endTurn", () => {
     expect(game.currentPlayer.id).toBe("p2");
   });
 
+  it("lança erro se ainda tem carta na mão — CONFIRMADO no manual oficial (\"you'll play them all\")", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    expect(player.hand).toHaveLength(5);
+    expect(() => game.endTurn(player.id)).toThrow(/precisa jogar todas as cartas/i);
+  });
+
   it("lança erro se quem chama endTurn não é o jogador da vez", () => {
     const game = twoPlayerGame();
     const other = game.state.players[1];
@@ -241,7 +259,9 @@ describe("endTurn", () => {
 
   it("dá a volta pro primeiro jogador depois do último", () => {
     const game = twoPlayerGame();
+    game.state.players[0].hand = [];
     game.endTurn("p1");
+    game.state.players[1].hand = [];
     game.endTurn("p2");
     expect(game.currentPlayer.id).toBe("p1");
   });
@@ -253,6 +273,7 @@ describe("endTurn", () => {
       { id: "p3", name: "C" },
     ]);
     game.state.players[1].knockedOut = true;
+    game.state.players[0].hand = [];
 
     game.endTurn("p1");
 
@@ -362,6 +383,7 @@ describe("escolha X -OU- Y (PendingChoice / resolveChoice)", () => {
   it("adquirir Shrine cria uma escolha pendente em vez de aplicar efeito direto", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
+    player.clank = 0; // zera o Clank! inicial (3, CONFIRMADO no manual) -- ver outros testes com o mesmo comentário
     game.state.dungeonRow.slots[0] = "shrine";
     player.resources.skill = 2;
 
@@ -407,6 +429,10 @@ describe("escolha X -OU- Y (PendingChoice / resolveChoice)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.damage = 5;
+    // zera o Clank! inicial (3, CONFIRMADO no manual) -- a reposição da Dungeon Row logo
+    // abaixo é aleatória e podia sortear uma carta de ataque do dragão, causando dano
+    // incidental e quebrando a asserção de cura abaixo.
+    player.clank = 0;
     game.state.dungeonRow.slots[0] = "shrine";
     player.resources.skill = 2;
     game.acquireCard(player.id, 0);
@@ -451,6 +477,10 @@ describe("cura (heal)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.damage = 5;
+    // zera o Clank! inicial (3, CONFIRMADO no manual) -- acquireCard repõe a Dungeon Row
+    // com uma carta aleatória, que podia disparar um ataque do dragão e causar dano
+    // incidental, quebrando a asserção de cura abaixo.
+    player.clank = 0;
     game.state.dungeonRow.slots[0] = "cleric-of-the-sun";
     player.resources.skill = 3;
 
@@ -463,6 +493,7 @@ describe("cura (heal)", () => {
     const game = twoPlayerGame();
     const player = game.currentPlayer;
     player.damage = 0;
+    player.clank = 0; // mesmo motivo do teste acima
     game.state.dungeonRow.slots[0] = "cleric-of-the-sun";
     player.resources.skill = 3;
 
@@ -839,8 +870,9 @@ describe("ataque do dragão (disparado ao repor a Dungeon Row)", () => {
 describe("saco de cubos pretos (persistente — CONFIRMADO pelo usuário via playtest físico, 2026-07-28)", () => {
   it("cubo preto sorteado sai do saco pra sempre -- não recarrega no próximo ataque", () => {
     const game = twoPlayerGame(); // rng não importa aqui: sem clank de jogador, todo sorteio cai em cubo preto
-    const player = game.currentPlayer;
-    player.clank = 0;
+    // zera o Clank! inicial de TODOS os jogadores (3/2/1/0 por ordem de turno, CONFIRMADO
+    // no manual) -- senão o 2º jogador ainda teria 2 cubos próprios elegíveis pro sorteio.
+    for (const p of game.state.players) p.clank = 0;
     game.state.dragon.rageTrackPosition = 1; // 2 cubos por ataque (RAGE_TRACK_CUBES[0])
     // zera a Dungeon Row inicial (sorteada aleatoriamente por twoPlayerGame) pra garantir
     // que nenhuma carta de PERIGO ali dentro some +1 cubo extra e quebre a contagem exata.
@@ -948,6 +980,7 @@ describe("buyMarketItem", () => {
     const other = game.state.players[1];
     other.roomId = "room-44";
     other.gold = 7;
+    player.hand = [];
     game.endTurn(player.id);
     expect(() => game.buyMarketItem(other.id, "key")).toThrow(/já foi comprada/i);
   });
@@ -1080,14 +1113,18 @@ describe("leaveDungeon e fim de jogo", () => {
 
     // p2 termina o turno -> como só sobra p1 (o marcador) no rodízio, ele processa a
     // trilha em vez de jogar (casa 1 -> 2), e a vez volta pro p2.
+    p2.hand = [];
     game.endTurn(p2.id);
     expect(game.state.countdownTrack).toBe(2);
     expect(game.currentPlayer.id).toBe(p2.id);
 
+    p2.hand = [];
     game.endTurn(p2.id); // casa 2 -> 3
+    p2.hand = [];
     game.endTurn(p2.id); // casa 3 -> 4
     expect(game.state.countdownTrack).toBe(4);
 
+    p2.hand = [];
     game.endTurn(p2.id); // casa 4 -> 5: nocauteia quem ainda está dentro
     expect(p2.knockedOut).toBe(true);
     expect(game.state.countdownTrack).toBe(5);
@@ -1101,6 +1138,7 @@ describe("Teleporte", () => {
     const [p1] = game.state.players;
     p1.hand = ["invoker-of-the-ancients"];
     p1.resources.skill = 4;
+    p1.clank = 0; // zera o Clank! inicial do 1º jogador (3, CONFIRMADO no manual) pra isolar só o efeito da carta
 
     game.playCard(p1.id, "invoker-of-the-ancients");
 

@@ -354,7 +354,8 @@ export class ClankRoom extends Room<ClankRoomState> {
         try {
           engine.playCard(botId, cardId);
         } catch {
-          // carta não jogável agora — fica na mão, descartada no fim do turno mesmo assim
+          // raro (ex: escolha pendente travou o playCard) — a passada defensiva no fim
+          // desta função tenta de novo antes de terminar o turno (mão precisa ficar vazia)
         }
         resolvePendingChoices();
       }
@@ -490,6 +491,22 @@ export class ClankRoom extends Room<ClankRoomState> {
           } catch {
             // não devia acontecer (regra: só a Entrada permite sair), mas não trava o bot por isso
           }
+        }
+      }
+
+      // Passada defensiva final — CONFIRMADO no manual oficial que a mão inteira precisa
+      // ser jogada antes de terminar o turno (endTurn agora lança erro se sobrar carta).
+      // Na prática o loop de cima já deveria ter jogado tudo, mas se alguma carta ficou
+      // pra trás (ex: uma escolha pendente não resolvida a tempo), tenta de novo aqui
+      // antes de desistir — sem isso o bot ficaria travado com o próprio turno pra sempre.
+      for (let guard = 0; guard < 10 && (player()?.hand.length ?? 0) > 0; guard++) {
+        resolvePendingChoices();
+        const cardId = player()?.hand[0];
+        if (!cardId) break;
+        try {
+          engine.playCard(botId, cardId);
+        } catch {
+          break;
         }
       }
     } catch (err) {

@@ -44,22 +44,52 @@ export const RAGE_TRACK_CUBES = [2, 2, 3, 3, 4, 4, 5];
 const RAGE_TRACK_SIZE = RAGE_TRACK_CUBES.length;
 
 /**
- * Casa inicial da Trilha de Fúria por número de jogadores — CONFIRMADO pelo usuário:
- * com menos jogadores (menos Clank! coletivo gerado por turno), o jogo começa mais
- * adiantado na trilha pra compensar. 1 jogador (solo) não é modo suportado ainda —
- * usa a mesma casa de 2 jogadores como aproximação razoável até isso ser confirmado.
+ * Casa inicial da Trilha de Fúria por número de jogadores — CONFIRMADO no manual
+ * oficial ("Place the Dragon marker... 4-player: first space. 3-player: second space.
+ * 2-player: third space."). 1 jogador (solo) não é modo oficial — usa a mesma casa de
+ * 2 jogadores como aproximação razoável.
  */
 function startingRageTrackPosition(playerCount: number): number {
   if (playerCount >= 4) return 1;
   if (playerCount === 3) return 2;
   return 3; // 2 jogadores (ou 1, solo — aproximação)
 }
-/**
- * Quantidade de cubos "pretos" (neutros) sempre disponíveis no saco do dragão.
- * ⚠️ Estimativa baseada na contagem de componentes ("24 dragon cubes") — não confirmei
- * se essa é exatamente a mecânica de reposição do saco entre ataques.
- */
+/** Quantidade de cubos "pretos" (neutros) no saco do dragão — CONFIRMADO no manual oficial ("24 Dragon Cubes"). */
 export const BLACK_CUBE_COUNT = 24;
+
+/**
+ * Clank! inicial na Área de Clank de cada jogador, por ordem de turno — CONFIRMADO no
+ * manual oficial: "The first player places 3 Clank! cubes... The second player places
+ * 2 Clank!... The third and fourth players (if there are any) place 1 Clank! and 0
+ * Clank!, respectively." Compensa quem joga depois no primeiro turno ter menos chance
+ * de ter Clank! acumulado antes do primeiro ataque do dragão.
+ */
+const STARTING_CLANK_BY_POSITION = [3, 2, 1, 0];
+
+/**
+ * Monta a Dungeon Row inicial (6 cartas) — CONFIRMADO no manual oficial: "If any of
+ * those cards have the Dragon Attack symbol..., replace them with other cards until
+ * none of them show the symbol, then shuffle any replaced cards back into the Dungeon
+ * Deck." Sem isso, a primeira reposição do turno 1 podia disparar um ataque do dragão
+ * antes de qualquer jogador ter feito Clank! algum.
+ */
+function dealInitialDungeonRow(shuffledDeck: string[], rng: Rng): { slots: (string | null)[]; drawPile: string[] } {
+  const remaining = [...shuffledDeck];
+  const slots: string[] = [];
+  const replaced: string[] = [];
+  while (slots.length < DUNGEON_ROW_SIZE && remaining.length > 0) {
+    const cardId = remaining.shift()!;
+    if (getCard(cardId).triggersDragonAttack) {
+      replaced.push(cardId);
+    } else {
+      slots.push(cardId);
+    }
+  }
+  const drawPile = replaced.length > 0 ? shuffle([...remaining, ...replaced], rng) : remaining;
+  const paddedSlots: (string | null)[] = [...slots];
+  while (paddedSlots.length < DUNGEON_ROW_SIZE) paddedSlots.push(null); // nunca deveria faltar carta, mas não trava se faltar
+  return { slots: paddedSlots, drawPile };
+}
 
 export interface DungeonRowState {
   /** 5 posições visíveis; null enquanto o monte de compra estiver vazio. */
@@ -121,10 +151,16 @@ export class GameEngine {
     this.rng = rng;
 
     const players = playerInfos.map((p) => createPlayer(p.id, p.name, rng));
+    // CONFIRMADO no manual oficial: "The first player places 3 Clank! cubes... The
+    // second player places 2 Clank!... The third and fourth players (if there are any)
+    // place 1 Clank! and 0 Clank!, respectively." — compensa quem joga depois ter mais
+    // chance de gerar Clank! coletivo antes do primeiro ataque do dragão.
+    players.forEach((p, i) => {
+      p.clank = Math.max(0, STARTING_CLANK_BY_POSITION[i] ?? 0);
+    });
 
-    const dungeonDeck = shuffle(buildDungeonDeck(), rng);
-    const slots: (string | null)[] = dungeonDeck.splice(0, DUNGEON_ROW_SIZE);
-    while (slots.length < DUNGEON_ROW_SIZE) slots.push(null);
+    const shuffledDeck = shuffle(buildDungeonDeck(), rng);
+    const { slots, drawPile: dungeonDeck } = dealInitialDungeonRow(shuffledDeck, rng);
 
     this.state = {
       players: players.map((p) => drawHand(p, rng)),
@@ -681,6 +717,9 @@ export class GameEngine {
     const card = getCard(cardId);
     player.hand.splice(handIndex, 1);
     player.playedThisTurn.push(cardId);
+    // CONFIRMADO pelo usuário via playtest: precisa dar pra acompanhar o que os outros
+    // jogadores estão fazendo (carta jogada, recursos ganhos), não só o resultado final.
+    this.pushLog(`${player.name} jogou ${card.nomePt}.`);
     this.applyEffectsOrSetChoice(player, card, card.playEffects, card.playChoices);
     this.maybeGrantTeleport(player, card);
     this.applyRoomConditionalEffects(player, cardId);
@@ -846,11 +885,23 @@ export class GameEngine {
     }
   }
 
-  /** Descarta mão + cartas jogadas, compra 5 novas, zera recursos do turno e passa a vez. */
+  /**
+   * Descarta cartas jogadas, compra 5 novas, zera recursos do turno e passa a vez.
+   *
+   * CONFIRMADO no manual oficial (2026-07-28): "You start each of your turns with five
+   * cards in your hand, and you'll play them all in any order you choose" + o exemplo
+   * de turno completo termina com "Having played all cards in her hand and used all the
+   * resources she can, the green player ends her turn" — jogar a mão inteira é parte do
+   * turno normal, não uma escolha opcional. Por isso `endTurn` exige mão vazia (use
+   * `playCard`/`playAllCards` primeiro).
+   */
   endTurn(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
+    if (player.hand.length > 0) {
+      throw new Error(`${player.name} precisa jogar todas as cartas da mão antes de terminar o turno.`);
+    }
 
-    player.discardPile.push(...player.hand, ...player.playedThisTurn);
+    player.discardPile.push(...player.playedThisTurn);
     player.hand = [];
     player.playedThisTurn = [];
     player.resources = emptyResources();

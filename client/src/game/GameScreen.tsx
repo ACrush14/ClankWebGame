@@ -645,7 +645,8 @@ export function GameScreen({
                   )}
                   <button
                     onClick={onEndTurn}
-                    disabled={!isMyTurn}
+                    disabled={!isMyTurn || hand.length > 0}
+                    title={hand.length > 0 ? "Jogue todas as cartas da mão antes de terminar o turno" : undefined}
                     className="flex-1 rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-3 text-sm font-bold text-amber-950 shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:shadow-[0_0_25px_rgba(251,191,36,0.5)] hover:from-amber-300 hover:to-amber-500 active:scale-95 disabled:opacity-30 disabled:from-slate-600 disabled:to-slate-700 disabled:text-slate-400 disabled:shadow-none transition-all uppercase tracking-widest sm:w-full"
                   >
                     Terminar Turno
