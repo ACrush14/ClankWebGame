@@ -1010,6 +1010,24 @@ describe("túneis com cadeado e de mão única", () => {
   });
 });
 
+describe("state.log não tem teto (bug real de playtest)", () => {
+  it("passa de 30 linhas sem parar de crescer — ClankRoom.syncFromEngine depende disso pra continuar sincronizando eventos novos", () => {
+    // Bug real: o log do motor tinha um teto de 30 linhas com shift() (igual ao log
+    // visível da sala). O servidor caminha por esse array com um índice que só sobe
+    // (`lastEngineLogIndex`); assim que `state.log.length` parava de crescer (preso no
+    // teto), a sincronização de eventos novos pro cliente (e os popups de UI) parava
+    // de vez, silenciosamente, pro resto da partida — reproduzido neste teste jogando
+    // várias rodadas até passar de 30 eventos.
+    const game = twoPlayerGame();
+    for (let i = 0; i < 8 && game.state.phase === "playing"; i++) {
+      const player = game.currentPlayer;
+      game.playAllCards(player.id);
+      if (game.state.phase === "playing") game.endTurn(player.id);
+    }
+    expect(game.state.log.length).toBeGreaterThan(30);
+  });
+});
+
 describe("buyMarketItem", () => {
   function inMarket(game: GameEngine) {
     const player = game.currentPlayer;

@@ -33,7 +33,6 @@ import {
 
 /** CONFIRMADO no manual oficial: "Shuffle the Dungeon Deck and deal six cards..." */
 export const DUNGEON_ROW_SIZE = 6;
-const MAX_LOG_LINES = 30;
 
 /**
  * Trilha de Fúria — CONFIRMADO pelo usuário (playtest do jogo físico, 2026-07-28), 7
@@ -770,9 +769,21 @@ export class GameEngine {
     return scores;
   }
 
+  /**
+   * CONFIRMADO por bug real observado em playtest: NÃO limitar este log (ao contrário do
+   * log visível da sala em `ClankRoom.pushLog`, que existe só pra UI e pode ficar
+   * pequeno). `ClankRoom.syncFromEngine` caminha por este array com um índice
+   * (`lastEngineLogIndex`) que só sobe — se este array fizesse `shift()` ao passar de
+   * um teto, os índices de tudo que já foi lido ficariam errados e, pior, uma vez que
+   * `state.log.length` parasse de crescer (preso no teto), o laço de sync
+   * (`while (lastEngineLogIndex < state.log.length)`) nunca mais teria nada "novo" pra
+   * copiar — o log da sala (e os popups do cliente) simplesmente parava de atualizar
+   * pro resto da partida, silenciosamente, assim que o motor passasse de ~30 eventos.
+   * Uma partida inteira não passa de algumas centenas de linhas — sem custo real manter
+   * tudo.
+   */
   private pushLog(line: string) {
     this.state.log.push(line);
-    while (this.state.log.length > MAX_LOG_LINES) this.state.log.shift();
   }
 
   /** Joga uma carta da mão (por id) — aplica os efeitos e move pro monte "jogadas nesta rodada". */

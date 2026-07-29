@@ -45,6 +45,101 @@ export function cardName(id: string): string {
   }
 }
 
+type PopupKind = "dragon" | "damage" | "knockout" | "secret" | "idol" | "artifact" | "heal" | "escape" | "gameEnd";
+
+interface EventPopup {
+  id: number;
+  kind: PopupKind;
+  icon: string;
+  text: string;
+}
+
+const MAX_VISIBLE_POPUPS = 3;
+const POPUP_TTL_MS = 2800;
+
+const POPUP_STYLES: Record<PopupKind, string> = {
+  dragon: "bg-red-950/95 ring-red-500/60",
+  damage: "bg-red-950/95 ring-red-500/50",
+  knockout: "bg-slate-950/95 ring-red-600/70",
+  secret: "bg-violet-950/95 ring-violet-400/60",
+  idol: "bg-amber-950/95 ring-amber-400/60",
+  artifact: "bg-emerald-950/95 ring-emerald-400/60",
+  heal: "bg-emerald-950/90 ring-emerald-500/50",
+  escape: "bg-sky-950/95 ring-sky-400/60",
+  gameEnd: "bg-amber-900/95 ring-amber-300/70",
+};
+
+/**
+ * Classifica uma linha do log (`pushLog` no motor) num tipo de popup — ou `null` se for
+ * um evento "de rotina" (jogar/comprar/derrotar carta) que já tem outro feedback visual
+ * (flash na Dungeon Row, animação da mão) e não precisa de popup pra não virar spam.
+ * Casa com o texto EXATO que `engine/src/game.ts` gera via `pushLog` — mesma base de
+ * código, então não é frágil a tradução/reformulação incidental.
+ */
+function classifyLogLine(line: string): { kind: PopupKind; icon: string } | null {
+  if (line.includes("dragão atacou") || line.includes("dragão acordou de vez")) return { kind: "dragon", icon: "🐉" };
+  if (line.includes("foi nocauteado")) return { kind: "knockout", icon: "💀" };
+  if (line.includes("de dano passando por um túnel")) return { kind: "damage", icon: "⚔️" };
+  if (line.includes("encontrou um Segredo")) return { kind: "secret", icon: "✨" };
+  if (line.includes("pegou o Ídolo de Macaco")) return { kind: "idol", icon: "🐵" };
+  if (line.includes("pegou um artefato")) return { kind: "artifact", icon: "💎" };
+  if (line.includes("Fonte de Cura")) return { kind: "heal", icon: "💚" };
+  if (line.includes("escapou da masmorra")) return { kind: "escape", icon: "🏃" };
+  if (line.includes("partida terminou")) return { kind: "gameEnd", icon: "🏆" };
+  return null;
+}
+
+/**
+ * Acha as linhas NOVAS de `curr` (log atual) em relação a `prev` (log do render
+ * anterior) — o log do servidor é uma fila com teto de 30 linhas (`MAX_LOG_LINES`),
+ * então uma simples comparação de tamanho quebra assim que o teto é atingido (tamanho
+ * para de crescer, mas linhas novas continuam entrando por trás). Em vez disso, acha o
+ * deslocamento `s` (quantas linhas antigas saíram por cima) tal que o restante de `prev`
+ * ainda aparece intacto no início de `curr`; tudo depois disso é novo.
+ */
+function diffNewLogLines(prev: string[], curr: string[]): string[] {
+  for (let s = 0; s <= prev.length; s++) {
+    const retained = prev.slice(s);
+    if (retained.length > curr.length) continue;
+    let matches = true;
+    for (let i = 0; i < retained.length; i++) {
+      if (curr[i] !== retained[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return curr.slice(retained.length);
+  }
+  return [];
+}
+
+/**
+ * Popups centralizados na tela (pedido de playtest: os avisos de "o dragão atacou",
+ * "vida diminuiu", "achou um Segredo" etc. estavam só no painel de log pequeno — fácil
+ * de não notar, principalmente no celular). Empilha até 3 por vez, cada um some sozinho
+ * depois de um tempo (`POPUP_TTL_MS`, ver o `useEffect` que os agenda em `GameScreen`).
+ */
+function EventPopups({ popups }: { popups: EventPopup[] }) {
+  if (popups.length === 0) return null;
+  return createPortal(
+    <div className="pointer-events-none fixed inset-0 z-[75] flex flex-col items-center justify-center gap-2.5 px-4">
+      {popups.map((p) => (
+        <motion.div
+          key={p.id}
+          initial={{ opacity: 0, scale: 0.7, y: -12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 24 }}
+          className={`flex max-w-sm items-center gap-3 rounded-2xl px-5 py-3 text-center shadow-2xl ring-2 ${POPUP_STYLES[p.kind]}`}
+        >
+          <span className="shrink-0 text-2xl">{p.icon}</span>
+          <span className="text-sm font-bold leading-snug text-white">{p.text}</span>
+        </motion.div>
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
 /**
  * Botão "ⓘ" sobreposto no canto de uma carta — abre `CardDetailModal` com o nome e a
  * descrição em português (`descriptionPt`, ver engine/src/cards.ts). Existe porque a
@@ -334,6 +429,44 @@ export function GameScreen({
   }, [snapshot.dungeonRowSlots.join(",")]);
   const atArtifactLimit = (me?.artifactsCarried ?? 0) >= artifactLimit;
 
+  // Popups centralizados pra eventos importantes (dragão atacou, dano, Segredo achado,
+  // nocaute...) — pedido de playtest: sem isso, tudo que acontece com o oponente (ou até
+  // com você mesmo) só aparece no painel de log pequeno, fácil de não perceber. Detecta
+  // linhas NOVAS do log (ver `diffNewLogLines`, cuida do teto de 30 linhas do servidor)
+  // e classifica cada uma (`classifyLogLine`) — só os eventos "importantes" viram popup,
+  // pra não virar spam com "jogou carta X" a cada jogada.
+  const prevLogRef = useRef<string[] | null>(null);
+  const nextPopupIdRef = useRef(0);
+  const [popups, setPopups] = useState<EventPopup[]>([]);
+  // Timers de dispensa vivem numa ref à parte (não no cleanup deste efeito): o efeito
+  // roda de novo a cada linha nova de log, e um cleanup normal cancelaria o timer do
+  // popup anterior assim que o próximo evento chegasse, deixando-o preso na tela pra
+  // sempre. Só limpa tudo de verdade quando o componente desmonta.
+  const popupTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => {
+    return () => popupTimersRef.current.forEach(clearTimeout);
+  }, []);
+  useEffect(() => {
+    const prev = prevLogRef.current;
+    const curr = snapshot.log;
+    prevLogRef.current = curr;
+    if (prev === null) return; // primeira carga/reconexão: não reproduz o histórico inteiro como popups
+    const spawned: EventPopup[] = [];
+    for (const line of diffNewLogLines(prev, curr)) {
+      const classified = classifyLogLine(line);
+      if (!classified) continue;
+      spawned.push({ id: nextPopupIdRef.current++, kind: classified.kind, icon: classified.icon, text: line });
+    }
+    if (spawned.length === 0) return;
+    setPopups((current) => [...current, ...spawned].slice(-MAX_VISIBLE_POPUPS));
+    for (const p of spawned) {
+      popupTimersRef.current.push(
+        setTimeout(() => setPopups((current) => current.filter((x) => x.id !== p.id)), POPUP_TTL_MS),
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot.log.join(" ")]);
+
   // Chave estável por carta na mão: usar `${cardId}-${index}` quebra o AnimatePresence
   // quando uma carta no meio da mão é jogada — todo card DEPOIS dela muda de índice e
   // vira "remove+add" em vez de continuar sendo o mesmo card, gerando fantasmas na tela.
@@ -365,6 +498,7 @@ export function GameScreen({
       {detailCardId && <CardDetailModal cardId={detailCardId} onClose={() => setDetailCardId(null)} />}
       {showTutorial && <WelcomeModal onClose={closeTutorial} />}
       <HoverCardTooltip hover={hover} />
+      <EventPopups popups={popups} />
 
       {/* LEFT SIDEBAR: Dragon + Players */}
       <aside className="flex w-full shrink-0 flex-col border-b border-slate-800 bg-slate-900 z-10 shadow-[0_4px_24px_rgba(0,0,0,0.5)] md:h-full md:w-64 md:border-b-0 md:border-r md:shadow-[4px_0_24px_rgba(0,0,0,0.5)]">
