@@ -27,6 +27,7 @@ import {
   emptyResources,
   HEALTH_TRACK_SIZE,
   MARKET_ITEM_COST,
+  MARKET_ITEM_POINT_VALUE,
   MONKEY_IDOL_VALUE,
 } from "./types.js";
 
@@ -56,6 +57,26 @@ function startingRageTrackPosition(playerCount: number): number {
 }
 /** Quantidade de cubos "pretos" (neutros) no saco do dragão — CONFIRMADO no manual oficial ("24 Dragon Cubes"). */
 export const BLACK_CUBE_COUNT = 24;
+
+/**
+ * Artefatos excluídos do jogo com menos de 4 jogadores — CONFIRMADO no manual oficial:
+ * "With 3 players, return one Artifact to the box. With 2 players, return two
+ * Artifacts." (sorteados aleatoriamente antes da colocação). Como `board.ts` fixa os
+ * Artefatos em salas específicas (não é um baralho), aqui "devolver pra caixa" é
+ * modelado marcando a sala como já reivindicada desde o início (`claimedArtifacts`
+ * reaproveitado) — o efeito pro jogador é idêntico: o token nunca aparece disponível.
+ */
+function excludedArtifactRooms(playerCount: number, rng: Rng): Record<string, boolean> {
+  const toExclude = playerCount === 2 ? 2 : playerCount === 3 ? 1 : 0;
+  if (toExclude <= 0) return {};
+  const artifactRoomIds = Object.values(BOARD.rooms)
+    .filter((room) => room.artifactValue !== undefined)
+    .map((room) => room.id);
+  const shuffled = shuffle(artifactRoomIds, rng);
+  const excluded: Record<string, boolean> = {};
+  for (const roomId of shuffled.slice(0, toExclude)) excluded[roomId] = true;
+  return excluded;
+}
 
 /**
  * Clank! inicial na Área de Clank de cada jogador, por ordem de turno — CONFIRMADO no
@@ -168,8 +189,8 @@ export class GameEngine {
       dungeonRow: { slots, drawPile: dungeonDeck, discardPile: [] },
       reserve: { remaining: { ...RESERVE_STARTING_COUNTS } },
       dragon: { rageTrackPosition: startingRageTrackPosition(playerInfos.length), blackCubesInBag: BLACK_CUBE_COUNT },
-      market: { masterKeyAvailable: true, backpackAvailable: true, crownsAvailable: [...CROWN_VALUES] },
-      claimedArtifacts: {},
+      market: { masterKeysRemaining: 2, backpacksRemaining: 2, crownsAvailable: [...CROWN_VALUES] },
+      claimedArtifacts: excludedArtifactRooms(playerInfos.length, rng),
       claimedMonkeyIdols: {},
       claimedSecrets: {},
       turnNumber: 1,
@@ -302,15 +323,37 @@ export class GameEngine {
     this.checkGameEnd();
   }
 
+  /**
+   * CONFIRMADO no manual oficial: "For each negative Clank! you get, remove one of
+   * your Clank! from the Clank! Area. If you don't have enough Clank! there, you can
+   * instead avoid adding Clank! later in the turn if an effect would make you do so.
+   * Any leftover negative Clank! is lost when your turn ends." Ou seja, Clank!
+   * negativo que sobra (jogador já em 0) não é simplesmente descartado — vira um
+   * crédito (`pendingClankOffset`) que cancela Clank! positivo de cartas jogadas
+   * DEPOIS na mesma mão, e só é perdido no fim do turno (ver `endTurn`).
+   */
+  private applyClankDelta(player: PlayerState, delta: number) {
+    if (delta > 0 && player.pendingClankOffset > 0) {
+      const offset = Math.min(delta, player.pendingClankOffset);
+      delta -= offset;
+      player.pendingClankOffset -= offset;
+    }
+    if (delta > 0) {
+      player.clank += delta;
+    } else if (delta < 0) {
+      const removable = Math.min(player.clank, -delta);
+      player.clank -= removable;
+      player.pendingClankOffset += -delta - removable;
+    }
+  }
+
   private applyEffects(player: PlayerState, effects: CardEffects | undefined) {
     if (!effects) return;
     if (effects.skill) player.resources.skill += effects.skill;
     if (effects.swords) player.resources.swords += effects.swords;
     if (effects.boots) player.resources.boots += effects.boots;
     if (effects.gold) player.gold += effects.gold;
-    // Clamp em 0: algumas cartas reais do jogo removem Clank (ex: "Move Silently"),
-    // mas o Clank do jogador nunca é negativo.
-    if (effects.clank) player.clank = Math.max(0, player.clank + effects.clank);
+    if (effects.clank) this.applyClankDelta(player, effects.clank);
     if (effects.heal) player.damage = Math.max(0, player.damage - effects.heal);
     if (effects.drawCards) {
       const { drawn, drawPile, discardPile } = drawCards(
@@ -381,19 +424,28 @@ export class GameEngine {
       throw new Error(`Esse túnel tem um cadeado — precisa da Chave-mestra do Mercado.`);
     }
 
+    if (player.bootsExhausted) {
+      throw new Error(`${player.name} está exausto de uma Caverna de Cristal — sem Boots até o próximo turno.`);
+    }
     const bootCost = tunnel.icon?.footprint ? 2 : 1;
     if (player.resources.boots < bootCost) {
       throw new Error(`Boots insuficientes pra mover (precisa ${bootCost}, tem ${player.resources.boots}).`);
     }
     player.resources.boots -= bootCost;
 
+    // CONFIRMADO no manual oficial: "A tunnel with Monster icons deals that much damage
+    // ... For each Sword you use, you take one less damage (but you don't have to use
+    // Swords)." O dano é `monsterCost - swordsUsados`, não um flat 1 — usa o mínimo de
+    // Swords necessário pra minimizar o dano (o jogo físico deixa o jogador escolher
+    // quantas Swords gastar; aqui assume-se a escolha ótima por padrão).
     const monsterCost = tunnel.icon?.monsterSwordCost;
     if (monsterCost) {
-      if (player.resources.swords >= monsterCost) {
-        player.resources.swords -= monsterCost;
-      } else {
-        this.damagePlayer(player, 1);
-        this.pushLog(`${player.name} levou dano passando por um túnel com monstro.`);
+      const swordsUsed = Math.min(player.resources.swords, monsterCost);
+      player.resources.swords -= swordsUsed;
+      const damage = monsterCost - swordsUsed;
+      if (damage > 0) {
+        this.damagePlayer(player, damage);
+        this.pushLog(`${player.name} levou ${damage} de dano passando por um túnel com monstro.`);
       }
     }
 
@@ -414,7 +466,8 @@ export class GameEngine {
       player.damage = Math.max(0, player.damage - 1);
       this.pushLog(`${player.name} entrou numa Fonte de Cura: -1 dano.`);
     }
-    if (destRoom?.isCrystalCave && player.resources.boots > 0) {
+    if (destRoom?.isCrystalCave && !player.bootsExhausted) {
+      player.bootsExhausted = true;
       player.resources.boots = 0;
       this.pushLog(`${player.name} entrou numa Caverna de Cristal e ficou exausto — sem mais Boots este turno.`);
     }
@@ -510,19 +563,23 @@ export class GameEngine {
     }
 
     if (item === "key") {
-      if (!this.state.market.masterKeyAvailable) throw new Error("A Chave-mestra já foi comprada.");
+      if (player.hasMasterKey) throw new Error(`${player.name} já tem a Chave-mestra.`);
+      if (this.state.market.masterKeysRemaining <= 0) throw new Error("Não há mais Chaves-mestras disponíveis.");
       player.gold -= MARKET_ITEM_COST;
       player.hasMasterKey = true;
-      this.state.market.masterKeyAvailable = false;
+      player.points += MARKET_ITEM_POINT_VALUE;
+      this.state.market.masterKeysRemaining -= 1;
       this.pushLog(`${player.name} comprou a Chave-mestra.`);
       return;
     }
 
     if (item === "backpack") {
-      if (!this.state.market.backpackAvailable) throw new Error("A Mochila já foi comprada.");
+      if (player.hasBackpack) throw new Error(`${player.name} já tem a Mochila.`);
+      if (this.state.market.backpacksRemaining <= 0) throw new Error("Não há mais Mochilas disponíveis.");
       player.gold -= MARKET_ITEM_COST;
       player.hasBackpack = true;
-      this.state.market.backpackAvailable = false;
+      player.points += MARKET_ITEM_POINT_VALUE;
+      this.state.market.backpacksRemaining -= 1;
       this.pushLog(`${player.name} comprou a Mochila.`);
       return;
     }
@@ -565,6 +622,7 @@ export class GameEngine {
 
     this.state.claimedArtifacts[room.id] = true;
     player.points += room.artifactValue;
+    player.artifactPoints += room.artifactValue;
     player.artifactsCarried += 1;
     this.state.dragon.rageTrackPosition = Math.min(RAGE_TRACK_SIZE, this.state.dragon.rageTrackPosition + 1);
     this.pushLog(`${player.name} pegou um artefato (${room.artifactValue} pontos) em ${room.name}! O dragão está mais irritado.`);
@@ -621,6 +679,9 @@ export class GameEngine {
       const player = this.state.players.find((p) => p.id === drawnId);
       if (!player) continue;
       player.clank = Math.max(0, player.clank - 1);
+      // CONFIRMADO no manual oficial: jogador que já saiu da masmorra ou foi nocauteado
+      // é tratado como cubo preto se seu cubo for sorteado — sem dano.
+      if (player.hasLeftDungeon || player.knockedOut) continue;
       this.damagePlayer(player, 1);
       damagedNames.push(player.name);
     }
@@ -666,8 +727,14 @@ export class GameEngine {
     const scores = this.computeFinalScores();
     this.state.finalScores = scores;
 
-    const [winnerId, winnerScore] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0] ?? [undefined, 0];
-    const winner = this.state.players.find((p) => p.id === winnerId);
+    // Desempate — CONFIRMADO no manual oficial: "In the case of a tie, the tied player
+    // with the most valuable Artifact is the winner."
+    const [winner] = [...this.state.players].sort((a, b) => {
+      const scoreDiff = (scores[b.id] ?? 0) - (scores[a.id] ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return b.artifactPoints - a.artifactPoints;
+    });
+    const winnerScore = winner ? scores[winner.id] : 0;
     this.pushLog(
       winner ? `A partida terminou! ${winner.name} venceu com ${winnerScore} pontos.` : "A partida terminou.",
     );
@@ -853,7 +920,10 @@ export class GameEngine {
    */
   private applyArriveEffects(card: CardDefinition) {
     if (card.arriveEffects) {
+      // CONFIRMADO no manual oficial: "Cards that affect all players don't affect"
+      // quem já saiu da masmorra ou foi nocauteado.
       for (const player of this.state.players) {
+        if (player.hasLeftDungeon || player.knockedOut) continue;
         this.applyEffects(player, card.arriveEffects);
       }
       this.pushLog(`${card.nomePt} foi revelada na Dungeon Row — efeito de chegada aplicado a todos os jogadores.`);
@@ -905,6 +975,8 @@ export class GameEngine {
     player.hand = [];
     player.playedThisTurn = [];
     player.resources = emptyResources();
+    player.bootsExhausted = false;
+    player.pendingClankOffset = 0;
 
     // Muta o mesmo objeto (em vez de substituí-lo no array) pra qualquer referência
     // externa ao jogador (ex: sync do Colyseus) continuar válida depois do turno.

@@ -59,6 +59,7 @@ export class Player extends Schema {
   @type("number") damage = 0;
   @type("string") roomId = "";
   @type("number") points = 0;
+  @type("number") artifactPoints = 0;
   @type("number") artifactsCarried = 0;
   @type("number") monkeyIdolsHeld = 0;
   @type("boolean") hasMasterKey = false;
@@ -88,8 +89,8 @@ export class ClankRoomState extends Schema {
   @type("number") countdownTrack = 0;
   /** Id do jogador que anda na Trilha de Contagem Regressiva (só ele — regra oficial); "" = ninguém ainda. */
   @type("string") countdownPlayerId = "";
-  @type("boolean") marketKeyAvailable = true;
-  @type("boolean") marketBackpackAvailable = true;
+  @type("number") marketKeysRemaining = 2;
+  @type("number") marketBackpacksRemaining = 2;
   @type(["number"]) marketCrownsAvailable = new ArraySchema<number>();
   /**
    * Escolha "X -OU- Y" pendente do jogador da vez (ex: Shrine "USE: $1 -OU- cura 1"),
@@ -532,8 +533,8 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.state.blackCubesInBag = state.dragon.blackCubesInBag;
     this.state.countdownTrack = state.countdownTrack;
     this.state.countdownPlayerId = state.countdownPlayerId ?? "";
-    this.state.marketKeyAvailable = state.market.masterKeyAvailable;
-    this.state.marketBackpackAvailable = state.market.backpackAvailable;
+    this.state.marketKeysRemaining = state.market.masterKeysRemaining;
+    this.state.marketBackpacksRemaining = state.market.backpacksRemaining;
     this.state.marketCrownsAvailable.clear();
     for (const value of state.market.crownsAvailable) this.state.marketCrownsAvailable.push(value);
     if (state.phase === "ended") this.state.phase = "ended";
@@ -570,6 +571,7 @@ export class ClankRoom extends Room<ClankRoomState> {
       schemaPlayer.damage = enginePlayer.damage;
       schemaPlayer.roomId = enginePlayer.roomId;
       schemaPlayer.points = enginePlayer.points;
+      schemaPlayer.artifactPoints = enginePlayer.artifactPoints;
       schemaPlayer.artifactsCarried = enginePlayer.artifactsCarried;
       schemaPlayer.monkeyIdolsHeld = enginePlayer.monkeyIdolsHeld.length;
       schemaPlayer.hasMasterKey = enginePlayer.hasMasterKey;

@@ -21,6 +21,7 @@ export interface PlayerSnapshot {
   damage: number;
   roomId: string;
   points: number;
+  artifactPoints: number;
   artifactsCarried: number;
   monkeyIdolsHeld: number;
   hasMasterKey: boolean;
@@ -70,8 +71,8 @@ export interface RoomSnapshot {
   countdownTrack: number;
   /** Id do jogador andando na Trilha de Contagem Regressiva; "" = ninguém ainda. */
   countdownPlayerId: string;
-  marketKeyAvailable: boolean;
-  marketBackpackAvailable: boolean;
+  marketKeysRemaining: number;
+  marketBackpacksRemaining: number;
   marketCrownsAvailable: number[];
   /** null quando não há nenhuma escolha pendente pro jogador da vez. */
   pendingChoice: PendingChoiceSnapshot | null;
@@ -146,8 +147,8 @@ export function useClankRoom() {
       claimedMonkeyIdols: Map<string, boolean>;
       countdownTrack: number;
       countdownPlayerId: string;
-      marketKeyAvailable: boolean;
-      marketBackpackAvailable: boolean;
+      marketKeysRemaining: number;
+      marketBackpacksRemaining: number;
       marketCrownsAvailable: number[];
       pendingChoiceJson: string;
       pendingTeleportJson: string;
@@ -175,6 +176,7 @@ export function useClankRoom() {
         damage: p.damage,
         roomId: p.roomId,
         points: p.points,
+        artifactPoints: p.artifactPoints,
         artifactsCarried: p.artifactsCarried,
         monkeyIdolsHeld: p.monkeyIdolsHeld,
         hasMasterKey: p.hasMasterKey,
@@ -225,8 +227,8 @@ export function useClankRoom() {
       claimedMonkeyIdols,
       countdownTrack: state.countdownTrack,
       countdownPlayerId: state.countdownPlayerId ?? "",
-      marketKeyAvailable: state.marketKeyAvailable,
-      marketBackpackAvailable: state.marketBackpackAvailable,
+      marketKeysRemaining: state.marketKeysRemaining,
+      marketBackpacksRemaining: state.marketBackpacksRemaining,
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
       pendingChoice,
       pendingTeleport,

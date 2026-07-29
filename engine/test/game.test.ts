@@ -4,10 +4,17 @@ import { BOARD } from "../src/board.js";
 import { BLACK_CUBE_COUNT, GameEngine } from "../src/game.js";
 
 function twoPlayerGame() {
-  return new GameEngine([
+  const game = new GameEngine([
     { id: "p1", name: "Anderson" },
     { id: "p2", name: "Brena" },
   ]);
+  // CONFIRMADO no manual oficial: com 2 jogadores, 2 Artefatos são sorteados e
+  // excluídos do jogo (ver `excludedArtifactRooms`). Isso reaproveita `claimedArtifacts`
+  // e é não-determinístico (rng padrão) — a maioria dos testes daqui não testa essa
+  // regra especificamente, então zera pra não ficar instável sorteando exatamente a
+  // sala que o teste usa (ver testes dedicados em "exclusão de Artefatos").
+  game.state.claimedArtifacts = {};
+  return game;
 }
 
 describe("setup", () => {
@@ -75,6 +82,25 @@ describe("playCard", () => {
 
     expect(player.resources).toEqual({ skill: 0, swords: 0, boots: 0 });
     expect(player.clank).toBe(1);
+  });
+
+  it("Clank! negativo que sobra (já em 0) vira crédito que cancela Clank! positivo depois na mesma mão — CONFIRMADO no manual oficial", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.clank = 0;
+    player.hand = ["move-silently", "stumble"]; // Move Silently: -2 Clank!; Stumble: +1 Clank!
+
+    game.playCard(player.id, "move-silently");
+    expect(player.clank).toBe(0);
+    expect(player.pendingClankOffset).toBe(2); // nada pra remover (já em 0) -> vira crédito
+
+    game.playCard(player.id, "stumble");
+    expect(player.clank).toBe(0); // +1 Clank! cancelado pelo crédito de -2
+    expect(player.pendingClankOffset).toBe(1); // sobrou 1 de crédito, perdido no fim do turno
+
+    player.hand = [];
+    game.endTurn(player.id);
+    expect(player.pendingClankOffset).toBe(0);
   });
 
   it("joga carta acumulando múltiplos recursos (Scramble = skill + boot)", () => {
@@ -363,6 +389,7 @@ describe("movePlayer", () => {
 
     player.roomId = "room-36";
     player.resources.boots = 2; // room-36<->room-35 é túnel de pegada (2 boots)
+    player.bootsExhausted = false; // simula início de um novo turno (room-31 é Caverna de Cristal)
     game.movePlayer(player.id, "room-35");
     expect(player.roomId).toBe("room-35");
     expect(player.damage).toBe(4);
@@ -772,6 +799,44 @@ describe("nomes dos artefatos", () => {
   });
 });
 
+describe("exclusão de Artefatos com menos de 4 jogadores (CONFIRMADO no manual oficial)", () => {
+  it("com 2 jogadores, exatamente 2 das 7 salas de Artefato começam pré-excluídas (claimedArtifacts)", () => {
+    const game = new GameEngine([
+      { id: "p1", name: "A" },
+      { id: "p2", name: "B" },
+    ]);
+    const artifactRoomIds = Object.values(BOARD.rooms)
+      .filter((r) => r.artifactValue !== undefined)
+      .map((r) => r.id);
+    expect(artifactRoomIds.length).toBe(7);
+    const excludedCount = artifactRoomIds.filter((id) => game.state.claimedArtifacts[id]).length;
+    expect(excludedCount).toBe(2);
+  });
+
+  it("com 3 jogadores, exatamente 1 sala de Artefato começa pré-excluída", () => {
+    const game = new GameEngine([
+      { id: "p1", name: "A" },
+      { id: "p2", name: "B" },
+      { id: "p3", name: "C" },
+    ]);
+    const artifactRoomIds = Object.values(BOARD.rooms)
+      .filter((r) => r.artifactValue !== undefined)
+      .map((r) => r.id);
+    const excludedCount = artifactRoomIds.filter((id) => game.state.claimedArtifacts[id]).length;
+    expect(excludedCount).toBe(1);
+  });
+
+  it("com 4 jogadores, nenhuma sala de Artefato é excluída", () => {
+    const game = new GameEngine([
+      { id: "p1", name: "A" },
+      { id: "p2", name: "B" },
+      { id: "p3", name: "C" },
+      { id: "p4", name: "D" },
+    ]);
+    expect(Object.keys(game.state.claimedArtifacts).length).toBe(0);
+  });
+});
+
 describe("takeArtifact", () => {
   it("pega um artefato pequeno (7 pts) e avança a Trilha de Fúria em +1", () => {
     const game = twoPlayerGame();
@@ -966,7 +1031,7 @@ describe("buyMarketItem", () => {
     expect(() => game.buyMarketItem(player.id, "key")).toThrow(/gold insuficiente/i);
   });
 
-  it("compra a Chave-mestra, gasta 7 gold, e ela não pode ser comprada de novo", () => {
+  it("compra a Chave-mestra, gasta 7 gold, e não pode comprar de novo (mas o outro jogador pode — há 2 no jogo)", () => {
     const game = twoPlayerGame();
     const player = inMarket(game);
     player.gold = 7;
@@ -975,14 +1040,24 @@ describe("buyMarketItem", () => {
 
     expect(player.hasMasterKey).toBe(true);
     expect(player.gold).toBe(0);
-    expect(game.state.market.masterKeyAvailable).toBe(false);
+    expect(game.state.market.masterKeysRemaining).toBe(1);
+    player.gold = 7;
+    expect(() => game.buyMarketItem(player.id, "key")).toThrow(/já tem/i);
 
     const other = game.state.players[1];
-    other.roomId = "room-44";
+    other.roomId = player.roomId;
     other.gold = 7;
     player.hand = [];
     game.endTurn(player.id);
-    expect(() => game.buyMarketItem(other.id, "key")).toThrow(/já foi comprada/i);
+    game.buyMarketItem(other.id, "key");
+    expect(other.hasMasterKey).toBe(true);
+    expect(game.state.market.masterKeysRemaining).toBe(0);
+
+    other.hand = [];
+    game.endTurn(other.id);
+    player.gold = 7;
+    player.roomId = other.roomId;
+    expect(() => game.buyMarketItem(player.id, "key")).toThrow(/já tem/i);
   });
 
   it("compra coroas em ordem decrescente de valor (10, depois 9)", () => {
@@ -1092,6 +1167,7 @@ describe("leaveDungeon e fim de jogo", () => {
       ],
       () => 0.99, // evita sortear cubo de jogador nos ataques normais (cai nos cubos pretos)
     );
+    game.state.claimedArtifacts = {}; // rng fixo (0.99) exclui salas de Artefato por sorteio — não é o que este teste testa
     const [p1, p2] = game.state.players;
     p1.roomId = "room-41"; // precisa de artefato pra sair
     game.takeArtifact(p1.id);

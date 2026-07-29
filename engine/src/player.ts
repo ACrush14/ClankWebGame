@@ -21,10 +21,13 @@ export function createPlayer(id: string, name: string, rng: Rng = Math.random): 
     roomId: BOARD.entranceRoomId,
     points: 0,
     artifactsCarried: 0,
+    artifactPoints: 0,
     gold: 0,
     hasMasterKey: false,
     hasBackpack: false,
     hasLeftDungeon: false,
+    bootsExhausted: false,
+    pendingClankOffset: 0,
     monkeyIdolsHeld: [],
   };
 }

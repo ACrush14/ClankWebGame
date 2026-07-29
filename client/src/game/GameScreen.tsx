@@ -671,7 +671,7 @@ export function GameScreen({
               <div className="flex gap-2">
                 <button
                   onClick={() => onBuyMarketItem("key")}
-                  disabled={!isMyTurn || !snapshot.marketKeyAvailable || !!me?.hasMasterKey}
+                  disabled={!isMyTurn || snapshot.marketKeysRemaining <= 0 || !!me?.hasMasterKey}
                   className="group flex-1 flex flex-col items-center p-2 rounded-lg bg-slate-800/80 border border-slate-700/50 hover:bg-slate-700 hover:border-amber-500/50 disabled:opacity-40 transition-colors"
                 >
                   <img src={masterKeyImageUrl} alt="" className="h-8 mb-1 group-hover:scale-110 transition-transform" />
@@ -679,7 +679,7 @@ export function GameScreen({
                 </button>
                 <button
                   onClick={() => onBuyMarketItem("backpack")}
-                  disabled={!isMyTurn || !snapshot.marketBackpackAvailable || !!me?.hasBackpack}
+                  disabled={!isMyTurn || snapshot.marketBackpacksRemaining <= 0 || !!me?.hasBackpack}
                   className="group flex-1 flex flex-col items-center p-2 rounded-lg bg-slate-800/80 border border-slate-700/50 hover:bg-slate-700 hover:border-amber-500/50 disabled:opacity-40 transition-colors"
                 >
                   <img src={backpackImageUrl} alt="" className="h-8 mb-1 group-hover:scale-110 transition-transform" />

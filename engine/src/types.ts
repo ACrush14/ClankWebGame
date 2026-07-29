@@ -241,11 +241,15 @@ export interface ReserveState {
  * valiosa disponível primeiro).
  */
 export const MARKET_ITEM_COST = 7;
+/** CONFIRMADO no manual oficial: Master Key e Backpack "Also worth 5 points at the end of the game." */
+export const MARKET_ITEM_POINT_VALUE = 5;
 export const CROWN_VALUES = [10, 9, 8];
 
 export interface MarketState {
-  masterKeyAvailable: boolean;
-  backpackAvailable: boolean;
+  /** CONFIRMADO no manual oficial: componentes incluem "Two Master Keys" — dava só 1 no total. */
+  masterKeysRemaining: number;
+  /** CONFIRMADO no manual oficial: componentes incluem "Two Backpacks" — dava só 1 no total. */
+  backpacksRemaining: number;
   /** Valores de coroa ainda disponíveis, do maior pro menor. */
   crownsAvailable: number[];
 }
@@ -279,12 +283,32 @@ export interface PlayerState {
   points: number;
   /** Quantos artefatos está carregando agora — limite normal é 1 (2 com a Mochila). */
   artifactsCarried: number;
+  /**
+   * Soma do valor dos artefatos carregados — separado de `points` (que já inclui isso
+   * junto com Coroas/Ídolos/Segredos) só pra critério de desempate: CONFIRMADO no manual
+   * oficial ("In the case of a tie, the tied player with the most valuable Artifact is
+   * the winner").
+   */
+  artifactPoints: number;
   /** Ouro é moeda persistente (não reseta a cada turno como skill/swords/boots). */
   gold: number;
   hasMasterKey: boolean;
   hasBackpack: boolean;
   /** Já escapou da masmorra pela Entrada (fora de jogo, aguardando o fim da partida). */
   hasLeftDungeon: boolean;
+  /**
+   * CONFIRMADO no manual oficial: entrar numa Caverna de Cristal impede usar Boots
+   * pelo resto do turno, mesmo que ganhe mais Boots depois (por uma carta jogada
+   * em seguida) — não basta zerar `resources.boots` uma vez, precisa de uma trava
+   * persistente até o fim do turno.
+   */
+  bootsExhausted: boolean;
+  /**
+   * Crédito de Clank! negativo que sobrou (jogador já estava em 0) — CONFIRMADO no
+   * manual oficial: cancela Clank! positivo de cartas jogadas depois na MESMA mão,
+   * perdido no fim do turno. Ver `applyClankDelta`.
+   */
+  pendingClankOffset: number;
   /** Nomes dos Ídolos de Macaco carregados (cada um vale MONKEY_IDOL_VALUE pontos, já somados em `points` ao pegar). */
   monkeyIdolsHeld: string[];
 }

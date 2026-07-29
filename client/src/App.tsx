@@ -450,7 +450,8 @@ interface EndScreenProps {
 }
 
 function EndScreen({ snapshot, onLeave }: EndScreenProps) {
-  const ranked = [...snapshot.players].sort((a, b) => b.finalScore - a.finalScore);
+  // Desempate — CONFIRMADO no manual oficial: "the tied player with the most valuable Artifact is the winner."
+  const ranked = [...snapshot.players].sort((a, b) => b.finalScore - a.finalScore || b.artifactPoints - a.artifactPoints);
   const winner = ranked[0];
 
   return (
