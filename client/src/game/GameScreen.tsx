@@ -661,18 +661,6 @@ export function GameScreen({
 
           {/* Floating Actions overlay for current room */}
           <div className="absolute top-4 left-4 z-20 flex flex-wrap gap-2">
-             {hasUnclaimedArtifact && (
-              <button
-                onClick={onTakeArtifact}
-                disabled={!isMyTurn || atArtifactLimit}
-                className="flex items-center gap-2 rounded-xl bg-amber-500/90 px-4 py-2 text-sm font-bold text-slate-950 shadow-lg backdrop-blur hover:bg-amber-400 active:scale-95 disabled:opacity-40 transition-all"
-              >
-                {artifactImageUrl(myRoom!.artifactValue!) && (
-                  <img src={artifactImageUrl(myRoom!.artifactValue!)} alt="" className="h-6 w-6 object-contain drop-shadow" />
-                )}
-                Pegar Artefato ({myRoom!.artifactValue})
-              </button>
-            )}
             {canLeaveDungeon && (
               <button
                 onClick={onLeaveDungeon}
@@ -796,6 +784,32 @@ export function GameScreen({
       <aside className="flex w-full shrink-0 flex-col border-t border-slate-800 bg-slate-900 z-10 shadow-[0_-4px_24px_rgba(0,0,0,0.5)] md:h-full md:w-72 md:border-t-0 md:border-l md:shadow-[-4px_0_24px_rgba(0,0,0,0.5)]">
         <div className="flex max-h-[45vh] flex-col overflow-y-auto p-3 gap-4 md:max-h-none md:h-full" style={{ scrollbarWidth: 'thin' }}>
 
+          {/* Artefato da sala atual — pedido de playtest: antes era um botão flutuante
+              pequeno no canto superior esquerdo do mapa, fácil de não notar. Agora fica
+              junto com o resto das ações de carta/sala no painel direito. */}
+          {hasUnclaimedArtifact && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-amber-400 mb-2">
+                Artefato nesta sala!
+              </h3>
+              <button
+                onClick={onTakeArtifact}
+                disabled={!isMyTurn || atArtifactLimit}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg hover:bg-amber-400 active:scale-95 disabled:opacity-40 transition-all"
+              >
+                {artifactImageUrl(myRoom!.artifactValue!) && (
+                  <img src={artifactImageUrl(myRoom!.artifactValue!)} alt="" className="h-6 w-6 object-contain drop-shadow" />
+                )}
+                Pegar Artefato ({myRoom!.artifactValue})
+              </button>
+              {atArtifactLimit && (
+                <p className="mt-1.5 text-[10px] text-amber-300/80">
+                  Você já está carregando o máximo de artefatos ({artifactLimit}).
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Market area */}
           {myRoom?.isMarket && (
             <div className="rounded-xl border border-amber-600/30 bg-amber-900/10 p-3">
@@ -877,7 +891,7 @@ export function GameScreen({
                     >
                       <InfoButton onClick={() => setDetailCardId(cardId)} />
                       {url ? (
-                        <img src={url} alt={card.nomePt} className="w-full flex-1 object-contain bg-slate-950" />
+                        <img src={url} alt={card.nomePt} className="w-full min-h-0 flex-1 object-contain bg-slate-950" />
                       ) : (
                         <div className="flex-1 flex items-center justify-center p-1">
                           <span className="text-[10px] font-bold text-slate-300 leading-tight text-center">{card.nomePt}</span>
