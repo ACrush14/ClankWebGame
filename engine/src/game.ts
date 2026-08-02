@@ -16,6 +16,7 @@ import type {
   EffectChoiceOption,
   MarketState,
   PendingChoice,
+  PendingDiscardChoice,
   PendingTeleport,
   PlayerState,
   ReserveState,
@@ -160,6 +161,11 @@ export interface GameState {
    * `pendingChoice`, bloqueia qualquer outra ação até o jogador chamar `teleportTo`.
    */
   pendingTeleport: PendingTeleport | null;
+  /**
+   * "Descarte uma carta pra comprar N" pendente (ex: Sleight of Hand) — igual ao
+   * `pendingChoice`, bloqueia qualquer outra ação até o jogador chamar `resolveDiscardChoice`.
+   */
+  pendingDiscardChoice: PendingDiscardChoice | null;
 }
 
 export class GameEngine {
@@ -199,6 +205,7 @@ export class GameEngine {
       countdownPlayerId: null,
       pendingChoice: null,
       pendingTeleport: null,
+      pendingDiscardChoice: null,
     };
   }
 
@@ -228,6 +235,11 @@ export class GameEngine {
     if (this.state.pendingTeleport) {
       throw new Error(
         `${player.name} tem um teleporte pendente ("${this.state.pendingTeleport.cardName}") — resolva com teleportTo antes de continuar.`,
+      );
+    }
+    if (this.state.pendingDiscardChoice) {
+      throw new Error(
+        `${player.name} precisa escolher uma carta pra descartar ("${this.state.pendingDiscardChoice.cardName}") — resolva com resolveDiscardChoice antes de continuar.`,
       );
     }
     return player;
@@ -276,6 +288,34 @@ export class GameEngine {
     this.applyEffects(player, this.effectsFromChoice(option));
     this.pushLog(`${player.name} escolheu "${option.label}" em ${pending.cardName}.`);
     this.state.pendingChoice = null;
+  }
+
+  /**
+   * Resolve um "descarte uma carta pra comprar N" pendente (ver `PendingDiscardChoice`,
+   * ex: Sleight of Hand) — mesmo padrão de `resolveChoice`, não passa pelo guard normal
+   * de `requireCurrentPlayer` de propósito. `discardCardId` precisa estar na mão atual
+   * (a carta que criou o pendente já saiu da mão antes disso, ver `playCard`).
+   */
+  resolveDiscardChoice(playerId: string, discardCardId: string) {
+    if (this.state.phase === "ended") throw new Error("A partida já terminou.");
+    const player = this.currentPlayer;
+    if (player.id !== playerId) {
+      throw new Error(`Não é a vez de ${playerId} — é a vez de ${player.name}.`);
+    }
+    const pending = this.state.pendingDiscardChoice;
+    if (!pending) throw new Error("Não há descarte pendente.");
+    const handIndex = player.hand.indexOf(discardCardId);
+    if (handIndex === -1) throw new Error(`${discardCardId} não está na mão de ${player.name}.`);
+
+    const discardedCard = getCard(discardCardId);
+    player.hand.splice(handIndex, 1);
+    player.discardPile.push(discardCardId);
+    const { drawn, drawPile, discardPile } = drawCards(player.drawPile, player.discardPile, pending.drawCount, this.rng);
+    player.hand.push(...drawn);
+    player.drawPile = drawPile;
+    player.discardPile = discardPile;
+    this.pushLog(`${player.name} descartou ${discardedCard.nomePt} (${pending.cardName}) e comprou ${pending.drawCount} carta(s).`);
+    this.state.pendingDiscardChoice = null;
   }
 
   /**
@@ -801,6 +841,25 @@ export class GameEngine {
     this.applyEffectsOrSetChoice(player, card, card.playEffects, card.playChoices);
     this.maybeGrantTeleport(player, card);
     this.applyRoomConditionalEffects(player, cardId);
+    // CONFIRMADO no manual oficial: Kobold Merchant dá +2 Moedas extra "if you have an
+    // artifact" — mesmo padrão de special-case já usado pra Wand of Recall (ver
+    // `maybeGrantTeleport`), já que `CardEffects` genérico não modela condicionais.
+    if (card.id === "kobold-merchant" && player.artifactsCarried > 0) {
+      player.gold += 2;
+      this.pushLog(`${player.name} tem um Artefato — Mercador Kobold rendeu +2 Moedas extra.`);
+    }
+    // CONFIRMADO no manual oficial: "Discard a card to draw two cards." A carta em si
+    // já saiu da mão (linha 836) — se sobrar pelo menos 1 carta, o jogador escolhe qual
+    // descartar (ver `resolveDiscardChoice`); se a mão já estiver vazia, o efeito
+    // simplesmente não acontece ("If you don't have a card in your hand to discard,
+    // you don't get to draw two cards").
+    if (card.discardToDrawCount) {
+      if (player.hand.length > 0) {
+        this.state.pendingDiscardChoice = { cardId: card.id, cardName: card.nomePt, drawCount: card.discardToDrawCount };
+      } else {
+        this.pushLog(`${player.name} não tinha carta pra descartar — efeito de ${card.nomePt} não aconteceu.`);
+      }
+    }
   }
 
   /**
@@ -815,7 +874,12 @@ export class GameEngine {
    */
   playAllCards(playerId: string) {
     const player = this.requireCurrentPlayer(playerId);
-    while (player.hand.length > 0 && !this.state.pendingChoice && !this.state.pendingTeleport) {
+    while (
+      player.hand.length > 0 &&
+      !this.state.pendingChoice &&
+      !this.state.pendingTeleport &&
+      !this.state.pendingDiscardChoice
+    ) {
       this.playCard(playerId, player.hand[0]);
     }
   }

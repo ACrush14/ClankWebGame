@@ -85,6 +85,17 @@ export interface PendingTeleport {
   cardName: string;
 }
 
+/**
+ * "Descarte uma carta pra comprar N" pendente (ex: Sleight of Hand) — CONFIRMADO no
+ * manual oficial: o jogador escolhe QUAL carta da mão descartar (não é automático),
+ * igual ao padrão de `PendingChoice`/`PendingTeleport`. Ver `GameEngine.resolveDiscardChoice`.
+ */
+export interface PendingDiscardChoice {
+  cardId: string;
+  cardName: string;
+  drawCount: number;
+}
+
 export interface CardDefinition {
   id: string;
   name: string;
@@ -160,6 +171,15 @@ export interface CardDefinition {
    * tiver um artefato") são tratados à parte em `maybeGrantTeleport`, não por aqui.
    */
   grantsTeleport?: boolean;
+  /**
+   * "Descarte uma carta pra comprar N" ao JOGAR a carta — CONFIRMADO no manual oficial
+   * (ex: Sleight of Hand, "Discard a card to draw two cards"). Cria um
+   * `PendingDiscardChoice` (ver `GameEngine.resolveDiscardChoice`) em vez de comprar na
+   * hora, já que o jogador escolhe qual carta descarta. Se a mão estiver vazia depois
+   * de tirar a própria carta jogada, o efeito simplesmente não acontece — CONFIRMADO:
+   * "If you don't have a card in your hand to discard, you don't get to draw two cards."
+   */
+  discardToDrawCount?: number;
   /**
    * Devolve esse tanto de cubos PRETOS ao saco (até o teto de `BLACK_CUBE_COUNT`) ao
    * ser revelada pra repor a Dungeon Row — CONFIRMADO pelo usuário (2026-07-28): é a

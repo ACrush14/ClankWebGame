@@ -1226,6 +1226,81 @@ describe("leaveDungeon e fim de jogo", () => {
   });
 });
 
+describe("Kobold Merchant / Mercador Kobold (bônus condicional de Artefato — CONFIRMADO no manual oficial)", () => {
+  it("sem Artefato, ganha só as 2 Moedas base", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["kobold-merchant"];
+    player.gold = 0;
+    game.playCard(player.id, "kobold-merchant");
+    expect(player.gold).toBe(2);
+  });
+
+  it("com um Artefato, ganha 2 + 2 Moedas extra (\"if you have an artifact, +$2\")", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["kobold-merchant"];
+    player.gold = 0;
+    player.artifactsCarried = 1;
+    game.playCard(player.id, "kobold-merchant");
+    expect(player.gold).toBe(4);
+  });
+});
+
+describe("Sleight of Hand / Prestidigitação (\"Discard a card to draw two cards\")", () => {
+  it("jogar cria pendingDiscardChoice e bloqueia outras ações até resolver", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["sleight-of-hand", "burgle", "stumble"];
+    game.playCard(player.id, "sleight-of-hand");
+
+    expect(game.state.pendingDiscardChoice).toEqual({
+      cardId: "sleight-of-hand",
+      cardName: "Prestidigitação",
+      drawCount: 2,
+    });
+    expect(() => game.playCard(player.id, "burgle")).toThrow(/precisa escolher uma carta pra descartar/i);
+  });
+
+  it("resolveDiscardChoice descarta a carta escolhida e compra 2 novas", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    // Controla o baralho inteiro (drawPile/discardPile), não só a mão — do contrário o
+    // "sidestep" original (só 1 cópia no baralho inicial) pode continuar sobrando em
+    // outra pilha além do que foi atribuído direto na mão aqui, e a asserção de
+    // "não voltou pra mão" fica não-determinística.
+    player.hand = ["sleight-of-hand", "sidestep", "stumble"];
+    player.drawPile = ["scramble", "burgle"];
+    player.discardPile = [];
+    game.playCard(player.id, "sleight-of-hand");
+
+    game.resolveDiscardChoice(player.id, "sidestep");
+
+    expect(game.state.pendingDiscardChoice).toBeNull();
+    expect(player.discardPile).toContain("sidestep");
+    expect(player.hand).not.toContain("sidestep");
+    expect(player.hand).toContain("stumble"); // não escolhida, continua na mão
+    expect(player.hand).toEqual(expect.arrayContaining(["stumble", "scramble", "burgle"]));
+    expect(player.hand.length).toBe(3); // stumble (sobrou) + 2 compradas
+  });
+
+  it("lança erro se a carta escolhida não está na mão", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["sleight-of-hand", "burgle"];
+    game.playCard(player.id, "sleight-of-hand");
+    expect(() => game.resolveDiscardChoice(player.id, "stumble")).toThrow(/não está na mão/i);
+  });
+
+  it("mão vazia depois de jogar -> efeito não acontece (\"you don't get to draw two cards\")", () => {
+    const game = twoPlayerGame();
+    const player = game.currentPlayer;
+    player.hand = ["sleight-of-hand"];
+    game.playCard(player.id, "sleight-of-hand");
+    expect(game.state.pendingDiscardChoice).toBeNull();
+  });
+});
+
 describe("Teleporte", () => {
   it("jogar Invoker of the Ancients cria pendingTeleport e bloqueia outras ações até resolver", () => {
     const game = twoPlayerGame();

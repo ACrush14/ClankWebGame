@@ -104,6 +104,12 @@ export class ClankRoomState extends Schema {
    * `pendingChoiceJson`.
    */
   @type("string") pendingTeleportJson = "";
+  /**
+   * "Descarte uma carta pra comprar N" pendente (ex: Sleight of Hand), serializado como
+   * JSON (`{cardId, cardName, drawCount}`) — "" quando não há nenhum pendente. Mesmo
+   * padrão de `pendingChoiceJson`.
+   */
+  @type("string") pendingDiscardChoiceJson = "";
   /** Código amigável de 4 dígitos (ver `generateUniqueRoomCode`) — o que o jogador digita/vê, não o id interno do Colyseus. */
   @type("string") roomCode = "";
 }
@@ -201,6 +207,9 @@ export class ClankRoom extends Room<ClankRoomState> {
     this.onMessage("end_turn", (client) => this.handleAction(client, () => this.engine!.endTurn(client.sessionId)));
     this.onMessage("resolve_choice", (client, optionIndex: number) =>
       this.handleAction(client, () => this.engine!.resolveChoice(client.sessionId, optionIndex)),
+    );
+    this.onMessage("resolve_discard_choice", (client, discardCardId: string) =>
+      this.handleAction(client, () => this.engine!.resolveDiscardChoice(client.sessionId, discardCardId)),
     );
 
     console.log(`ClankRoom criada: ${this.roomId}`);
@@ -330,13 +339,20 @@ export class ClankRoom extends Room<ClankRoomState> {
 
     const player = () => engine.state.players.find((p) => p.id === botId);
 
-    /** Resolve escolhas X-ou-Y (sempre a 1ª opção) e teleportes pendentes (sempre a 1ª sala adjacente). */
+    /** Resolve escolhas X-ou-Y (sempre a 1ª opção), teleportes (sempre a 1ª sala adjacente) e descartes pendentes (sempre a 1ª carta da mão). */
     const resolvePendingChoices = () => {
       let guard = 0;
-      while ((engine.state.pendingChoice || engine.state.pendingTeleport) && guard++ < 10) {
+      while (
+        (engine.state.pendingChoice || engine.state.pendingTeleport || engine.state.pendingDiscardChoice) &&
+        guard++ < 10
+      ) {
         try {
           if (engine.state.pendingChoice) {
             engine.resolveChoice(botId, 0);
+          } else if (engine.state.pendingDiscardChoice) {
+            const discardId = player()?.hand[0];
+            if (!discardId) break;
+            engine.resolveDiscardChoice(botId, discardId);
           } else {
             const target = BOARD.rooms[player()?.roomId ?? ""]?.tunnels[0]?.to;
             if (!target) break;
@@ -540,6 +556,7 @@ export class ClankRoom extends Room<ClankRoomState> {
     if (state.phase === "ended") this.state.phase = "ended";
     this.state.pendingChoiceJson = state.pendingChoice ? JSON.stringify(state.pendingChoice) : "";
     this.state.pendingTeleportJson = state.pendingTeleport ? JSON.stringify(state.pendingTeleport) : "";
+    this.state.pendingDiscardChoiceJson = state.pendingDiscardChoice ? JSON.stringify(state.pendingDiscardChoice) : "";
 
     this.state.dungeonRowSlots.clear();
     for (const id of state.dungeonRow.slots) this.state.dungeonRowSlots.push(id ?? "");

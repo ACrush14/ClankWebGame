@@ -52,6 +52,13 @@ export interface PendingTeleportSnapshot {
   cardName: string;
 }
 
+/** "Descarte uma carta pra comprar N" pendente (ex: Sleight of Hand) — ver `PendingChoiceSnapshot`. */
+export interface PendingDiscardChoiceSnapshot {
+  cardId: string;
+  cardName: string;
+  drawCount: number;
+}
+
 export interface RoomSnapshot {
   players: PlayerSnapshot[];
   phase: "lobby" | "playing" | "ended";
@@ -78,6 +85,8 @@ export interface RoomSnapshot {
   pendingChoice: PendingChoiceSnapshot | null;
   /** null quando não há nenhum Teleporte pendente pro jogador da vez. */
   pendingTeleport: PendingTeleportSnapshot | null;
+  /** null quando não há nenhum descarte pendente pro jogador da vez. */
+  pendingDiscardChoice: PendingDiscardChoiceSnapshot | null;
   /** Código amigável de 4 dígitos (o que aparece pro jogador) — não é o id interno do Colyseus. */
   roomCode: string;
 }
@@ -120,6 +129,19 @@ export function useClankRoom() {
   const clientRef = useRef<Client | null>(null);
   const roomRef = useRef<Room | null>(null);
   const tryReconnectRef = useRef<() => void>(() => {});
+  /**
+   * Trava síncrona contra reconexão concorrente — CONFIRMADO bug real de playtest
+   * ("as mesmas notificações aparecem ~3 vezes"): `onLeave` pode disparar mais de uma
+   * vez pra uma ÚNICA queda de conexão real (comum em rede de celular instável), e
+   * cada disparo chamava `tryReconnect`. A guarda antiga só checava `roomRef.current`
+   * (fica `null` durante todo o `await client.reconnect(...)`), então uma segunda
+   * chamada concorrente passava pela guarda ANTES da primeira terminar, resultando em
+   * duas (ou três) `Room` conectadas ao mesmo tempo — cada uma com seu próprio
+   * `onStateChange`, então cada evento do servidor disparava `applySnapshot` (e os
+   * popups) 2-3 vezes. `roomRef`/estado React são assíncronos demais pra fechar essa
+   * janela; um ref booleano setado de forma síncrona, ANTES de qualquer `await`, fecha.
+   */
+  const reconnectingRef = useRef(false);
   const [room, setRoom] = useState<Room | null>(null);
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [hand, setHand] = useState<string[]>([]);
@@ -152,6 +174,7 @@ export function useClankRoom() {
       marketCrownsAvailable: number[];
       pendingChoiceJson: string;
       pendingTeleportJson: string;
+      pendingDiscardChoiceJson: string;
       roomCode: string;
     };
     if (!state || !state.players) return;
@@ -201,6 +224,14 @@ export function useClankRoom() {
         pendingTeleport = null;
       }
     }
+    let pendingDiscardChoice: PendingDiscardChoiceSnapshot | null = null;
+    if (state.pendingDiscardChoiceJson) {
+      try {
+        pendingDiscardChoice = JSON.parse(state.pendingDiscardChoiceJson) as PendingDiscardChoiceSnapshot;
+      } catch {
+        pendingDiscardChoice = null;
+      }
+    }
     const reserveRemaining: Record<string, number> = {};
     state.reserveRemaining?.forEach((count, id: string) => {
       reserveRemaining[id] = count;
@@ -232,12 +263,18 @@ export function useClankRoom() {
       marketCrownsAvailable: Array.from(state.marketCrownsAvailable ?? []),
       pendingChoice,
       pendingTeleport,
+      pendingDiscardChoice,
       roomCode: state.roomCode ?? "",
     });
   }, []);
 
   const bindRoom = useCallback(
     (r: Room) => {
+      // Defesa extra contra o mesmo bug de notificação triplicada: em alguns casos o
+      // colyseus.js reaproveita a MESMA instância de `Room` numa reconexão — registrar
+      // `onStateChange`/`onMessage` de novo nela empilharia um segundo listener em vez
+      // de substituir. `removeAllListeners()` garante que `bindRoom` é sempre idempotente.
+      r.removeAllListeners();
       roomRef.current = r;
       setRoom(r);
       applySnapshot(r);
@@ -263,7 +300,8 @@ export function useClankRoom() {
 
   const tryReconnect = useCallback(async () => {
     const token = readReconnectToken();
-    if (!token || roomRef.current) return;
+    if (!token || roomRef.current || reconnectingRef.current) return;
+    reconnectingRef.current = true;
     setReconnecting(true);
     try {
       const r = await clientRef.current!.reconnect(token);
@@ -271,6 +309,7 @@ export function useClankRoom() {
     } catch {
       clearReconnectToken();
     } finally {
+      reconnectingRef.current = false;
       setReconnecting(false);
     }
   }, [bindRoom]);
@@ -389,6 +428,11 @@ export function useClankRoom() {
     roomRef.current?.send("resolve_choice", optionIndex);
   }, []);
 
+  const resolveDiscardChoice = useCallback((discardCardId: string) => {
+    setActionError(null);
+    roomRef.current?.send("resolve_discard_choice", discardCardId);
+  }, []);
+
   const leaveDungeon = useCallback(() => {
     setActionError(null);
     roomRef.current?.send("leave_dungeon");
@@ -439,6 +483,7 @@ export function useClankRoom() {
     teleportTo,
     takeArtifact,
     resolveChoice,
+    resolveDiscardChoice,
     leaveDungeon,
     buyMarketItem,
     endTurn,

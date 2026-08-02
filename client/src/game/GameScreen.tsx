@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { BLACK_CUBE_COUNT, BOARD, getCard, HEALTH_TRACK_SIZE, RAGE_TRACK_CUBES } from "@clank/engine";
-import type { RoomSnapshot } from "./useClankRoom";
+import type { PendingDiscardChoiceSnapshot, RoomSnapshot } from "./useClankRoom";
 import { cardImageUrl } from "./cardImages";
 import { artifactImageUrl, backpackImageUrl, crownImageUrl, masterKeyImageUrl } from "./tokenImages";
 import { BoardMap } from "./BoardMap";
@@ -22,6 +22,7 @@ export interface GameScreenProps {
   onTeleportTo: (toRoomId: string) => void;
   onTakeArtifact: () => void;
   onResolveChoice: (optionIndex: number) => void;
+  onResolveDiscardChoice: (discardCardId: string) => void;
   onLeaveDungeon: () => void;
   onBuyMarketItem: (item: "key" | "backpack" | "crown") => void;
   onEndTurn: () => void;
@@ -352,6 +353,68 @@ function WelcomeModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * Overlay bloqueante pra "descarte uma carta pra comprar N" (ex: Sleight of Hand) —
+ * CONFIRMADO no manual oficial: quem escolhe QUAL carta descartar é o jogador, não é
+ * automático. Mesmo padrão do `ChoiceModal` (App.tsx), mas mostra a mão atual (a carta
+ * jogada que criou o pendente já não está mais nela) em vez de opções fixas de efeito.
+ */
+function DiscardChoiceModal({
+  pending,
+  hand,
+  onDiscard,
+}: {
+  pending: PendingDiscardChoiceSnapshot;
+  hand: string[];
+  onDiscard: (cardId: string) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-sm rounded-2xl bg-slate-900 p-5 shadow-2xl ring-1 ring-white/10"
+      >
+        <p className="mb-1 text-xs uppercase tracking-wide text-slate-400">{pending.cardName}</p>
+        <p className="mb-4 text-lg font-bold text-slate-100">
+          Descarte uma carta pra comprar {pending.drawCount}
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {hand.map((cardId, i) => {
+            const url = cardImageUrl(cardId);
+            return (
+              <button
+                key={`${cardId}-${i}`}
+                onClick={() => onDiscard(cardId)}
+                className="group flex flex-col items-center gap-1 rounded-lg p-1 active:scale-95"
+              >
+                {url ? (
+                  <img
+                    src={url}
+                    alt={cardName(cardId)}
+                    className="h-28 w-auto rounded-lg ring-1 ring-slate-700 group-hover:ring-2 group-hover:ring-red-400 transition-all"
+                  />
+                ) : (
+                  <div className="flex h-28 w-20 items-center justify-center rounded-lg bg-slate-800 p-1 text-center text-[10px] font-bold text-slate-300 ring-1 ring-slate-700 group-hover:ring-2 group-hover:ring-red-400">
+                    {cardName(cardId)}
+                  </div>
+                )}
+                <span className="text-[10px] font-bold text-red-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Descartar
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function GameScreen({
   mySessionId,
   snapshot,
@@ -366,6 +429,7 @@ export function GameScreen({
   onTeleportTo,
   onTakeArtifact,
   onResolveChoice,
+  onResolveDiscardChoice,
   onLeaveDungeon,
   onBuyMarketItem,
   onEndTurn,
@@ -595,6 +659,9 @@ export function GameScreen({
 
         {isMyTurn && snapshot.pendingChoice && (
           <ChoiceModal choice={snapshot.pendingChoice} onChoose={onResolveChoice} />
+        )}
+        {isMyTurn && snapshot.pendingDiscardChoice && (
+          <DiscardChoiceModal pending={snapshot.pendingDiscardChoice} hand={hand} onDiscard={onResolveDiscardChoice} />
         )}
 
         {/* Banner de turno — bem visível quem está jogando agora, pedido explícito de playtest.

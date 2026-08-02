@@ -127,6 +127,7 @@ export default function App() {
     teleportTo,
     takeArtifact,
     resolveChoice,
+    resolveDiscardChoice,
     leaveDungeon,
     buyMarketItem,
     endTurn,
@@ -181,6 +182,7 @@ export default function App() {
         onTeleportTo={teleportTo}
         onTakeArtifact={takeArtifact}
         onResolveChoice={resolveChoice}
+        onResolveDiscardChoice={resolveDiscardChoice}
         onLeaveDungeon={leaveDungeon}
         onBuyMarketItem={buyMarketItem}
         onEndTurn={endTurn}

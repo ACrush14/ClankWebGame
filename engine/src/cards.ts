@@ -279,8 +279,10 @@ export const DUNGEON_DECK: CardDefinition[] = [
     descriptionPt: "Descarte uma carta para comprar duas cartas.",
     kind: "item",
     skillCost: 2,
+    discardToDrawCount: 2,
     verified: true,
-    // Nota: Descarte uma carta para comprar duas cartas. Escolha de qual carta descartar não modelada.
+    // Nota: Descarte uma carta para comprar duas cartas — MODELADO via `discardToDrawCount`
+    // (cria um `PendingDiscardChoice`, jogador escolhe qual carta descartar).
   },
   {
     id: "diamond",
@@ -512,9 +514,10 @@ export const DUNGEON_DECK: CardDefinition[] = [
     playEffects: { gold: 2 },
     points: 1,
     verified: true,
-    // Nota: Se você tem um artefato, a carta vale +2 (a planilha diz "mana"; o manual
-    // oficial mostra essa carta como exemplo com "+$2" se tiver artefato — condicional
-    // não modelado de qualquer forma, ver nota no topo do arquivo).
+    // Nota: +2 Moedas extra se tiver um Artefato — CONFIRMADO no manual oficial (usa
+    // essa carta como exemplo do texto "if you have an artifact, +$2"). MODELADO como
+    // special-case em `GameEngine.playCard` (ver comentário lá), não em `playEffects`
+    // genérico.
   },
   {
     id: "rebel-miner",
